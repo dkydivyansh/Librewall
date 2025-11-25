@@ -26,11 +26,11 @@ Most current live wallpaper solutions (like Wallpaper Engine) suffer from two ma
 
 ## Planned Features
 
-* ** True Native Support:** Runs natively on **Windows** and **Linux** (No Wine/emulation required).
-* ** 3D Scene Rendering:** Support for real-time 3D environments, not just looped videos.
-* ** High Performance:** Optimized to pause when full-screen applications/games are running to save resources.
-* ** Deep Customization:** Tweak lighting, physics, and animation speeds in real-time.
-* ** 100% Open Source:** Built for the community, by the community.
+* True Native Support: Runs natively on **Windows** and **Linux** (No Wine/emulation required).
+* 3D Scene Rendering: Support for real-time 3D environments, not just looped videos.
+* High Performance: Optimized to pause when full-screen applications/games are running to save resources.
+* Deep Customization: Tweak lighting, physics, and animation speeds in real-time.
+* 100% Open Source: Built for the community, by the community.
 
 ## Architecture (Tentative)
 
