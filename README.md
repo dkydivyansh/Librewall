@@ -1,58 +1,61 @@
-# Librewall 🎨
+# Librewall
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue)](https://github.com/dkydivyansh/Librewall)
-[![Status](https://img.shields.io/badge/status-Coming%20Soon%20%F0%9F%9A%A7-orange)]()
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)](https://github.com/dkydivyansh/Librewall)
+[![Status](https://img.shields.io/badge/status-Active_Development-green)]()
 
-> **The open-source, high-performance alternative to proprietary wallpaper engines.**
+**The open-source, high-performance alternative to proprietary wallpaper engines.**
 
----
+Librewall is a native application designed to bring interactive, 3D, and animated wallpapers to Linux and Windows desktops without the resource overhead of existing solutions. It runs natively on the desktop backend, avoiding the need for heavy emulation wrappers.
 
-## Project Status: Coming Soon
+## Showcase
 
-**Librewall is currently in active pre-alpha development.**
+**3D Model Rendering**
 
-We are building a native, cross-platform solution to bring interactive, 3D, and animated wallpapers to your desktop without the bloat or proprietary restrictions of existing software.
+![3D Model Wallpaper](https://raw.githubusercontent.com/dkydivyansh/Librewall/main/asset/3Dmodel_preview.gif)
 
----
+**Interactive Web/App Integration**
 
-## The Vision
+![Web App Preview](https://raw.githubusercontent.com/dkydivyansh/Librewall/main/asset/web_app_preview.gif)
 
-Most current live wallpaper solutions (like Wallpaper Engine) suffer from two main issues:
-1.  **Proprietary Lock-in:** They are closed-source and paid.
-2.  **Poor Linux Support:** They often require Wine, Proton, or heavy workarounds to run on Linux.
+**Customization**
 
-**Librewall changes this.** We are building a native engine that renders 3D scenes and animations directly on your desktop backend, ensuring minimal resource usage and maximum customization.
+![Wallpaper Customization](https://raw.githubusercontent.com/dkydivyansh/Librewall/main/asset/customization.gif)
 
-## Planned Features
+## Features
 
-* True Native Support: Runs natively on **Windows** and **Linux** (No Wine/emulation required).
-* 3D Scene Rendering: Support for real-time 3D environments, not just looped videos.
-* High Performance: Optimized to pause when full-screen applications/games are running to save resources.
-* Deep Customization: Tweak lighting, physics, and animation speeds in real-time.
-* 100% Open Source: Built for the community, by the community.
+Librewall supports a wide range of media types and customization options:
 
-## Architecture (Tentative)
+* **Video & GIF Support:** Seamlessly render high-quality video loops and GIFs as wallpapers.
+* **Interactive Webpages:** Run HTML/CSS/JS applications directly on the desktop.
+* **Animated 3D Models:** Render real-time 3D scenes.
+* **Future Updates:** Additional format support is currently in development.
 
-* **Core:** High-performance rendering engine.
-* **Rendering:** GPU-accelerated graphics.
-* **UI:** Modern, responsive configuration dashboard.
+## Performance
 
-## Roadmap
+We prioritize system efficiency to ensure the wallpaper does not interfere with work or gaming:
 
-- [ ] Core Engine Architecture Design
-- [ ] Cross-Platform Window Management (Win32 / X11 / Wayland)
-- [ ] Basic 2D/Video Rendering Support
-- [ ] Advanced 3D Scene Implementation
-- [ ] Public Alpha Release
+* **Fullscreen Detection:** Wallpaper playback automatically pauses when fullscreen applications or games are running to free up GPU resources.
+* **Foreground Rules:** Users can set specific playback rules based on the currently active foreground application.
+* **Battery Saver:** Playback can be configured to pause automatically when the device is running on battery power (Laptops).
 
-## Contact & Updates
+## Automation & API
 
-This project is maintained by **Divyansh**.
+Librewall is designed for power users and developers who want full control over their environment:
 
-*  **Portfolio:** [dkydivyansh.com](https://dkydivyansh.com)
-*  **GitHub:** [@dkydivyansh](https://github.com/dkydivyansh)
-*  **LinkedIn:** [dkydivyansh](https://www.linkedin.com/in/dkydivyansh/)
+* **CLI Support:** Control the wallpaper engine using command-line arguments from the terminal.
+* **Scripting Integration:** Integrate Librewall with external scripts (Python, Bash, etc.) via the Librewall API to trigger wallpaper changes based on system events.
+* **API Support:** A full API is currently in development to allow for deeper programmatic control and plugin support.
 
----
-*If you are interested in this project, please **Star ⭐ this repository** to follow the development!*
+## Contributing
+
+This is an open-source project, and contributions are highly encouraged. We welcome help in the following areas:
+
+* Improving the backend engine and rendering pipeline.
+* Enhancing the user interface for the configuration dashboard.
+* Implementing new features or format support.
+
+
+## License
+
+Librewall is licensed under the **GPL-v3** (GNU General Public License v3.0).
