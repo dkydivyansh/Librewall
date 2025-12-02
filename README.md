@@ -7,8 +7,6 @@
 
 **The open-source, high-performance alternative to proprietary wallpaper engines.**
 
-Librewall is a native application designed to bring interactive, 3D, and animated wallpapers to Linux and Windows desktops without the resource overhead of existing solutions. It runs natively on the desktop backend, avoiding the need for heavy emulation wrappers.
-
 ## Showcase
 
 **3D Model Rendering**
