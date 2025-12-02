@@ -13,15 +13,15 @@ Librewall is a native application designed to bring interactive, 3D, and animate
 
 **3D Model Rendering**
 
-![3D Model Wallpaper](https://raw.githubusercontent.com/dkydivyansh/Librewall/main/asset/3Dmodel_preview.gif)
+![3D Model Wallpaper](./asset/3Dmodel_preview.gif)
 
 **Interactive Web/App Integration**
 
-![Web App Preview](https://raw.githubusercontent.com/dkydivyansh/Librewall/main/asset/web_app_preview.gif)
+![Web App Preview](./asset/web_app_preview.gif)
 
 **Customization**
 
-![Wallpaper Customization](https://raw.githubusercontent.com/dkydivyansh/Librewall/main/asset/customization.gif)
+![Wallpaper Customization](./asset/customization.gif)
 
 ## Features
 
