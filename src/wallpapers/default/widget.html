@@ -1,0 +1,51 @@
+<div id="widget-wrapper">
+
+    <div id="live-clock" class="widget-container">
+      <div id="clock-time"></div>
+      <div id="clock-day"></div>
+      <div class="resize-handle"></div>
+    </div>
+
+    <div id="traffic-data" class="widget-container">
+        <h2>Live Traffic <span id="ws-status"></span></h2>
+        <div class="stat-item">
+            <span class="stat-label">Upload:</span>
+            <span class="stat-value" id="upload-speed">...</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Download:</span>
+            <span class="stat-value" id="download-speed">...</span>
+        </div>
+        <h2>Total R/W Data</h2>
+        <div class="stat-item">
+            <span class="stat-label">Total Sent:</span>
+            <span class="stat-value" id="total-sent">...</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Total Recv:</span>
+            <span class="stat-value" id="total-recv">...</span>
+        </div>
+        <div class="resize-handle"></div>
+    </div>
+
+    <div id="listening-ports" class="widget-container">
+        <h2>Listening Ports <span id="listening-count" class="widget-count"></span></h2>
+        <pre id="listening-list">Loading...</pre>
+        <div class="resize-handle"></div>
+    </div>
+
+    <div id="live-traffic-log" class="widget-container">
+        <h2>Live Traffic Log</h2>
+        <pre id="traffic-log-list">Monitoring...</pre>
+        <div class="resize-handle"></div>
+    </div>
+    
+    <div id="active-connections" class="widget-container">
+        <h2>Active Connections <span id="active-count" class="widget-count"></span></h2>
+        <pre id="active-list">Loading...</pre>
+        <div class="resize-handle"></div>
+    </div>
+
+</div>
+
+<div id="background-click-catcher"></div>

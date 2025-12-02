@@ -1,0 +1,43 @@
+{
+  "active_theme": "4",
+  "port": 60600,
+  "auto_start": true,
+  "hide_icons": false,
+  "widget_positions": {
+    "live-clock": {
+      "top": "72.5938px",
+      "left": "1709px",
+      "right": "auto",
+      "width": "778px",
+      "height": "181px"
+    },
+    "traffic-data": {
+      "top": "1072.59px",
+      "left": "31px",
+      "right": "auto",
+      "width": "432px",
+      "height": "251.594px"
+    },
+    "listening-ports": {
+      "top": "35.7969px",
+      "left": "36px",
+      "right": "auto",
+      "width": "425px",
+      "height": "994.594px"
+    },
+    "live-traffic-log": {
+      "top": "891.188px",
+      "left": "1808.8px",
+      "right": "auto",
+      "width": "683.188px",
+      "height": "476.594px"
+    },
+    "active-connections": {
+      "top": "299.391px",
+      "left": "1812.81px",
+      "right": "auto",
+      "width": "675.188px",
+      "height": "572px"
+    }
+  }
+}

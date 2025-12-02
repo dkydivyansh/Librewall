@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallpaper Editor</title>
+    <style>
+        input,
+        textarea {
+            -webkit-user-select: text;
+            user-select: text;
+            cursor: auto;
+        }
+
+        :root {
+            --bg-color: #1a1a1a;
+            --card-bg: #2b2b2b;
+            --text-color: #eaeaea;
+            --author-color: #ccc;
+            --border-color: #444;
+            --hover-border: #777;
+            --overlay-bg: rgba(0, 0, 0, 0.8);
+            --modal-bg: #333;
+            --danger-color: #e63946;
+            --danger-hover: #c9303d;
+            --success-color: #2a9d8f;
+            --success-hover: #268a7f;
+            --primary-color: #0d6efd;
+            --primary-hover: #0b5ed7;
+            --secondary-color: #6c757d;
+            --secondary-hover: #5a6268;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            -webkit-user-select: none;
+            /* Safari/Chrome */
+            user-select: none;
+            /* Standard */
+            cursor: default;
+            /* Keeps cursor as arrow instead of text beam */
+        }
+
+        /* --- Header --- */
+        .header {
+            background-color: var(--card-bg);
+            padding: 0.75rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .header-btn {
+            background: #444;
+            color: var(--text-color);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-right: 0.75rem;
+            transition: background-color 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .header-btn:hover {
+            background-color: #555;
+        }
+
+        .btn-engine-toggle.is-running {
+            background-color: var(--success-color);
+        }
+
+        .btn-engine-toggle.is-running:hover {
+            background-color: var(--success-hover);
+        }
+
+        .btn-engine-toggle.is-stopped {
+            background-color: var(--secondary-color);
+        }
+
+        .btn-engine-toggle.is-stopped:hover {
+            background-color: var(--secondary-hover);
+        }
+
+        .btn-engine-toggle:disabled,
+        .header-btn:disabled {
+            background-color: #333;
+            color: #777;
+            cursor: not-allowed;
+        }
+
+        .engine-warning {
+            display: none;
+            background-color: #000;
+            color: #eee;
+            padding: 0.75rem 1.5rem;
+            text-align: center;
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .content-wrapper {
+            padding: 2rem;
+        }
+
+        h2 {
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            font-weight: 500;
+            margin-top: 0;
+        }
+
+        .wallpaper-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .wallpaper-card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .wallpaper-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--hover-border);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .active-label {
+            position: absolute;
+            top: 0.75rem;
+            left: 0.75rem;
+            background-color: var(--success-color);
+            color: white;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            z-index: 5;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .wallpaper-card.is-active {
+            border-color: var(--success-color);
+            box-shadow: 0 0 15px rgba(42, 157, 143, 0.4);
+        }
+
+        .wallpaper-card img {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            display: block;
+            background: #1a1a1a;
+        }
+
+        .wallpaper-card img.lazy {
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .wallpaper-card img.lazy-loaded {
+            opacity: 1;
+        }
+
+        .wallpaper-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            padding: 0.75rem 1rem;
+        }
+
+        .wallpaper-info h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0 0 0.25rem 0;
+            color: var(--text-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .wallpaper-info p {
+            font-size: 0.85rem;
+            color: var(--author-color);
+            margin: 0;
+        }
+
+        .invalid-card {
+            background: #4a2525;
+            border-color: #8c3a3a;
+        }
+
+        .invalid-card img {
+            opacity: 0.3;
+        }
+
+        .invalid-card .wallpaper-info h3 {
+            color: #ff9a9a;
+        }
+
+        .invalid-card:hover {
+            transform: translateY(-4px);
+            border-color: #ff9a9a;
+            box-shadow: 0 8px 20px rgba(140, 58, 58, 0.2);
+        }
+
+        /* --- Lightbox / Modal System --- */
+        .lightbox-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--overlay-bg);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        .lightbox-box {
+            display: flex;
+            background: var(--modal-bg);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 900px;
+            max-height: 90vh;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .lightbox-box .close-icon,
+        .confirm-box .close-icon {
+            position: absolute;
+            top: 1rem;
+            right: 1.25rem;
+            font-size: 2rem;
+            font-weight: 300;
+            color: var(--author-color);
+            cursor: pointer;
+            transition: color 0.2s;
+            z-index: 10;
+        }
+
+        .lightbox-box .close-icon:hover,
+        .confirm-box .close-icon:hover {
+            color: var(--text-color);
+        }
+
+        .lightbox-image {
+            flex-basis: 55%;
+            flex-shrink: 0;
+        }
+
+        .lightbox-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px 0 0 8px;
+            display: block;
+        }
+
+        .lightbox-content {
+            flex-basis: 45%;
+            padding: 2rem;
+            overflow-y: auto;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .lightbox-content h2 {
+            font-size: 1.8rem;
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+
+        .lightbox-content .author {
+            font-size: 1rem;
+            color: var(--author-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .lightbox-content .author a {
+            color: var(--author-color);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .lightbox-content .author a:hover {
+            color: var(--text-color);
+            text-decoration: underline;
+        }
+
+        .lightbox-content .description {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+            flex-grow: 1;
+        }
+
+        .lightbox-settings {
+            border-top: 1px solid var(--border-color);
+            padding-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .setting-actions {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .setting-row select {
+            background-color: #555;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 0.4rem 0.6rem;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .setting-row select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 5px var(--primary-color);
+        }
+
+        .lightbox-actions {
+            display: flex;
+            gap: 1rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1.5rem;
+        }
+
+        /* --- Shared Button Styles --- */
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:disabled {
+            background-color: #333;
+            color: #777;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: var(--success-hover);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: var(--danger-hover);
+        }
+
+        .btn-secondary {
+            background-color: #555;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #666;
+        }
+
+        /* --- Confirmation Modal --- */
+        .confirm-box {
+            display: flex;
+            flex-direction: column;
+            background: var(--modal-bg);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 400px;
+            padding: 2rem;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .confirm-box p {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: var(--author-color);
+        }
+
+        .confirm-box strong {
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .confirm-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+
+        /* --- Loader --- */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-color);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--card-bg);
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loader">
+        <div class="spinner"></div>
+    </div>
+    <header class="header">
+        <button class="header-btn" id="refresh-btn">Refresh</button>
+        <a href="discover.html" class="header-btn" id="discover-btn">Discover</a>
+        <button class="header-btn" id="import-btn" style="background-color: var(--primary-color);">Import</button>
+        <a href="settings.html" class="header-btn" id="settings-btn">Settings</a>
+
+        <button class="header-btn btn-engine-toggle" id="engine-toggle-btn" disabled>
+            Checking...
+        </button>
+    </header>
+
+    <input type="file" id="import-file-input" accept=".zip" style="display: none;">
+
+    <div id="engine-off-warning" class="engine-warning">
+        The active wallpaper is not running because the Engine is stopped.
+    </div>
+
+    <main class="content-wrapper">
+        <h2>Available Wallpapers</h2>
+        <div id="wallpaper-grid-valid" class="wallpaper-grid">
+        </div>
+
+        <h2 id="invalid-header" style="display:none; margin-top: 3rem;">Invalid Wallpapers</h2>
+        <div id="wallpaper-grid-invalid" class="wallpaper-grid">
+        </div>
+    </main>
+
+    <div id="lightbox-overlay" class="lightbox-overlay">
+        <div id="lightbox-box" class="lightbox-box">
+            <span class="close-icon" id="lightbox-close">&times;</span>
+            <div class="lightbox-image">
+                <img id="lightbox-img" src="" alt="Wallpaper Thumbnail">
+            </div>
+            <div class="lightbox-content">
+                <h2 id="lightbox-title"></h2>
+                <p class="author" id="lightbox-author"></p>
+                <p class="description" id="lightbox-description"></p>
+
+                <div class="lightbox-settings">
+                    <h3>Settings</h3>
+                    <div class="setting-row" id="setting-row-global">
+                        <label for="select-global-widgets">Enable Global Widgets</label>
+                        <select id="select-global-widgets">
+                            <option value="false">Disabled</option>
+                            <option value="true">Enabled</option>
+                        </select>
+                    </div>
+                    <div class="setting-actions">
+                        <button class="btn btn-primary" id="lightbox-save-settings" style="display: none;">Save
+                            Settings</button>
+                    </div>
+                </div>
+                <div class="lightbox-actions">
+                    <button class="btn btn-success" id="lightbox-activate" style="display: none;">Activate
+                        Theme</button>
+                    <button class="btn btn-danger" id="lightbox-delete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirm-overlay" class="lightbox-overlay">
+        <div id="confirm-box" class="confirm-box">
+            <span class="close-icon" id="confirm-close">&times;</span>
+            <h3>Delete Wallpaper?</h3>
+            <p>Are you sure you want to delete "<strong id="confirm-name"></strong>"? This action cannot be undone.</p>
+            <div class="confirm-actions">
+                <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
+                <button class="btn btn-danger" id="confirm-yes">Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="alert-overlay" class="lightbox-overlay">
+        <div id="alert-box" class="confirm-box" style="max-width: 450px;">
+            <span class="close-icon" id="alert-close">&times;</span>
+            <h3 id="alert-title">Alert</h3>
+            <p id="alert-message" style="color: var(--text-color);">This is an alert message.</p>
+            <div class="confirm-actions">
+                <button class="btn btn-primary" id="alert-ok">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="unsaved-overlay" class="lightbox-overlay">
+        <div id="unsaved-box" class="confirm-box" style="max-width: 400px;">
+            <span class="close-icon" id="unsaved-close">&times;</span>
+            <h3>Unsaved Changes</h3>
+            <p>You have unsaved changes. Are you sure you want to close?</p>
+            <div class="confirm-actions">
+                <button class="btn btn-secondary" id="unsaved-cancel">Cancel</button>
+                <button class="btn btn-primary" id="unsaved-confirm">Yes, Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Globals for Modals & Data ---
+        const lightboxOverlay = document.getElementById('lightbox-overlay');
+        const lightboxClose = document.getElementById('lightbox-close');
+        const confirmOverlay = document.getElementById('confirm-overlay');
+        const confirmClose = document.getElementById('confirm-close');
+        const alertOverlay = document.getElementById('alert-overlay');
+        const alertClose = document.getElementById('alert-close');
+        const alertOk = document.getElementById('alert-ok');
+        const alertTitle = document.getElementById('alert-title');
+        const alertMessage = document.getElementById('alert-message');
+
+        const unsavedOverlay = document.getElementById('unsaved-overlay');
+        const unsavedClose = document.getElementById('unsaved-close');
+        const unsavedCancel = document.getElementById('unsaved-cancel');
+        const unsavedConfirm = document.getElementById('unsaved-confirm');
+
+        const validGrid = document.getElementById('wallpaper-grid-valid');
+        const invalidGrid = document.getElementById('wallpaper-grid-invalid');
+        const invalidHeader = document.getElementById('invalid-header');
+
+        const engineToggleBtn = document.getElementById('engine-toggle-btn');
+        const warningBanner = document.getElementById('engine-off-warning');
+
+        const globalWidgetsSelect = document.getElementById('select-global-widgets');
+        const globalWidgetsRow = document.getElementById('setting-row-global'); // NEW
+        const saveSettingsBtn = document.getElementById('lightbox-save-settings');
+        let currentSettingListener = null;
+
+        let isConfigDirty = false;
+        let currentWallpaper = null;
+        let activeThemeId = null;
+        let enginePort = null;
+        let isEngineRunning = false;
+
+        function loadWallpapers() {
+            checkEngineStatus();
+            return fetch('/wallpapers')
+                .then(response => response.json())
+                .then(data => {
+                    activeThemeId = data.activeThemeId;
+                    enginePort = data.enginePort;
+                    validGrid.innerHTML = '';
+                    invalidGrid.innerHTML = '';
+                    if (data.validWallpapers && data.validWallpapers.length > 0) {
+                        data.validWallpapers.forEach(wallpaper => {
+                            validGrid.appendChild(createWallpaperCard(wallpaper));
+                        });
+                    } else {
+                        validGrid.innerHTML = "<p>No valid wallpapers found.</p>";
+                    }
+                    if (data.invalidWallpapers && data.invalidWallpapers.length > 0) {
+                        invalidHeader.style.display = 'block';
+                        data.invalidWallpapers.forEach(wallpaper => {
+                            invalidGrid.appendChild(createWallpaperCard(wallpaper, true));
+                        });
+                    } else {
+                        invalidHeader.style.display = 'none';
+                    }
+                })
+                .catch(err => {
+                    console.error("Error fetching data:", err);
+                    validGrid.innerHTML =
+                        `<p style="color: #ff9a9a;">Error fetching data. Is the Python server running? <br><br>${err}</p>`;
+                });
+        }
+        document.addEventListener('DOMContentLoaded', loadWallpapers);
+
+        async function checkEngineStatus() {
+            let currentPort;
+            try {
+                const response = await fetch('/wallpapers', { cache: 'no-cache' });
+                const data = await response.json();
+                currentPort = data.enginePort;
+                enginePort = data.enginePort;
+                if (!currentPort) {
+                    setEngineStatus(false, "Start Engine (No Port)");
+                    return;
+                }
+            } catch (e) {
+                setEngineStatus(false, "Start Engine (Error)");
+                return;
+            }
+            const engineUrl = `http://localhost:${currentPort}/`;
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 1000);
+            try {
+                await fetch(engineUrl, { mode: 'no-cors', signal: controller.signal });
+                setEngineStatus(true, "Stop Engine");
+            } catch (error) {
+                setEngineStatus(false, "Start Engine");
+            } finally {
+                clearTimeout(timeout);
+            }
+        }
+
+        function setEngineStatus(isRunning, text) {
+            isEngineRunning = isRunning;
+            engineToggleBtn.disabled = false;
+            engineToggleBtn.textContent = text;
+            engineToggleBtn.classList.toggle('is-running', isRunning);
+            engineToggleBtn.classList.toggle('is-stopped', !isRunning);
+            warningBanner.style.display = isRunning ? 'none' : 'block';
+        }
+
+        async function toggleEngine() {
+            engineToggleBtn.disabled = true;
+            if (isEngineRunning) {
+                engineToggleBtn.textContent = "Stopping...";
+                try {
+                    await fetch(`http://localhost:${enginePort}/quit`, { mode: 'no-cors' });
+                } catch (e) { }
+                setTimeout(checkEngineStatus, 1000);
+            } else {
+                engineToggleBtn.textContent = "Starting...";
+                try {
+                    const response = await fetch('/start_engine', { method: 'POST' });
+                    if (!response.ok) throw new Error('Server failed to start engine.');
+                    const data = await response.json();
+                    console.log('Engine start command sent.', data.message);
+                    setTimeout(checkEngineStatus, 2000);
+                } catch (err) {
+                    console.error('Error starting engine:', err);
+                    setEngineStatus(false, "Start Engine (Error)");
+                }
+            }
+        }
+
+        function createWallpaperCard(wallpaper, isInvalid = false) {
+            const card = document.createElement('div');
+            card.className = 'wallpaper-card';
+            if (isInvalid) card.classList.add('invalid-card');
+            card.onclick = () => {
+                showLightbox(wallpaper, isInvalid);
+            };
+            const img = document.createElement('img');
+            img.dataset.src = wallpaper.thumbnailUrl || '';
+            img.alt = wallpaper.themeName;
+            img.className = 'lazy';
+            if (wallpaper.themeId === activeThemeId) {
+                card.classList.add('is-active');
+                const label = document.createElement('div');
+                label.className = 'active-label';
+                label.textContent = 'Active';
+                card.appendChild(label);
+            }
+            const info = document.createElement('div');
+            info.className = 'wallpaper-info';
+            const title = document.createElement('h3');
+            title.textContent = wallpaper.themeName;
+            const author = document.createElement('p');
+            author.textContent = `by ${wallpaper.author}`;
+            info.prepend(title);
+            info.append(author);
+            if (isInvalid) {
+                const missing = document.createElement('p');
+                missing.style.color = '#ff9a9a';
+                missing.style.fontSize = '0.8rem';
+                missing.style.marginTop = '0.5rem';
+                missing.textContent = `Missing: ${wallpaper.missingAssets.join(', ')}`;
+                info.appendChild(missing);
+            }
+            card.appendChild(img);
+            card.appendChild(info);
+            return card;
+        }
+
+        // --- Lightbox Functions (MODIFIED) ---
+
+        function showLightbox(wallpaper, isInvalid = false) {
+            currentWallpaper = wallpaper;
+            isConfigDirty = false;
+
+            document.getElementById('lightbox-img').src = wallpaper.thumbnailUrl || '';
+            document.getElementById('lightbox-title').textContent = wallpaper.themeName;
+            // Make author name clickable if authorUrl exists
+            const authorEl = document.getElementById('lightbox-author');
+            if (wallpaper.authorUrl) {
+                authorEl.innerHTML = `by <a href="${wallpaper.authorUrl}" target="_blank" rel="noopener noreferrer">${wallpaper.author}</a>`;
+            } else {
+                authorEl.textContent = `by ${wallpaper.author}`;
+            }
+            const descriptionEl = document.getElementById('lightbox-description');
+
+            const activateBtn = document.getElementById('lightbox-activate');
+            const deleteBtn = document.getElementById('lightbox-delete');
+            const settingsSection = document.querySelector('.lightbox-settings');
+
+            // --- HTML RENDER & GLOBAL WIDGET TOGGLE LOGIC ---
+            const config = wallpaper.config || {};
+            const isHtmlRender = config.htmlrender === true;
+
+            if (isHtmlRender) {
+                // If HTML Render is ON, hide Global Widget setting completely
+                globalWidgetsRow.style.display = 'none';
+                globalWidgetsSelect.value = "false";
+            } else {
+                // Standard mode: Show setting
+                globalWidgetsRow.style.display = 'flex';
+                const isGlobal = config.Enable_Global_Widget === true || config.Enable_Network_Widget === true;
+                globalWidgetsSelect.value = isGlobal ? "true" : "false";
+            }
+            // ------------------------------------------------
+
+            if (currentSettingListener) {
+                globalWidgetsSelect.removeEventListener('change', currentSettingListener);
+            }
+
+            currentSettingListener = () => {
+                console.log('Select changed to:', globalWidgetsSelect.value);
+                isConfigDirty = true;
+                updateSaveButtonState();
+            };
+
+            globalWidgetsSelect.addEventListener('change', currentSettingListener);
+
+            activateBtn.disabled = false;
+
+            if (!isInvalid) {
+                descriptionEl.innerHTML = wallpaper.description || "No description provided.";
+                settingsSection.style.display = 'block';
+
+                if (wallpaper.themeId === activeThemeId) {
+                    activateBtn.style.display = 'none';
+                    deleteBtn.style.display = 'none';
+                } else {
+                    activateBtn.style.display = 'block';
+                    deleteBtn.style.display = 'block';
+
+                    if (isEngineRunning) {
+                        activateBtn.textContent = "Activate Theme";
+                    } else {
+                        activateBtn.textContent = "Start Engine & Activate";
+                    }
+                }
+            } else {
+                descriptionEl.innerHTML = `<p style="color: #ff9a9a; font-weight: 600;">This theme is invalid and cannot be activated.</p><strong>Missing Assets:</strong><br>${wallpaper.missingAssets.join('<br>')}`;
+                settingsSection.style.display = 'none';
+                activateBtn.style.display = 'none';
+                deleteBtn.style.display = 'block';
+            }
+
+            updateSaveButtonState();
+            lightboxOverlay.style.display = 'flex';
+        }
+
+        function hideLightbox(force = false) {
+            if (isConfigDirty && !force) {
+                unsavedOverlay.style.display = 'flex';
+                return;
+            }
+            lightboxOverlay.style.display = 'none';
+            unsavedOverlay.style.display = 'none';
+
+            if (currentSettingListener) {
+                globalWidgetsSelect.removeEventListener('change', currentSettingListener);
+                currentSettingListener = null;
+            }
+
+            currentWallpaper = null;
+            isConfigDirty = false;
+        }
+
+        function showAlert(title, message) {
+            alertTitle.textContent = title;
+            alertMessage.textContent = message;
+            alertOverlay.style.display = 'flex';
+        }
+
+        function hideAlert() {
+            alertOverlay.style.display = 'none';
+        }
+
+        function showConfirmDelete() {
+            if (!currentWallpaper) return;
+            document.getElementById('confirm-name').textContent = currentWallpaper.themeName;
+            confirmOverlay.style.display = 'flex';
+        }
+
+        function hideConfirmDelete() {
+            confirmOverlay.style.display = 'none';
+        }
+
+        async function performDelete() {
+            if (!currentWallpaper) return;
+            const themeId = currentWallpaper.themeId;
+            const deleteBtn = document.getElementById('confirm-yes');
+            deleteBtn.disabled = true;
+            deleteBtn.textContent = 'Deleting...';
+            try {
+                const response = await fetch('/delete_theme', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ themeId: themeId })
+                });
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || 'Failed to delete theme');
+                }
+                console.log("Successfully deleted wallpaper:", themeId);
+                hideConfirmDelete();
+                hideLightbox(true);
+                loadWallpapers();
+            } catch (err) {
+                console.error("Error deleting wallpaper:", err);
+                showAlert('Delete Error', err.message);
+            } finally {
+                deleteBtn.disabled = false;
+                deleteBtn.textContent = 'Yes, Delete';
+            }
+        }
+
+        async function activateTheme() {
+            if (!currentWallpaper) return;
+            const activateBtn = document.getElementById('lightbox-activate');
+            activateBtn.disabled = true;
+            try {
+                activateBtn.textContent = "Activating...";
+                const activateResponse = await fetch('/activate_theme', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ themeId: currentWallpaper.themeId })
+                });
+                if (!activateResponse.ok) throw new Error('Failed to activate theme on server.');
+                const data = await activateResponse.json();
+                if (data.status !== 'success') throw new Error('Server reported failure during activation');
+                if (isEngineRunning) {
+                    console.log('Telling running engine to reload config...');
+                    const engineReloadUrl = `http://localhost:${enginePort}/reload`;
+                    try {
+                        fetch(engineReloadUrl, { mode: 'no-cors' });
+                    } catch (engineError) {
+                        console.warn('Sending reload command to engine failed (this is sometimes ok):', engineError);
+                    }
+                } else {
+                    activateBtn.textContent = "Starting Engine...";
+                    console.log('Activate command sent. Now sending start engine command...');
+                    const startResponse = await fetch('/start_engine', { method: 'POST' });
+                    if (!startResponse.ok) throw new Error('Server failed to start engine.');
+                    console.log('Start command sent.');
+                }
+                setTimeout(() => {
+                    hideLightbox(true);
+                    loadWallpapers();
+                }, 1500);
+            } catch (err) {
+                console.error('Error in activate process:', err);
+                showAlert('Activation Error', err.message);
+                activateBtn.disabled = false;
+                if (isEngineRunning) {
+                    activateBtn.textContent = "Activate Theme";
+                } else {
+                    activateBtn.textContent = "Start Engine & Activate";
+                }
+            }
+        }
+
+        async function importTheme(file) {
+            const importBtn = document.getElementById('import-btn');
+            const originalText = importBtn.textContent;
+            importBtn.disabled = true;
+            importBtn.textContent = 'Importing...';
+            const formData = new FormData();
+            formData.append('themeFile', file);
+            try {
+                const response = await fetch('/import_theme', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || `Server error: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log('Import success:', data);
+                showAlert('Import Successful', `Successfully imported theme: ${data.themeId}`);
+                loadWallpapers();
+            } catch (err) {
+                console.error('Error importing theme:', err);
+                showAlert('Import Error', err.message);
+            } finally {
+                importBtn.disabled = false;
+                importBtn.textContent = originalText;
+            }
+        }
+
+        function updateSaveButtonState() {
+            if (!isConfigDirty || !currentWallpaper) {
+                saveSettingsBtn.style.display = 'none';
+                return;
+            }
+
+            saveSettingsBtn.style.display = 'block';
+            saveSettingsBtn.disabled = false;
+
+            const isActive = (currentWallpaper.themeId === activeThemeId);
+
+            if (isActive && isEngineRunning) {
+                saveSettingsBtn.textContent = 'Save & Reload';
+            } else {
+                saveSettingsBtn.textContent = 'Save Settings';
+            }
+        }
+
+        async function performSaveSettings() {
+            if (!currentWallpaper || !isConfigDirty) return;
+
+            saveSettingsBtn.disabled = true;
+            saveSettingsBtn.textContent = 'Saving...';
+
+            const newGlobalState = globalWidgetsSelect.value === "true"; // Read from select
+            const themeId = currentWallpaper.themeId;
+
+            try {
+                // 1. Save the config to disk
+                const response = await fetch('/update_theme_config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        themeId: themeId,
+                        enableGlobal: newGlobalState
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || 'Failed to save config');
+                }
+
+                // 2. Update local state
+                isConfigDirty = false;
+                currentWallpaper.config.Enable_Global_Widget = newGlobalState;
+                if (currentWallpaper.config.Enable_Network_Widget) {
+                    delete currentWallpaper.config.Enable_Network_Widget;
+                }
+
+                // 3. Check if we need to reload the engine
+                const isActive = (themeId === activeThemeId);
+                if (isActive && isEngineRunning) {
+                    saveSettingsBtn.textContent = 'Reloading...';
+                    console.log('Settings saved. Telling running engine to reload...');
+
+                    const engineReloadUrl = `http://localhost:${enginePort}/reload`;
+                    try {
+                        fetch(engineReloadUrl, { mode: 'no-cors' });
+                    } catch (engineError) {
+                        console.warn('Sending reload command to engine failed:', engineError);
+                    }
+
+                    // Give smart reload time to work
+                    setTimeout(checkEngineStatus, 2000);
+                }
+
+                showAlert('Success', 'Settings saved successfully.');
+                loadWallpapers();
+
+            } catch (err) {
+                console.error('Error saving settings:', err);
+                showAlert('Save Error', err.message);
+            } finally {
+                updateSaveButtonState();
+            }
+        }
+
+
+        // --- Event Listeners for Modals & Header ---
+        document.getElementById('refresh-btn').onclick = () => {
+            const loader = document.getElementById('loader');
+            if (loader) {
+                loader.style.display = 'flex';
+                // Small delay to ensure display:flex applies before opacity transition
+                requestAnimationFrame(() => {
+                    loader.style.opacity = '1';
+                });
+            }
+            loadWallpapers().finally(() => {
+                if (loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(() => {
+                        loader.style.display = 'none';
+                    observeLazyImages(); // Start observing after loader hides
+                }, 500);
+                }
+            });
+        };
+        engineToggleBtn.onclick = toggleEngine;
+
+        document.getElementById('import-btn').onclick = () => {
+            document.getElementById('import-file-input').click();
+        };
+        document.getElementById('import-file-input').onchange = (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                importTheme(file);
+            }
+            event.target.value = null;
+        };
+
+        lightboxClose.onclick = () => hideLightbox(false);
+        lightboxOverlay.onclick = (e) => {
+            if (e.target === lightboxOverlay) hideLightbox(false);
+        };
+
+        confirmClose.onclick = hideConfirmDelete;
+        confirmOverlay.onclick = (e) => {
+            if (e.target === confirmOverlay) hideConfirmDelete();
+        };
+
+        document.getElementById('lightbox-activate').onclick = activateTheme;
+        document.getElementById('lightbox-delete').onclick = showConfirmDelete;
+        document.getElementById('confirm-cancel').onclick = hideConfirmDelete;
+        document.getElementById('confirm-yes').onclick = performDelete;
+
+        alertClose.onclick = hideAlert;
+        alertOk.onclick = hideAlert;
+        alertOverlay.onclick = (e) => {
+            if (e.target === alertOverlay) hideAlert();
+        };
+
+        saveSettingsBtn.onclick = performSaveSettings;
+        unsavedClose.onclick = () => unsavedOverlay.style.display = 'none';
+        unsavedCancel.onclick = () => unsavedOverlay.style.display = 'none';
+        unsavedConfirm.onclick = () => hideLightbox(true); // Force close
+
+        // --- Lazy Loading for Images ---
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    img.classList.remove('lazy');
+                    img.onload = () => {
+                        img.classList.add('lazy-loaded');
+                    };
+                    observer.unobserve(img);
+                }
+            });
+        }, {
+            rootMargin: '50px' // Start loading 50px before entering viewport
+        });
+
+        // Observe all lazy images
+        function observeLazyImages() {
+            document.querySelectorAll('img.lazy').forEach(img => {
+                imageObserver.observe(img);
+            });
+        }
+
+        window.addEventListener('load', () => {
+            const loader = document.getElementById('loader');
+            if (loader) {
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                    observeLazyImages(); // Start observing after loader hides
+                }, 500);
+            }
+        });
+
+    </script>
+</body>
+
+</html>

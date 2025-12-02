@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>3D Wallpaper</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        /* Layer 1: Background Media (image/video) - Bottom */
+        #background-media {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            object-fit: cover;
+            display: none;
+            /* Hidden until loaded */
+        }
+
+        /* Layer 2: CSS Overlay/Background */
+        #wallpaper-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+            /* Allow clicks to pass through */
+        }
+
+        /* Layer 3: 3D Model */
+        #scene-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 3;
+        }
+
+        /* Layer 4: HTML Widgets (Theme) */
+        #external-widget-root {
+            position: relative;
+            z-index: 4;
+        }
+
+        /* Layer 5: Global HTML Widgets - Topmost */
+        #global-widget-root {
+            position: relative;
+            z-index: 5;
+        }
+    </style>
+</head>
+
+<body>
+    <video id="background-media" autoplay loop muted playsinline></video>
+    <div id="wallpaper-background"></div>
+    <canvas id="scene-container"></canvas>
+
+    <div id="global-widget-root"></div>
+    <div id="external-widget-root"></div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "/build/three.module.js",
+            "three/addons/": "/library/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { EffectComposer }
+            from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass }
+            from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
+        let camera, scene, renderer, composer, myModel, mixer;
+        const canvas = document.querySelector('#scene-container');
+        const clock = new THREE.Clock();
+
+        let mouseX = 0;
+        let mouseY = 0;
+        let idleTimer;
+        let isIdle = true;
+        const idleTimeout = 10000;
+
+        let baseRotation = new THREE.Euler(0, 0, 0);
+        let isAnimationPaused = false;
+        let backgroundMediaElement;
+
+        window.pauseAnimation = function () {
+            console.log("Animation paused by Python.");
+            isAnimationPaused = true;
+            if (backgroundMediaElement && typeof backgroundMediaElement.pause === 'function') {
+                backgroundMediaElement.pause();
+            }
+        }
+
+        window.resumeAnimation = function () {
+            console.log("Animation resumed by Python.");
+            isAnimationPaused = false;
+            if (backgroundMediaElement && typeof backgroundMediaElement.play === 'function') {
+                backgroundMediaElement.play();
+            }
+        }
+
+        let config;
+
+        async function init() {
+
+            try {
+                const response = await fetch('/config', { cache: 'no-store' });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Config not found or invalid: ${response.status} ${response.statusText}. Server said: ${errorText}`);
+                }
+                config = await response.json();
+                console.log('Loaded config:', config);
+
+            } catch (error) {
+                console.error('CRITICAL: Could not initialize wallpaper.', error);
+                document.body.innerHTML = `
+                    <div style="font-family: sans-serif; color: white; background: #222; padding: 40px; border-radius: 10px; margin: 50px; border: 2px solid red;">
+                        <h1 style="color: red;">Wallpaper Failed to Load</h1>
+                        <p>Could not load or parse <strong>/config.json</strong> from the wallpaper folder.</p>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Please check the console (Ctrl+Shift-I or F12) and <strong>main.py</strong>'s output for more details.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            setupBackgroundMedia(config);
+            setupBackground(config);
+            if (config.enable3DModel === false) {
+                console.log("3D Model/Engine totally disabled by config. Running in 2D/Video mode.");
+
+                const canvasEl = document.querySelector('#scene-container');
+                if (canvasEl) canvasEl.style.display = 'none';
+
+                await loadExternalFiles(config);
+
+                return;
+            }
+            // -------------------------------------
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 2;
+
+            renderer = new THREE.WebGLRenderer({
+                canvas: canvas,
+                antialias: true,
+                alpha: true
+            });
+            renderer.setClearColor(0x000000, 0);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            if (config.toneMapping === 'Filmic') {
+                renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                console.log("Using Filmic tone mapping.");
+            } else if (config.toneMapping === 'Reinhard') {
+                renderer.toneMapping = THREE.ReinhardToneMapping;
+                console.log("Using Reinhard tone mapping.");
+            } else if (config.toneMapping === 'AgX') {
+                renderer.toneMapping = THREE.AgXToneMapping;
+                console.log("Using AgX tone mapping.");
+            } else if (config.toneMapping === 'None') {
+                renderer.toneMapping = THREE.NoToneMapping;
+                console.log("Using No tone mapping.");
+            } else {
+                renderer.toneMapping = THREE.LinearToneMapping;
+                console.log("Using Linear tone mapping.");
+            }
+
+            renderer.toneMappingExposure = config.toneMappingExposure ?? 1.0;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+
+            if (config.enableShadows === true) {
+                renderer.shadowMap.enabled = true;
+                console.log("Shadows enabled on renderer.");
+            }
+
+            loadEnvironment(config);
+            setupLights(config);
+
+            composer = new EffectComposer(renderer);
+            const renderPass = new RenderPass(scene, camera);
+            composer.addPass(renderPass);
+
+            if (config.enableBloom !== false) {
+                console.log("Bloom enabled. Strength:", config.bloomStrength ?? 0.5);
+                const bloomPass = new UnrealBloomPass(
+                    new THREE.Vector2(window.innerWidth, window.innerHeight),
+                    config.bloomStrength ?? 0.5,
+                    config.bloomRadius ?? 0.5,
+                    config.bloomThreshold ?? 0.1
+                );
+                composer.addPass(bloomPass);
+            } else {
+                console.log("Bloom is disabled by config.");
+            }
+
+            await loadExternalFiles(config);
+
+            loadModel(config);
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function setupBackgroundMedia(config) {
+            if (!config.backgroundMedia) {
+                console.log("No 'backgroundMedia' specified in config.");
+                return;
+            }
+
+            backgroundMediaElement = document.getElementById('background-media');
+            const mediaPath = config.backgroundMedia;
+
+            const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(mediaPath);
+            const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(mediaPath);
+
+            if (isVideo) {
+                console.log("Loading background video:", mediaPath);
+                backgroundMediaElement.src = mediaPath;
+                backgroundMediaElement.style.display = 'block';
+
+                backgroundMediaElement.addEventListener('loadeddata', () => {
+                    console.log("Background video loaded successfully");
+                });
+
+                backgroundMediaElement.addEventListener('error', (e) => {
+                    console.error("Error loading background video:", e);
+                    backgroundMediaElement.style.display = 'none';
+                });
+
+            } else if (isImage) {
+                console.log("Loading background image:", mediaPath);
+                const imgElement = document.createElement('img');
+                imgElement.id = 'background-media';
+                imgElement.src = mediaPath;
+                imgElement.style.cssText = backgroundMediaElement.style.cssText;
+
+                imgElement.addEventListener('load', () => {
+                    console.log("Background image loaded successfully");
+                    backgroundMediaElement.parentNode.replaceChild(imgElement, backgroundMediaElement);
+                    backgroundMediaElement = imgElement;
+                    imgElement.style.display = 'block';
+                });
+
+                imgElement.addEventListener('error', (e) => {
+                    console.error("Error loading background image:", e);
+                });
+
+            } else {
+                console.warn("Unknown media format. Supported: mp4, webm, ogg, mov, jpg, jpeg, png, gif, webp, bmp");
+            }
+        }
+
+        function setupBackground(config) {
+            const backgroundValue = config.backgroundCSS;
+            const bgElement = document.getElementById('wallpaper-background');
+            try {
+                if (bgElement && backgroundValue) {
+                    bgElement.style.background = backgroundValue;
+                    console.log("CSS overlay applied:", backgroundValue);
+                } else if (!backgroundValue) {
+                    console.log("No 'backgroundCSS' provided in config. Overlay will be transparent.");
+                } else {
+                    console.error("#wallpaper-background element not found");
+                }
+            } catch (e) {
+                console.error("Error setting background:", e);
+            }
+        }
+
+        // --- THIS FUNCTION IS NOW UPDATED ---
+        async function loadExternalFiles(config) {
+
+            // Check for either the new OR old flag
+            const loadGlobalWidgets = (config.Enable_Global_Widget === true || config.Enable_Network_Widget === true);
+
+            if (loadGlobalWidgets) {
+                // --- A: LOAD GLOBAL WIDGETS ---
+                console.log("Global Widgets enabled. Loading global files and skipping theme files.");
+
+                // Inject global.css
+                try {
+                    const link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.type = 'text/css';
+                    link.href = '/library/global.css'; // Path from root
+                    document.head.appendChild(link);
+                    console.log(`Injected Global CSS: /library/global.css`);
+                } catch (e) { console.error(`Failed to inject Global CSS: ${e}`); }
+
+                // Inject global.html
+                try {
+                    const response = await fetch('/library/global.html', { cache: 'no-store' }); // Path from root
+                    if (!response.ok) throw new Error(`File not found: /library/global.html`);
+                    const html = await response.text();
+                    const container = document.getElementById('global-widget-root');
+                    if (container) {
+                        container.innerHTML = html;
+                        console.log(`Injected Global HTML: /library/global.html`);
+                    } else { console.error('#global-widget-root not found.'); }
+                } catch (e) { console.error(`Failed to load Global HTML: ${e}`); }
+
+                // Inject global.js
+                try {
+                    const script = document.createElement('script');
+                    script.type = 'module';
+                    script.src = '/library/global.js'; // Path from root
+                    document.body.appendChild(script);
+                    console.log(`Injected Global JS: /library/global.js`);
+                } catch (e) { console.error(`Failed to inject Global JS: ${e}`); }
+
+            } else {
+                // --- B: LOAD THEME-SPECIFIC FILES ---
+                console.log("Global Widgets disabled. Loading theme-specific external files.");
+
+                if (config.cssFile) {
+                    try {
+                        const link = document.createElement('link');
+                        link.rel = 'stylesheet';
+                        link.type = 'text/css';
+                        link.href = config.cssFile;
+                        document.head.appendChild(link);
+                        console.log(`Injected CSS: ${config.cssFile}`);
+                    } catch (e) {
+                        console.error(`Failed to inject CSS: ${e}`);
+                    }
+                }
+
+                if (config.htmlWidgetFile) {
+                    try {
+                        const response = await fetch(config.htmlWidgetFile, { cache: 'no-store' });
+                        if (!response.ok) throw new Error(`File not found: ${config.htmlWidgetFile}`);
+                        const html = await response.text();
+                        const container = document.getElementById('external-widget-root');
+                        if (container) {
+                            container.innerHTML = html;
+                            console.log(`Injected HTML: ${config.htmlWidgetFile}`);
+                        } else {
+                            console.error('#external-widget-root not found.');
+                        }
+                    } catch (e) {
+                        console.error(`Failed to load HTML: ${e}`);
+                    }
+                }
+
+                if (config.logicFile) {
+                    try {
+                        const script = document.createElement('script');
+                        script.type = 'module';
+                        script.src = config.logicFile;
+                        document.body.appendChild(script);
+                        console.log(`Injected JS: ${config.logicFile}`);
+                    } catch (e) {
+                        console.error(`Failed to inject JS: ${e}`);
+                    }
+                }
+            }
+        }
+
+        function loadEnvironment(config) {
+
+            if (config.enableEnvironmentHDR === false) {
+                console.log("Environment HDR loading is disabled by config.");
+                return;
+            }
+
+            console.log("Loading Environment HDR...");
+            const pmremGenerator = new THREE.PMREMGenerator(renderer);
+            pmremGenerator.compileEquirectangularShader();
+            const rgbeLoader = new RGBELoader();
+
+            rgbeLoader.load(
+                '/hdr/default_environment.hdr',
+                function (texture) {
+                    const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+                    scene.environment = envMap;
+                    texture.dispose();
+                    pmremGenerator.dispose();
+                },
+                undefined,
+                (err) => console.error('Error loading environment map:', err)
+            );
+        }
+
+        function setupLights(config) {
+            if (!config.lights || !Array.isArray(config.lights)) {
+                console.warn("No 'lights' array found in config. No lights will be added.");
+                return;
+            }
+
+            console.log(`Loading ${config.lights.length} lights from config...`);
+
+            config.lights.forEach((lightConfig, index) => {
+                let light;
+                let colorVal = lightConfig.color || '#ffffff';
+                if (typeof colorVal === 'string' && colorVal.startsWith('0x')) {
+                    colorVal = parseInt(colorVal);
+                }
+                const color = new THREE.Color(colorVal);
+                const intensity = lightConfig.intensity || 1;
+
+                console.log(`- Creating light ${index + 1}: ${lightConfig.type}`);
+
+                switch (lightConfig.type) {
+                    case 'AmbientLight':
+                        light = new THREE.AmbientLight(color, intensity);
+                        break;
+
+                    case 'SpotLight':
+                        light = new THREE.SpotLight(color, intensity);
+                        if (lightConfig.position) {
+                            light.position.set(lightConfig.position.x || 0, lightConfig.position.y || 0, lightConfig.position.z || 5);
+                        }
+                        if (lightConfig.angle) {
+                            light.angle = THREE.MathUtils.degToRad(lightConfig.angle);
+                        }
+                        light.penumbra = lightConfig.penumbra || 0;
+                        light.decay = lightConfig.decay || 2;
+                        if (lightConfig.distance) {
+                            light.distance = lightConfig.distance;
+                        }
+
+                        if (config.enableShadows === true) {
+                            light.castShadow = true;
+                            console.log("- SpotLight enabled to cast shadows.");
+                            light.shadow.bias = config.shadowBias ?? 0;
+                            light.shadow.mapSize.width = config.shadowMapSizeWidth ?? 1024;
+                            light.shadow.mapSize.height = config.shadowMapSizeHeight ?? 1024;
+                            console.log(`- Shadow settings: Bias (${light.shadow.bias}), MapSize (${light.shadow.mapSize.width})`);
+                        }
+                        break;
+
+                    case 'DirectionalLight':
+                        light = new THREE.DirectionalLight(color, intensity);
+                        if (lightConfig.position) {
+                            light.position.set(lightConfig.position.x || 0, lightConfig.position.y || 5, lightConfig.position.z || 0);
+                        }
+
+                        if (config.enableShadows === true) {
+                            light.castShadow = true;
+                            console.log("- DirectionalLight enabled to cast shadows.");
+                            light.shadow.bias = config.shadowBias ?? 0;
+                            light.shadow.mapSize.width = config.shadowMapSizeWidth ?? 1024;
+                            light.shadow.mapSize.height = config.shadowMapSizeHeight ?? 1024;
+                            console.log(`- Shadow settings: Bias (${light.shadow.bias}), MapSize (${light.shadow.mapSize.width})`);
+                        }
+                        break;
+
+                    case 'PointLight':
+                        light = new THREE.PointLight(color, intensity);
+                        if (lightConfig.position) {
+                            light.position.set(lightConfig.position.x || 0, lightConfig.position.y || 0, lightConfig.position.z || 5);
+                        }
+                        light.decay = lightConfig.decay || 2;
+                        if (lightConfig.distance) {
+                            light.distance = lightConfig.distance;
+                        }
+                        break;
+
+                    default:
+                        console.warn(`Unknown light type: '${lightConfig.type}'. Skipping.`);
+                        return;
+                }
+
+                scene.add(light);
+            });
+        }
+
+        function loadModel(config) {
+            const loader = new GLTFLoader();
+            loader.load(
+                '/model',
+                function (gltf) {
+                    myModel = gltf.scene;
+
+                    const scale = config.modelScale || 1.0;
+                    myModel.scale.set(scale, scale, scale);
+
+                    myModel.traverse((child) => {
+                        if (child.isMesh) {
+
+                            if (config.enableShadows === true) {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                            }
+
+                            if (child.material) {
+                                const material = child.material;
+
+                                if (config.forceMaterialOverride === true) {
+                                    if (material.hasOwnProperty('metalness')) {
+                                        material.metalness = config.overrideMetalness ?? 0.0;
+                                    }
+                                    if (material.hasOwnProperty('roughness')) {
+                                        material.roughness = config.overrideRoughness ?? 0.8;
+                                    }
+                                }
+
+                                if (material.map) {
+                                    material.map.encoding = THREE.sRGBEncoding;
+                                }
+
+                                if (material.emissive) {
+                                    material.emissiveIntensity = material.emissiveIntensity || 1.0;
+                                    if (material.emissiveMap) {
+                                        material.emissiveMap.encoding = THREE.sRGBEncoding;
+                                    }
+                                    material.needsUpdate = true;
+                                }
+                            }
+                        }
+                    });
+
+                    const box = new THREE.Box3().setFromObject(myModel);
+                    const center = box.getCenter(new THREE.Vector3());
+                    myModel.position.sub(center);
+
+                    const rot = config.modelFrontRotation || { x: 0, y: 0, z: 0 };
+                    baseRotation.set(
+                        THREE.MathUtils.degToRad(rot.x),
+                        THREE.MathUtils.degToRad(rot.y),
+                        THREE.MathUtils.degToRad(rot.z)
+                    );
+                    myModel.rotation.copy(baseRotation);
+
+                    scene.add(myModel);
+
+                    if (gltf.animations && gltf.animations.length) {
+                        mixer = new THREE.AnimationMixer(myModel);
+                        gltf.animations.forEach((clip) => {
+                            mixer.clipAction(clip).play();
+                        });
+                        console.log("Model animations started!");
+                    }
+
+                    console.log('Model loaded with config:', config);
+                },
+                undefined,
+                (error) => console.error('An error happened while loading the model:', error)
+            );
+        }
+
+        function onMouseMove(event) {
+            if (!config || !config.enableMouseAttraction) return;
+            isIdle = false;
+            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => { isIdle = true; }, idleTimeout);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (isAnimationPaused) return;
+            const delta = clock.getDelta();
+
+            if (mixer) {
+                mixer.update(delta);
+            }
+
+            if (myModel && config) {
+                if (config.enableIdleRotation && isIdle) {
+                    myModel.rotation.y += 0.005;
+                    myModel.rotation.x += (baseRotation.x - myModel.rotation.x) * 0.05;
+                    myModel.rotation.z += (baseRotation.z - myModel.rotation.z) * 0.05;
+                }
+
+                if (config.enableMouseAttraction && !isIdle) {
+                    let targetRotationX = baseRotation.x + (mouseY * 0.4);
+                    let targetRotationY = baseRotation.y + (mouseX * 0.8);
+                    let targetRotationZ = baseRotation.z + (mouseX * -0.2);
+
+                    myModel.rotation.x += (targetRotationX - myModel.rotation.x) * 0.05;
+                    myModel.rotation.y += (targetRotationY - myModel.rotation.y) * 0.05;
+                    myModel.rotation.z += (targetRotationZ - myModel.rotation.z) * 0.05;
+                }
+            }
+
+            if (composer) {
+                composer.render();
+            }
+        }
+
+        init();
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discover Wallpapers</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --card-bg: #2b2b2b;
+            --text-color: #eaeaea;
+            --author-color: #ccc;
+            --border-color: #444;
+            --hover-border: #777;
+            --overlay-bg: rgba(0, 0, 0, 0.8);
+            --modal-bg: #333;
+            --danger-color: #e63946;
+            --danger-hover: #c9303d;
+            --success-color: #2a9d8f;
+            --success-hover: #268a7f;
+            --primary-color: #0d6efd;
+            --primary-hover: #0b5ed7;
+            --secondary-color: #6c757d;
+            --secondary-hover: #5a6268;
+        }
+
+        #retry-btn {
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 1rem;
+            padding: 0.8rem 2rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 1rem;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        #retry-btn:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        #retry-btn:active {
+            transform: translateY(0);
+        }
+
+        input,
+        textarea {
+            -webkit-user-select: text;
+            user-select: text;
+            cursor: auto;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            -webkit-user-select: none;
+            user-select: none;
+            cursor: default;
+        }
+
+        /* --- Header --- */
+        .header {
+            background-color: var(--card-bg);
+            padding: 0.75rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+        }
+
+        .header-btn {
+            background: #444;
+            color: var(--text-color);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-right: 1.5rem;
+            transition: background-color 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .header-btn:hover {
+            background-color: #555;
+        }
+
+        .header-title {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: var(--text-color);
+            margin: 0;
+            margin-right: auto;
+        }
+
+        .search-form {
+            display: flex;
+        }
+
+        .search-form input {
+            background: #1a1a1a;
+            border: 1px solid var(--border-color);
+            border-right: none;
+            color: var(--text-color);
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px 0 0 6px;
+            font-size: 0.9rem;
+        }
+
+        .search-form button {
+            background: #444;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 0.5rem 0.75rem;
+            border-radius: 0 6px 6px 0;
+            cursor: pointer;
+        }
+
+        .content-wrapper {
+            padding: 2rem;
+        }
+
+        h2 {
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        /* --- Grid & Card --- */
+        .wallpaper-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .wallpaper-card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .wallpaper-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--hover-border);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-label {
+            position: absolute;
+            top: 0.75rem;
+            color: white;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            z-index: 5;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .installed-label {
+            right: 0.75rem;
+            background-color: var(--success-color);
+        }
+
+        .interactive-label {
+            left: 0.75rem;
+            background-color: var(--primary-color);
+        }
+
+        .wallpaper-card img {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            display: block;
+        }
+
+        .wallpaper-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            padding: 0.75rem 1rem;
+        }
+
+        .wallpaper-info h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0 0 0.25rem 0;
+            color: var(--text-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .wallpaper-info p {
+            font-size: 0.85rem;
+            color: var(--author-color);
+            margin: 0;
+        }
+
+        .wallpaper-card.is-disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .wallpaper-card.is-disabled:hover {
+            transform: none;
+            border-color: var(--border-color);
+            box-shadow: none;
+        }
+
+        /* --- Error View --- */
+        .error-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            text-align: center;
+            color: var(--secondary-color);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.7;
+        }
+
+        .error-title {
+            font-size: 1.5rem;
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .error-desc {
+            margin-bottom: 2rem;
+            max-width: 400px;
+            line-height: 1.5;
+        }
+
+        .pagination-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .pagination-controls .btn {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            background-color: #444;
+            color: var(--text-color);
+        }
+
+        .pagination-controls .btn:hover {
+            background-color: #555;
+        }
+
+        .pagination-controls .btn:disabled {
+            background-color: #333;
+            color: #777;
+            cursor: not-allowed;
+        }
+
+        /* --- Lightbox --- */
+        .lightbox-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--overlay-bg);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        .lightbox-box {
+            display: flex;
+            background: var(--modal-bg);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 900px;
+            max-height: 90vh;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .lightbox-box .close-icon {
+            position: absolute;
+            top: 1rem;
+            right: 1.25rem;
+            font-size: 2rem;
+            font-weight: 300;
+            color: var(--author-color);
+            cursor: pointer;
+            transition: color 0.2s;
+            z-index: 10;
+        }
+
+        .lightbox-box .close-icon:hover {
+            color: var(--text-color);
+        }
+
+        .lightbox-image {
+            flex-basis: 55%;
+            flex-shrink: 0;
+        }
+
+        .lightbox-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px 0 0 8px;
+            display: block;
+        }
+
+        .lightbox-content {
+            flex-basis: 45%;
+            padding: 2rem;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        .lightbox-content h2 {
+            font-size: 1.8rem;
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+
+        .lightbox-content .author {
+            font-size: 1rem;
+            color: var(--author-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .lightbox-content .description {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .lightbox-actions {
+            display: flex;
+            gap: 1rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1.5rem;
+        }
+
+        .lightbox-actions .btn {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: var(--success-hover);
+        }
+
+        .btn-success:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        /* --- Loader --- */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-color);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--card-bg);
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loader">
+        <div class="spinner"></div>
+    </div>
+
+    <header class="header">
+        <a href="/" class="header-btn">&larr; Back</a>
+        <h1 class="header-title">Discover</h1>
+        <form class="search-form" id="search-form">
+            <input type="search" id="search-input" placeholder="Search themes...">
+            <button type="submit">🔍</button>
+        </form>
+    </header>
+
+    <main class="content-wrapper">
+        <h2 id="page-title">New Releases</h2>
+
+        <div id="wallpaper-grid-valid" class="wallpaper-grid"></div>
+
+        <div id="connection-error" class="error-container">
+            <div class="error-icon">📡</div>
+            <div class="error-title">Connection Failed</div>
+            <div class="error-desc">We couldn't reach the server. Please check your internet connection and try again.
+            </div>
+            <button id="retry-btn" class="pagination-controls btn">Try Again</button>
+        </div>
+
+        <div id="pagination-controls" class="pagination-controls">
+            <button class="btn" id="prev-btn" style="visibility: hidden;">&larr; Previous</button>
+            <button class="btn" id="next-btn" style="visibility: hidden;">Next &rarr;</button>
+        </div>
+    </main>
+
+    <div id="lightbox-overlay" class="lightbox-overlay">
+        <div id="lightbox-box" class="lightbox-box">
+            <span class="close-icon" id="lightbox-close">&times;</span>
+            <div class="lightbox-image">
+                <img id="lightbox-img" src="" alt="Wallpaper Thumbnail">
+            </div>
+            <div class="lightbox-content">
+                <h2 id="lightbox-title"></h2>
+                <p class="author" id="lightbox-author"></p>
+                <p class="description" id="lightbox-description"></p>
+                <div class="lightbox-actions">
+                    <button class="btn btn-success" id="lightbox-install">Install</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- API & Page State ---
+        const API_BASE_URL = 'https://example.com/api/v1';
+        const API_PAGE_LIMIT = 50;
+
+        let CURRENT_APP_VERSION = 1;
+        let currentPage = 1;
+        let currentSearchQuery = '';
+        let currentTheme = null;
+        let installedThemeIds = [];
+
+        // --- DOM Elements ---
+        const lightboxOverlay = document.getElementById('lightbox-overlay');
+        const lightboxClose = document.getElementById('lightbox-close');
+
+        const grid = document.getElementById('wallpaper-grid-valid');
+        const errorView = document.getElementById('connection-error');
+        const retryBtn = document.getElementById('retry-btn');
+        const paginationControls = document.getElementById('pagination-controls');
+
+        const pageTitle = document.getElementById('page-title');
+        const searchForm = document.getElementById('search-form');
+        const searchInput = document.getElementById('search-input');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+
+        async function fetchInstalledThemes() {
+            try {
+                const response = await fetch('/installed_themes');
+                const data = await response.json();
+                if (data.installedIds) {
+                    installedThemeIds = data.installedIds;
+                }
+                if (data.appVersion) {
+                    CURRENT_APP_VERSION = data.appVersion;
+                    console.log(`App Version set to: ${CURRENT_APP_VERSION}`);
+                }
+            } catch (err) {
+                console.error("Could not fetch installed themes list:", err);
+            }
+        }
+
+        async function fetchWallpapers() {
+            let url = '';
+
+            if (currentSearchQuery) {
+                url = `${API_BASE_URL}?action=search&query=${currentSearchQuery}&page=${currentPage}`;
+                pageTitle.textContent = `Searching for "${currentSearchQuery}"`;
+            } else {
+                url = `${API_BASE_URL}?action=discover&page=${currentPage}`;
+                pageTitle.textContent = 'New Releases';
+            }
+
+            // Reset UI: Show Grid, Hide Error
+            grid.style.display = 'grid';
+            errorView.style.display = 'none';
+            paginationControls.style.display = 'flex';
+
+            grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:#777;">Loading...</p>';
+
+            try {
+                // Check if browser detects offline immediately
+                if (!navigator.onLine) {
+                    throw new Error("Browser offline");
+                }
+
+                await fetchInstalledThemes();
+
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+
+                grid.innerHTML = '';
+
+                if (data.data && data.data.length > 0) {
+
+                    // --- SORTING LOGIC: Move installed to bottom ---
+                    const uninstalledThemes = [];
+                    const installedThemes = [];
+
+                    data.data.forEach(theme => {
+                        if (installedThemeIds.includes(theme.id.toString())) {
+                            installedThemes.push(theme);
+                        } else {
+                            uninstalledThemes.push(theme);
+                        }
+                    });
+
+                    // Concatenate: Uninstalled first, then installed
+                    const sortedThemes = uninstalledThemes.concat(installedThemes);
+
+                    sortedThemes.forEach(theme => {
+                        grid.appendChild(createWallpaperCard(theme));
+                    });
+                    // ------------------------------------------------
+
+                } else {
+                    grid.innerHTML = "<p style='grid-column: 1/-1;'>No themes found.</p>";
+                }
+
+                updatePagination(data.data ? data.data.length : 0);
+
+            } catch (err) {
+                console.error("Error fetching data:", err);
+                showConnectionError();
+            }
+        }
+
+        function showConnectionError() {
+            grid.innerHTML = '';
+            grid.style.display = 'none';
+            paginationControls.style.display = 'none';
+            errorView.style.display = 'flex';
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchWallpapers);
+
+        function updatePagination(countOnPage) {
+            prevBtn.style.visibility = (currentPage > 1) ? 'visible' : 'hidden';
+            nextBtn.style.visibility = (countOnPage === API_PAGE_LIMIT) ? 'visible' : 'hidden';
+        }
+
+        function createWallpaperCard(theme) {
+            const card = document.createElement('div');
+            card.className = 'wallpaper-card';
+
+            const minVersion = theme.min_version || 1;
+            const isDisabled = minVersion > CURRENT_APP_VERSION;
+
+            if (isDisabled) {
+                card.classList.add('is-disabled');
+            } else {
+                card.onclick = () => {
+                    showLightbox(theme, isDisabled);
+                };
+            }
+
+            // Check if installed
+            if (installedThemeIds.includes(theme.id.toString())) {
+                const label = document.createElement('div');
+                label.className = 'card-label installed-label';
+                label.textContent = 'Installed';
+                card.appendChild(label);
+            }
+
+            // Check if interactive
+            if (theme.interactive === true) {
+                const label = document.createElement('div');
+                label.className = 'card-label interactive-label';
+                label.textContent = 'Interactive';
+                card.appendChild(label);
+            }
+
+            const img = document.createElement('img');
+            img.src = theme.thumbnailUrl || '';
+            img.alt = theme.themeName;
+
+            const info = document.createElement('div');
+            info.className = 'wallpaper-info';
+            const title = document.createElement('h3');
+            title.textContent = theme.themeName;
+            const author = document.createElement('p');
+            author.textContent = `by ${theme.author || 'Unknown'}`;
+            info.prepend(title);
+            info.append(author);
+
+            if (isDisabled) {
+                const warning = document.createElement('p');
+                warning.style.color = '#ff9a9a';
+                warning.style.fontSize = '0.8rem';
+                warning.style.marginTop = '0.5rem';
+                warning.textContent = `Requires App v${minVersion}`;
+                info.appendChild(warning);
+
+                // Allow click to see requirement detail
+                card.onclick = () => {
+                    showLightbox(theme, true);
+                };
+            }
+
+            card.appendChild(img);
+            card.appendChild(info);
+            return card;
+        }
+
+        function showLightbox(theme, isDisabled = false) {
+            currentTheme = theme;
+
+            document.getElementById('lightbox-img').src = theme.thumbnailUrl || '';
+            document.getElementById('lightbox-title').textContent = theme.themeName;
+            document.getElementById('lightbox-author').textContent = `by ${theme.author || 'Unknown'}`;
+            document.getElementById('lightbox-description').innerHTML = theme.description || "No description provided.";
+
+            const installBtn = document.getElementById('lightbox-install');
+
+            const minVersion = theme.min_version || 1;
+
+            if (minVersion > CURRENT_APP_VERSION) {
+                installBtn.disabled = true;
+                installBtn.textContent = `Requires App v${minVersion}`;
+            } else if (installedThemeIds.includes(theme.id.toString())) {
+                installBtn.disabled = true;
+                installBtn.textContent = 'Installed';
+            } else {
+                installBtn.disabled = false;
+                installBtn.textContent = 'Install';
+            }
+
+            lightboxOverlay.style.display = 'flex';
+        }
+
+        function hideLightbox() {
+            lightboxOverlay.style.display = 'none';
+            currentTheme = null;
+        }
+
+        async function performInstall() {
+            const minVersion = currentTheme.min_version || 1;
+
+            if (!currentTheme || minVersion > CURRENT_APP_VERSION) {
+                return;
+            }
+
+            const installBtn = document.getElementById('lightbox-install');
+            installBtn.disabled = true;
+            installBtn.textContent = 'Installing...';
+
+            try {
+                const response = await fetch('/install_theme', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ themeId: currentTheme.id })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Installation failed.');
+                }
+
+                installBtn.textContent = 'Installed!';
+
+                installedThemeIds.push(currentTheme.id.toString());
+
+                // Refresh to re-sort (moves newly installed to bottom)
+                fetchWallpapers();
+
+                setTimeout(hideLightbox, 2000);
+
+            } catch (err) {
+                console.error("Error installing theme:", err);
+                installBtn.textContent = `Error: ${err.message}`;
+                installBtn.disabled = false;
+            }
+        }
+
+        // --- Event Listeners ---
+
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            currentPage = 1;
+            currentSearchQuery = searchInput.value;
+            fetchWallpapers();
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                fetchWallpapers();
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            currentPage++;
+            fetchWallpapers();
+        });
+
+        retryBtn.addEventListener('click', () => {
+            fetchWallpapers();
+        });
+
+        lightboxClose.onclick = hideLightbox;
+        lightboxOverlay.onclick = (e) => {
+            if (e.target === lightboxOverlay) hideLightbox();
+        };
+
+        document.getElementById('lightbox-install').onclick = performInstall;
+
+        window.addEventListener('load', () => {
+            const loader = document.getElementById('loader');
+            if (loader) {
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                }, 500);
+            }
+        });
+
+    </script>
+</body>
+
+</html>

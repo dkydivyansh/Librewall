@@ -1,0 +1,219 @@
+/* --- Modern Widget System --- */
+body {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+#background-click-catcher {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 10;
+    display: none;
+}
+
+/* --- MODERN WIDGET CONTAINER (Default) --- */
+.widget-container {
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 2px dashed transparent;
+    border-radius: 12px;
+    padding: 1rem;
+    box-sizing: border-box;
+    position: absolute;
+    z-index: 15;
+    color: #eaeaea;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    cursor: default;
+    min-width: 250px;
+    min-height: 150px;
+}
+
+/* --- SPECIAL: Transparent Clock --- */
+#live-clock {
+    background-color: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: transparent;
+    box-shadow: none;
+    min-width: 200px; 
+    min-height: 100px;
+}
+
+/* --- Edit Mode (Dragging/Resizing) --- */
+body.is-dragging #background-click-catcher { display: block; }
+body.is-dragging .widget-container {
+    cursor: move;
+    border: 2px dashed #4a90e2; 
+    box-shadow: 0 0 20px rgba(74, 144, 226, 0.7);
+}
+body.is-dragging #live-clock {
+    background-color: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+/* --- Resize Handle (Hidden by default) --- */
+.resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 15px;
+    height: 15px;
+    cursor: se-resize;
+    z-index: 16;
+    display: none; /* <-- HIDDEN BY DEFAULT */
+}
+body.is-dragging .resize-handle {
+    display: block;
+    border-bottom: 2px solid #4a90e2;
+    border-right: 2px solid #4a90e2;
+    border-bottom-right-radius: 4px;
+}
+body.is-dragging .widget-container:not(#live-clock) .resize-handle {
+     border-color: #4a90e2;
+}
+
+/* --- Individual Container Sizing & Positioning --- */
+#live-clock {
+    top: 5vh;
+    right: 5vw;
+    left: auto;
+    width: 30vw;
+    text-align: right;
+}
+#traffic-data {
+    top: 5vh;
+    left: 5vw;
+    width: 30vw;
+    height: 30vh;
+}
+#listening-ports {
+    top: 40vh;
+    left: 5vw;
+    width: 30vw;
+    height: 55vh;
+}
+#live-traffic-log {
+    top: 35vh;
+    right: 5vw;
+    left: auto;
+    width: 57vw;
+    height: 30vh;
+}
+#active-connections {
+    top: 70vh;
+    right: 5vw;
+    left: auto;
+    width: 57vw;
+    height: 25vh;
+}
+
+/* --- Live Clock Styles --- */
+#clock-time {
+  font-weight: 700;
+  font-size: clamp(3.5rem, 10vw, 5rem);
+  line-height: 1.1;
+}
+#clock-day {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  font-size: clamp(1.25rem, 4vw, 2.5rem);
+  opacity: 0.8;
+}
+
+/* --- Network Widget Content Styles --- */
+.widget-container h2 {
+    font-weight: 500;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    padding-bottom: 5px;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+/* --- NEW: Widget Count Style --- */
+.widget-count {
+    float: right;
+    color: #aaa;
+    font-size: 1rem;
+    font-weight: 400;
+}
+/* --- End New Style --- */
+
+#ws-status {
+    float: right;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #000;
+    background-color: #f4a261;
+    margin-left: 10px; /* Add margin */
+}
+#ws-status.connected { background-color: #50e3c2; }
+#ws-status.error { background-color: #e63946; color: #fff; }
+
+.stat-item {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+}
+.stat-label {
+    font-weight: 600;
+    color: #aaa;
+    width: 110px;
+}
+.stat-value {
+    font-weight: bold;
+    color: #4a90e2;
+}
+#upload-speed { color: #e94c4c; }
+#download-speed { color: #50e3c2; }
+
+/* --- Modern List/Log Styles --- */
+.widget-container pre {
+    background-color: transparent;
+    border-radius: 5px;
+    color: #f1f1f1;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    height: calc(100% - 40px);
+    overflow-y: auto;
+}
+
+/* --- Modern Scrollbar --- */
+.widget-container pre::-webkit-scrollbar { width: 8px; }
+.widget-container pre::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+.widget-container pre::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.4); border-radius: 4px; }
+.widget-container pre::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.6); }
+
+#traffic-log-list { padding: 0; }
+.traffic-entry { 
+    white-space: pre; 
+    font-size: 0.9rem; 
+    line-height: 1.5;
+    padding: 2px 0.75rem;
+}
+.traffic-entry span { display: inline-block; vertical-align: top; }
+.traffic-timestamp { width: 110px; color: #999; }
+.traffic-type { width: 90px; font-weight: bold; }
+.traffic-ip { width: 280px; color: #f0e68c; }
+.traffic-protocol { width: 110px; color: #aaa; }
+.traffic-process { color: #f1f1f1; }
+
+.OUTGOING { color: cornflowerblue; }
+.INCOMING { color: #e94c4c; }
+.AT-OUT { color: mediumpurple; }
+.AT-IN { color: lightcoral; }

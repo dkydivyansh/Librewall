@@ -1,0 +1,104 @@
+{
+  "//_METADATA_": "--- Information displayed in the UI ---",
+  "metadata": {
+    "themeName": "Example Super Theme",
+    "author": "Your Name",
+    "authorUrl": "https://yourwebsite.com",
+    "description": "A description of your scene.",
+    "thumbnailImage": "thumbnail.png"
+  },
+  "//_MODEL_SETTINGS_": "--- 3D Model Configuration ---",
+  "//_htmlrender_": "If true, skips 3D Engine/Media/Global Widgets and serves htmlWidgetFile (or index.html) directly at root.",
+  "htmlrender": false,
+  "//_enable3DModel_": "If true, loads a 3D model.",
+  "enable3DModel": true,
+  "modelFile": "model.glb",
+  "modelScale": 1.0,
+  "modelFrontRotation": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+  },
+  "//_MATERIAL_OVERRIDES_": "--- Force material properties (useful for unlit models) ---",
+  "forceMaterialOverride": false,
+  "overrideMetalness": 0.0,
+  "overrideRoughness": 0.8,
+  "//_VISUAL_QUALITY_": "--- Rendering Engine Settings ---",
+  "//_toneMapping_": "Options: 'Filmic', 'Reinhard', 'AgX', 'None', 'Linear'",
+  "toneMapping": "Filmic",
+  "toneMappingExposure": 1.0,
+  "enableShadows": true,
+  "enableEnvironmentHDR": true,
+  "//_BLOOM_POST_PROCESSING_": "--- Glow Effects ---",
+  "enableBloom": true,
+  "bloomStrength": 1.5,
+  "bloomRadius": 0.4,
+  "bloomThreshold": 0.2,
+  "//_BACKGROUND_": "--- Background Layer (Behind the 3D model) ---",
+  "//_backgroundMedia_": "Path to an image (.jpg, .png) or video (.mp4, .webm)",
+  "backgroundMedia": "background.mp4",
+  "//_backgroundCSS_": "CSS color or gradient. Used if media is missing or as overlay.",
+  "backgroundCSS": "linear-gradient(to bottom, #000000, #1a1a1a)",
+  "//_INTERACTIVITY_": "--- Mouse and Animation Behavior ---",
+  "enableIdleRotation": true,
+  "enableMouseAttraction": true,
+  "//_LIGHTING_": "--- Array of lights. You can add as many as you want. ---",
+  "lights": [
+    {
+      "//_AMBIENT_": "Global illumination",
+      "type": "AmbientLight",
+      "color": "#ffffff",
+      "intensity": 0.5
+    },
+    {
+      "//_DIRECTIONAL_": "Sun-like light (Casts shadows if shadows enabled)",
+      "type": "DirectionalLight",
+      "color": "#ffaa00",
+      "intensity": 2.0,
+      "position": {
+        "x": 5,
+        "y": 10,
+        "z": 5
+      }
+    },
+    {
+      "//_SPOT_": "Cone light (Casts shadows if shadows enabled)",
+      "type": "SpotLight",
+      "color": "#00aaff",
+      "intensity": 5.0,
+      "position": {
+        "x": -5,
+        "y": 5,
+        "z": 5
+      },
+      "angle": 45,
+      "penumbra": 0.5,
+      "decay": 2,
+      "distance": 50
+    },
+    {
+      "//_POINT_": "Lightbulb-like light (Omnidirectional)",
+      "type": "PointLight",
+      "color": "#ff0000",
+      "intensity": 3.0,
+      "position": {
+        "x": 0,
+        "y": 2,
+        "z": 2
+      },
+      "decay": 2,
+      "distance": 20
+    }
+  ],
+  "//_SHADOW_SETTINGS_": "--- Fine tuning for shadows (if enableShadows is true) ---",
+  "shadowBias": -0.0001,
+  "shadowMapSizeWidth": 2048,
+  "shadowMapSizeHeight": 2048,
+  "//_WIDGETS_AND_LOGIC_": "--- HTML/JS Injection ---",
+  "//_Enable_Global_Widget_": "If true, loads system/network monitors. Ignores local widget files.",
+  "Enable_Global_Widget": false,
+  "//_Local_Files_": "These are only loaded if Global Widget is FALSE",
+  "htmlWidgetFile": "widget.html",
+  "cssFile": "style.css",
+  "logicFile": "logic.js"
+}
