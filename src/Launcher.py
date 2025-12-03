@@ -39,6 +39,7 @@ EDITOR_HTML = 'home.html'
 DISCOVER_HTML = 'discover.html'
 SETTINGS_HTML = 'settings.html'
 
+# --- FIX: Detect correct root directory for PyInstaller ---
 if getattr(sys, 'frozen', False):
     # If the application is run as a bundle (PyInstaller),
     # the executable directory is the correct root.
@@ -183,6 +184,7 @@ else:
     ENGINE_RUN_COMMAND = None
     print("WARNING: No 'engine.exe' or 'main.py' found in server root.")
     
+# (Config & Wallpaper Logic functions are unchanged) ...
 
 def read_app_config():
     """Reads the main app_config.json file."""
@@ -796,6 +798,7 @@ class EditorWindow(QMainWindow):
         self.resize(1400, 900) 
         self.webEngineView = QWebEngineView(self)
         self.webEngineView.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        # --- NEW CODE: Disable Text Selection ---
         # This injects CSS to disable selection on the body, 
         # but keeps it enabled for inputs and textareas.
         no_select_script = QWebEngineScript()
@@ -830,10 +833,12 @@ class EditorWindow(QMainWindow):
         
         self.show()
 
+# --- 5. Main Execution (Updated) ---
 if __name__ == "__main__":
     if not check_single_instance():
         # Just in case, stop further initialization
         sys.exit(0)
+    # --- (File/Dir checks are unchanged) ---
     for html_file in [EDITOR_HTML, DISCOVER_HTML, SETTINGS_HTML]: 
         html_path = os.path.join(SERVER_ROOT, html_file)
         if not os.path.isfile(html_path):
@@ -873,6 +878,7 @@ if __name__ == "__main__":
             print("Engine is already running.")
     # -------------------------------------
 
+    # --- (Server start is unchanged) ---
     try:
         server_thread = threading.Thread(
             target=start_editor_server, 
@@ -883,6 +889,8 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error: Could not start server thread: {e}")
         sys.exit(1)
+
+    # --- (PyQt start is unchanged) ---
     app = QApplication(sys.argv)
      # --- 2. Check Updates ---
     if not updater_module.run_update_check(CURRENT_APP_VERSION, CURRENT_APP_VERSION_NAME, API_BASE_URL):

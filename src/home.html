@@ -631,10 +631,12 @@
         const engineToggleBtn = document.getElementById('engine-toggle-btn');
         const warningBanner = document.getElementById('engine-off-warning');
 
+        // --- MODIFIED GLOBALS ---
         const globalWidgetsSelect = document.getElementById('select-global-widgets');
         const globalWidgetsRow = document.getElementById('setting-row-global'); // NEW
         const saveSettingsBtn = document.getElementById('lightbox-save-settings');
         let currentSettingListener = null;
+        // --- END MODIFIED ---
 
         let isConfigDirty = false;
         let currentWallpaper = null;
@@ -642,6 +644,7 @@
         let enginePort = null;
         let isEngineRunning = false;
 
+        // --- (loadWallpapers: Unchanged) ---
         function loadWallpapers() {
             checkEngineStatus();
             return fetch('/wallpapers')
@@ -675,6 +678,7 @@
         }
         document.addEventListener('DOMContentLoaded', loadWallpapers);
 
+        // --- (Engine Status Functions: Unchanged) ---
         async function checkEngineStatus() {
             let currentPort;
             try {
@@ -735,6 +739,7 @@
             }
         }
 
+        // --- (createWallpaperCard: Unchanged) ---
         function createWallpaperCard(wallpaper, isInvalid = false) {
             const card = document.createElement('div');
             card.className = 'wallpaper-card';
@@ -890,6 +895,7 @@
             confirmOverlay.style.display = 'none';
         }
 
+        // --- (performDelete: Unchanged) ---
         async function performDelete() {
             if (!currentWallpaper) return;
             const themeId = currentWallpaper.themeId;
@@ -919,6 +925,7 @@
             }
         }
 
+        // --- (activateTheme: Unchanged) ---
         async function activateTheme() {
             if (!currentWallpaper) return;
             const activateBtn = document.getElementById('lightbox-activate');
@@ -964,6 +971,7 @@
             }
         }
 
+        // --- (importTheme: Unchanged) ---
         async function importTheme(file) {
             const importBtn = document.getElementById('import-btn');
             const originalText = importBtn.textContent;
@@ -993,6 +1001,7 @@
             }
         }
 
+        // --- (updateSaveButtonState: Unchanged) ---
         function updateSaveButtonState() {
             if (!isConfigDirty || !currentWallpaper) {
                 saveSettingsBtn.style.display = 'none';
@@ -1011,6 +1020,7 @@
             }
         }
 
+        // --- (performSaveSettings: Unchanged) ---
         async function performSaveSettings() {
             if (!currentWallpaper || !isConfigDirty) return;
 

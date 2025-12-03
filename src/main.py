@@ -18,6 +18,9 @@ import psutil
 import secrets 
 import string  
 from port_map import PORT_PROTOCOL_MAP
+
+# ==============================================================================
+#  FIX: HIGH DPI SCALING & BACKGROUND RENDERING QUALITY
 # ==============================================================================
 def get_real_screen_scale():
     """
@@ -59,6 +62,11 @@ def get_real_screen_scale():
 # 1. Calculate Scale Immediately
 current_scale = get_real_screen_scale()
 
+# 2. SET CHROMIUM FLAGS (The "Magic Fix")
+# --force-device-scale-factor: Forces high resolution matching your screen.
+# --disable-renderer-backgrounding: Prevents Chrome from lowering quality to save battery.
+# --disable-backgrounding-occluded-windows: Prevents freezing when behind desktop icons.
+# --disable-features=CalculateNativeWinOcclusion: Forces Windows to treat it as "Visible" always.
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
     f"--force-device-scale-factor={current_scale} "
     "--high-dpi-support=1 "
@@ -124,6 +132,8 @@ def check_single_instance(mutex_name=r"Global\librewall_engine"):
     # This is the first instance
     return True
 
+
+# --- FIX: Detect correct root directory for PyInstaller ---
 if getattr(sys, 'frozen', False):
     # PyInstaller "frozen" mode: Use the directory of the executable
     SCRIPT_DIR = os.path.dirname(sys.executable)
@@ -169,12 +179,17 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         return os.path.join(SCRIPT_DIR, WALLPAPERS_ROOT_DIR, theme_name)
 
     def do_GET(self):
+        # --- FIX: Strip query parameters (everything after '?') ---
+        # This converts "/file.css?t=123" -> "/file.css"
+        clean_path = self.path.split('?')[0] 
+        
         current_wallpaper_path = self.get_current_wallpaper_path()
         file_path = ""
         mime_type = ""
         try:
-            if self.path == '/':
-                # --- MODIFIED: Check for htmlrender mode ---
+            # Replace 'self.path' with 'clean_path' for all routing logic below
+            if clean_path == '/':
+                # ... existing logic ...
                 config_path = os.path.join(current_wallpaper_path, 'config.json')
                 is_html_render = False
                 target_html_file = 'index.html' 
@@ -185,24 +200,21 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                             theme_config = json.load(f)
                             if theme_config.get('htmlrender') is True:
                                 is_html_render = True
-                                # Prefer the defined htmlWidgetFile, else fallback to index.html
                                 target_html_file = theme_config.get('htmlWidgetFile', 'index.html')
                 except Exception as e:
                     print(f"Error checking theme config for htmlrender: {e}")
 
                 if is_html_render:
-                    # Serve the theme's HTML directly, bypassing the 3D Engine
                     print(f"HTML Render Mode: Serving {target_html_file} from theme folder.")
                     file_path = os.path.join(current_wallpaper_path, target_html_file)
                 else:
-                    # Serve the Standard 3D Engine
                     file_path = os.path.join(SCRIPT_DIR, 'index.html')
                 
                 mime_type = 'text/html'
-                # ---------------------------------------------
 
-            elif self.path == '/config':
+            elif clean_path == '/config':
                 file_path = os.path.join(current_wallpaper_path, 'config.json')
+                # ... existing read logic ...
                 try:
                     with open(file_path, 'rb') as f:
                         self.send_response(200)
@@ -210,11 +222,13 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                         self.end_headers()
                         self.wfile.write(f.read())
-                except FileNotFoundError: self.send_error(404, f"config.json not found. Full path: {file_path}")
+                except FileNotFoundError: self.send_error(404, f"config.json not found.")
                 except Exception as e: self.send_error(500, f"Error reading config: {e}")
                 return
-            elif self.path == '/widget.json':
+
+            elif clean_path == '/widget.json':
                 file_path = os.path.join(current_wallpaper_path, 'widget.json')
+                # ... existing read logic ...
                 try:
                     with open(file_path, 'rb') as f:
                         self.send_response(200)
@@ -222,10 +236,12 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                         self.end_headers()
                         self.wfile.write(f.read())
-                except FileNotFoundError: self.send_error(404, f"widget.json not found. Full path: {file_path}")
+                except FileNotFoundError: self.send_error(404, f"widget.json not found.")
                 except Exception as e: self.send_error(500, f"Error reading widget.json: {e}")
                 return
-            elif self.path == '/app_config.json':
+
+            elif clean_path == '/app_config.json':
+                # ... existing logic ...
                 file_path = APP_CONFIG_PATH
                 try:
                     with APP_CONFIG_LOCK:
@@ -238,7 +254,9 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 except FileNotFoundError: self.send_error(404, "app_config.json not found.")
                 except Exception as e: self.send_error(500, f"Error reading app_config: {e}")
                 return
-            elif self.path == '/model':
+
+            elif clean_path == '/model':
+                # ... existing logic ...
                 config_path = os.path.join(current_wallpaper_path, 'config.json')
                 mime_type = 'model/gltf-binary'
                 model_from_config = None
@@ -256,20 +274,23 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 else:
                     self.send_error(404, "No 'modelFile' specified in config.json.")
                     return
-            elif self.path.startswith('/build/') or self.path.startswith('/library/') or self.path.startswith('/hdr/'):
-                relative_path = self.path.lstrip('/')
+
+            elif clean_path.startswith('/build/') or clean_path.startswith('/library/') or clean_path.startswith('/hdr/'):
+                relative_path = clean_path.lstrip('/')
                 file_path = os.path.join(SCRIPT_DIR, relative_path)
             else:
-                relative_path = self.path.lstrip('/')
+                # This was the specific crash point:
+                relative_path = clean_path.lstrip('/')
                 file_path = os.path.join(current_wallpaper_path, relative_path)
             
+            # ... rest of the method (MIME types, serving file) remains the same ...
             mime_map = {
                 ".css": "text/css", ".js": "application/javascript", ".html": "text/html",
                 ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
                 ".gif": "image/gif", ".webp": "image/webp", ".bmp": "image/bmp",
                 ".mp4": "video/mp4", ".webm": "video/webm", ".ogg": "video/ogg",
                 ".mov": "video/quicktime", ".hdr": "application/octet-stream",
-                ".json": "application/json"
+                ".json": "application/json", ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf"
             }
             if not mime_type:
                 ext = os.path.splitext(file_path)[1].lower()
@@ -282,7 +303,8 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             with open(file_path, 'rb') as f:
                 self.send_response(200)
                 self.send_header('Content-type', mime_type)
-                if self.path in ['/', '/config', '/app_config.json', '/widget.json']: 
+                # Note: clean_path check here
+                if clean_path in ['/', '/config', '/app_config.json', '/widget.json']: 
                     self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                 self.end_headers()
                 self.wfile.write(f.read())
@@ -438,6 +460,7 @@ class WallpaperWindow(QMainWindow):
         self1.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnBottomHint)
         self1.window_handle = int(self1.winId())
 
+        # --- FIX: ROBUST RESOLUTION CALCULATION ---
         # Since we forced scale factor = 1 using env var, logical == physical.
         screen = self1.app.primaryScreen()
         geometry = screen.geometry() 
@@ -461,6 +484,7 @@ class WallpaperWindow(QMainWindow):
         print(f"Wallpaper Resolution: {self1.screen_width}x{self1.screen_height}")
         # ------------------------------------------
 
+        # --- FIX: Use setGeometry instead of showMaximized to keep taskbar ---
         self1.setGeometry(0, 0, self1.screen_width, self1.screen_height)
         self1.show()
 
@@ -469,6 +493,7 @@ class WallpaperWindow(QMainWindow):
         print("Status: Live ▶️ (Fully Interactive)")
 
     def on_load_finished(self, ok):
+        # Inject patch UNCONDITIONALLY to fix pixel alignment
         if ok:
             js_patch = """
             (function() {

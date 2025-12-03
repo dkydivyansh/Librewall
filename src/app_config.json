@@ -1,5 +1,5 @@
 {
-  "active_theme": "4",
+  "active_theme": "default",
   "port": 60600,
   "auto_start": true,
   "hide_icons": false,
@@ -39,5 +39,6 @@
       "width": "675.188px",
       "height": "572px"
     }
-  }
+  },
+  "ws_port": 60601
 }

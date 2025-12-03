@@ -147,7 +147,6 @@
                         <h1 style="color: red;">Wallpaper Failed to Load</h1>
                         <p>Could not load or parse <strong>/config.json</strong> from the wallpaper folder.</p>
                         <p><strong>Error:</strong> ${error.message}</p>
-                        <p>Please check the console (Ctrl+Shift-I or F12) and <strong>main.py</strong>'s output for more details.</p>
                     </div>
                 `;
                 return;
@@ -155,14 +154,19 @@
 
             setupBackgroundMedia(config);
             setupBackground(config);
+            // --- NEW FEATURE: DISABLE 3D MODEL ---
+            // If enable3DModel is explicitly set to false, we stop here.
             if (config.enable3DModel === false) {
                 console.log("3D Model/Engine totally disabled by config. Running in 2D/Video mode.");
 
+                // Hide the canvas so it doesn't block clicks to background
                 const canvasEl = document.querySelector('#scene-container');
                 if (canvasEl) canvasEl.style.display = 'none';
 
+                // We still need to load HTML widgets (Clock, Weather, etc.)
                 await loadExternalFiles(config);
 
+                // STOP: Do not initialize Three.js, Lights, or Animation Loop
                 return;
             }
             // -------------------------------------
