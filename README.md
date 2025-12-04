@@ -25,7 +25,7 @@
 
 Librewall supports a wide range of media types and customization options:
 
-* **Video & GIF Support:** Seamlessly render high-quality video loops as wallpapers.
+* **Video Support:** Seamlessly render high-quality video loops as wallpapers.
 * **Interactive Webpages:** Run HTML/CSS/JS applications directly on the desktop.
 * **Animated 3D Models:** Render real-time 3D scenes.
 * **Future Updates:** Additional format support is currently in development.
