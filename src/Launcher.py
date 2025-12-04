@@ -168,7 +168,7 @@ def check_single_instance(mutex_name=r"Global\librewall", window_title="librewal
     return True  # This is the first instance
 
 
-API_BASE_URL = "https://dkydivyansh.com/Project/api/wallpapers/index.php"
+API_BASE_URL = "https://example.com/api/v1"
 
 # (Engine Path Configuration remains the same...)
 ENGINE_EXE_PATH = os.path.join(SERVER_ROOT, 'engine.exe')

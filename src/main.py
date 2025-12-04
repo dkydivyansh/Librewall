@@ -18,7 +18,7 @@ import psutil
 import secrets 
 import string  
 from port_map import PORT_PROTOCOL_MAP
-
+from video_widget import NativeVideoWidget
 # ==============================================================================
 #  FIX: HIGH DPI SCALING & BACKGROUND RENDERING QUALITY
 # ==============================================================================
@@ -70,6 +70,7 @@ os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
     "--disable-renderer-backgrounding "
     "--disable-backgrounding-occluded-windows "
     "--disable-features=CalculateNativeWinOcclusion"
+    "--autoplay-policy=no-user-gesture-required"
 )
 
 # 3. Disable Qt's internal scaling (We handle it manually via flags)
@@ -365,65 +366,98 @@ class AuthWebEnginePage(QWebEnginePage):
 
 # --- (WallpaperWindow Class: MODIFIED) ---
 class WallpaperWindow(QMainWindow):
-    def __init__(self1, app_ref, url, auth_token): 
+    def __init__(self, app_ref, url, auth_token): 
         super().__init__()
-        self1.app = app_ref 
-        self1.is_paused = False
-        self1.browser = CustomWebEngineView(self1)
+        self.app = app_ref 
+        self.is_paused = False
+        self.is_video_mode = False # Flag to track mode
         
-        # --- FIX: CREATE PERSISTENT PROFILE ---
-        # 1. Define storage path (e.g. "browser_data" folder next to main.py)
-        storage_path = os.path.join(SCRIPT_DIR, "browser_data")
-        if not os.path.exists(storage_path):
-            os.makedirs(storage_path, exist_ok=True)
+        # 1. Determine Wallpaper Type from Config
+        # We assume MyHandler is available in the scope (from main.py)
+        # Passing None because the method doesn't use 'self'
+        active_theme_path = MyHandler.get_current_wallpaper_path(None)
+        theme_config_path = os.path.join(active_theme_path, 'config.json')
+        
+        use_video = False
+        video_file = None
+
+        if os.path.exists(theme_config_path):
+            try:
+                with open(theme_config_path, 'r') as f:
+                    config = json.load(f)
+                    # Check for new 'videorender' boolean
+                    if config.get('videorender') is True:
+                        use_video = True
+                        video_file = config.get('media')
+            except Exception as e:
+                print(f"Config Read Error: {e}")
+
+        # 2. Initialize the Appropriate Engine
+        if use_video and video_file:
+            print("Mode: Native Video Engine (MPV)")
+            self.is_video_mode = True
             
-        # 2. Create named profile (Named profiles are persistent by default if path is set)
-        self1.web_profile = QWebEngineProfile("LibrewallProfile", self1)
+            # Construct full path to the video file
+            full_video_path = os.path.join(active_theme_path, video_file)
+            
+            # Initialize Native Video Widget
+            # Ensure NativeVideoWidget is imported at top of file
+            self.video_widget = NativeVideoWidget(full_video_path, self)
+            self.setCentralWidget(self.video_widget)
         
-        # 3. Configure paths and policy
-        self1.web_profile.setPersistentStoragePath(storage_path)
-        self1.web_profile.setCachePath(storage_path)
-        self1.web_profile.setPersistentCookiesPolicy(
-            QWebEngineProfile.PersistentCookiesPolicy.ForcePersistentCookies
-        )
-        print(f"Browser Persistent Storage Path: {storage_path}")
+        else:
+            print("Mode: Web Engine (Chromium)")
+            self.is_video_mode = False
+            self.browser = CustomWebEngineView(self)
+            
+            # Browser Setup Logic
+            storage_path = os.path.join(SCRIPT_DIR, "browser_data")
+            if not os.path.exists(storage_path):
+                os.makedirs(storage_path, exist_ok=True)
+                
+            self.web_profile = QWebEngineProfile("LibrewallProfile", self)
+            self.web_profile.setPersistentStoragePath(storage_path)
+            self.web_profile.setCachePath(storage_path)
+            self.web_profile.setPersistentCookiesPolicy(
+                QWebEngineProfile.PersistentCookiesPolicy.ForcePersistentCookies
+            )
 
-        # 4. Pass profile to AuthWebEnginePage
-        self1.auth_page = AuthWebEnginePage(self1.web_profile, self1.browser, auth_token)
-        # -------------------------------------
+            self.auth_page = AuthWebEnginePage(self.web_profile, self.browser, auth_token)
+            self.browser.setPage(self.auth_page)
+            self.browser.loadFinished.connect(self.on_load_finished)
+            self.browser.setUrl(QUrl(url))
+            self.setCentralWidget(self.browser)
 
-        self1.browser.setPage(self1.auth_page)
-        
-        self1.browser.loadFinished.connect(self1.on_load_finished)
-        self1.browser.setUrl(QUrl(url))
-        self1.setCentralWidget(self1.browser)
-        self1.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnBottomHint)
-        self1.window_handle = int(self1.winId())
+        # 3. Window Setup (Common to both)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnBottomHint)
+        self.window_handle = int(self.winId())
 
-        # --- FIX: ROBUST RESOLUTION CALCULATION ---
-        screen = self1.app.primaryScreen()
+        # 4. Resolution Calculation
+        screen = self.app.primaryScreen()
         geometry = screen.geometry() 
-        self1.screen_width = geometry.width()
-        self1.screen_height = geometry.height()
+        self.screen_width = geometry.width()
+        self.screen_height = geometry.height()
         try:
              hDC = user32.GetDC(0)
              phy_w = user32.GetDeviceCaps(hDC, 118) 
              phy_h = user32.GetDeviceCaps(hDC, 117) 
              user32.ReleaseDC(0, hDC)
-             self1.screen_width = max(self1.screen_width, phy_w)
-             self1.screen_height = max(self1.screen_height, phy_h)
+             self.screen_width = max(self.screen_width, phy_w)
+             self.screen_height = max(self.screen_height, phy_h)
         except: pass
-        print(f"Wallpaper Resolution: {self1.screen_width}x{self1.screen_height}")
 
-        self1.setGeometry(0, 0, self1.screen_width, self1.screen_height)
-        self1.show()
+        self.setGeometry(0, 0, self.screen_width, self.screen_height)
+        self.show()
 
-        QTimer.singleShot(100, self1.setup_window_layer)
-        self1.check_timer = QTimer(self1); self1.check_timer.timeout.connect(self1.check_fullscreen); self1.check_timer.start(2000)
-        print("Status: Live ▶️ (Fully Interactive)")
+        # 5. Start Timers
+        QTimer.singleShot(100, self.setup_window_layer)
+        self.check_timer = QTimer(self)
+        self.check_timer.timeout.connect(self.check_fullscreen)
+        self.check_timer.start(2000)
 
     def on_load_finished(self, ok):
-        if ok:
+        # Only run JS if we are actually using the browser
+        if not self.is_video_mode and ok:
             js_patch = """
             (function() {
                 var canvas = document.getElementById("canvas");
@@ -438,14 +472,23 @@ class WallpaperWindow(QMainWindow):
                 }
             })();
             """
-            self.browser.page().runJavaScript(js_patch)
 
     def pause_wallpaper(self):
         if not self.is_paused:
-            print("Status: Paused ⏸️ (Manual Pause)"); self.browser.page().runJavaScript("pauseAnimation();"); self.is_paused = True
+            print("Status: Paused ⏸️")
+            self.is_paused = True
+            if self.is_video_mode:
+                self.video_widget.set_paused(True)
+            else:
+                self.browser.page().runJavaScript("pauseAnimation();")
     def resume_wallpaper(self):
         if self.is_paused:
-            print("Status: Live ▶️ (Manual Resume)"); self.browser.page().runJavaScript("resumeAnimation();"); self.is_paused = False
+            print("Status: Live ▶️")
+            self.is_paused = False
+            if self.is_video_mode:
+                self.video_widget.set_paused(False)
+            else:
+                self.browser.page().runJavaScript("resumeAnimation();")
             self.show(); QTimer.singleShot(50, self.setup_window_layer)
     def setup_window_layer(self):
         try:
@@ -495,6 +538,8 @@ class WallpaperWindow(QMainWindow):
                 self.show(); QTimer.singleShot(50, self.setup_window_layer)
         except Exception as e: pass
     def closeEvent(self, event):
+        if self.is_video_mode:
+            self.video_widget.stop()
         super().closeEvent(event)
 
 # --- (Network Widget Backend: Unchanged) ---
