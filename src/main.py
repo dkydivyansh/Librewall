@@ -63,10 +63,6 @@ def get_real_screen_scale():
 current_scale = get_real_screen_scale()
 
 # 2. SET CHROMIUM FLAGS (The "Magic Fix")
-# --force-device-scale-factor: Forces high resolution matching your screen.
-# --disable-renderer-backgrounding: Prevents Chrome from lowering quality to save battery.
-# --disable-backgrounding-occluded-windows: Prevents freezing when behind desktop icons.
-# --disable-features=CalculateNativeWinOcclusion: Forces Windows to treat it as "Visible" always.
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
     f"--force-device-scale-factor={current_scale} "
     "--high-dpi-support=1 "
@@ -84,7 +80,8 @@ os.environ["QT_SCALE_FACTOR"] = "1"
 from PyQt6.QtCore import QUrl, Qt, QTimer
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenu
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEnginePage
+# --- MODIFIED: Added QWebEngineProfile ---
+from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile 
 from PyQt6.QtGui import QAction
 
 user32   = ctypes.windll.user32
@@ -94,51 +91,22 @@ mutex_handle = None  # keep global so it isn't GC'd
 
 
 def check_single_instance(mutex_name=r"Global\librewall_engine"):
-    """
-    Returns True if this is the first instance.
-    If another instance exists, shows a message and exits the process.
-    """
     global mutex_handle
-
-    # Create the named mutex
     mutex_handle = kernel32.CreateMutexW(None, False, mutex_name)
-
-    # ERROR_ALREADY_EXISTS = 183
     if kernel32.GetLastError() == 183:
-        # Another instance is already running
         try:
-             user32.MessageBoxW(
-                None,
-                "Another instance of librewall engine is already running.",
-                "librewall_engine",
-                0x10  # MB_ICONHAND
-            )
+             user32.MessageBoxW(None, "Another instance of librewall engine is already running.", "librewall_engine", 0x10)
         except NameError:
-            # Fallback: normal message box using WinAPI
-            user32.MessageBoxW(
-                None,
-                "Another instance of librewall engine is already running.",
-                "librewall_engine",
-                0x10  # MB_ICONHAND
-            )
-
-        # Close our mutex handle (we are the second instance)
-        if mutex_handle:
-            kernel32.CloseHandle(mutex_handle)
-
-        # Exit this (second) instance
+            user32.MessageBoxW(None, "Another instance of librewall engine is already running.", "librewall_engine", 0x10)
+        if mutex_handle: kernel32.CloseHandle(mutex_handle)
         sys.exit(0)
-
-    # This is the first instance
     return True
 
 
 # --- FIX: Detect correct root directory for PyInstaller ---
 if getattr(sys, 'frozen', False):
-    # PyInstaller "frozen" mode: Use the directory of the executable
     SCRIPT_DIR = os.path.dirname(sys.executable)
 else:
-    # Normal script mode
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 print(f"Engine Server Root detected as: {SCRIPT_DIR}")
@@ -161,7 +129,6 @@ SEEN_CONNECTIONS = set()
 PROCESS_HIDE_LIST = [
     'chrome', 'firefox', 'msedge', 'brave', 'safari', 'opera'
 ]
-# PORT_PROTOCOL_MAP imported from port_map.py
 APP_CONFIG_LOCK = threading.Lock()
 
 class MyHandler(http.server.SimpleHTTPRequestHandler):
@@ -179,17 +146,12 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         return os.path.join(SCRIPT_DIR, WALLPAPERS_ROOT_DIR, theme_name)
 
     def do_GET(self):
-        # --- FIX: Strip query parameters (everything after '?') ---
-        # This converts "/file.css?t=123" -> "/file.css"
         clean_path = self.path.split('?')[0] 
-        
         current_wallpaper_path = self.get_current_wallpaper_path()
         file_path = ""
         mime_type = ""
         try:
-            # Replace 'self.path' with 'clean_path' for all routing logic below
             if clean_path == '/':
-                # ... existing logic ...
                 config_path = os.path.join(current_wallpaper_path, 'config.json')
                 is_html_render = False
                 target_html_file = 'index.html' 
@@ -214,7 +176,6 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
             elif clean_path == '/config':
                 file_path = os.path.join(current_wallpaper_path, 'config.json')
-                # ... existing read logic ...
                 try:
                     with open(file_path, 'rb') as f:
                         self.send_response(200)
@@ -228,7 +189,6 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
             elif clean_path == '/widget.json':
                 file_path = os.path.join(current_wallpaper_path, 'widget.json')
-                # ... existing read logic ...
                 try:
                     with open(file_path, 'rb') as f:
                         self.send_response(200)
@@ -241,7 +201,6 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 return
 
             elif clean_path == '/app_config.json':
-                # ... existing logic ...
                 file_path = APP_CONFIG_PATH
                 try:
                     with APP_CONFIG_LOCK:
@@ -256,7 +215,6 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 return
 
             elif clean_path == '/model':
-                # ... existing logic ...
                 config_path = os.path.join(current_wallpaper_path, 'config.json')
                 mime_type = 'model/gltf-binary'
                 model_from_config = None
@@ -279,11 +237,9 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 relative_path = clean_path.lstrip('/')
                 file_path = os.path.join(SCRIPT_DIR, relative_path)
             else:
-                # This was the specific crash point:
                 relative_path = clean_path.lstrip('/')
                 file_path = os.path.join(current_wallpaper_path, relative_path)
             
-            # ... rest of the method (MIME types, serving file) remains the same ...
             mime_map = {
                 ".css": "text/css", ".js": "application/javascript", ".html": "text/html",
                 ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
@@ -303,7 +259,6 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             with open(file_path, 'rb') as f:
                 self.send_response(200)
                 self.send_header('Content-type', mime_type)
-                # Note: clean_path check here
                 if clean_path in ['/', '/config', '/app_config.json', '/widget.json']: 
                     self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                 self.end_headers()
@@ -321,84 +276,49 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
         auth_token = token_from_main
         
         def check_auth(self):
-            """Checks if the request User-Agent matches the secret token."""
             user_agent = self.headers.get('User-Agent')
-            if user_agent == self.auth_token:
-                return True
-            
-            print(f"--- SECURITY WARNING: Forbidden Request ---")
-            print(f"Address: {self.client_address}")
-            print(f"Path: {self.path}")
-            print(f"User-Agent: {user_agent}")
-            print(f"-------------------------------------------")
-            self.send_error(403, "Forbidden: Invalid Auth Token")
-            return False
+            if user_agent == self.auth_token: return True
+            self.send_error(403, "Forbidden: Invalid Auth Token"); return False
         
         def do_GET(self):
-            # --- MODIFIED: Public endpoints are now in a list ---
             public_paths = ['/', '/reload', '/quit', '/port']
-            
             if self.path in public_paths:
                 if self.path == '/reload':
-                    print("Public endpoint '/reload' called. Triggering app restart.")
-                    # --- MODIFIED: This now triggers a full application restart ---
-                    self.app.is_restarting = True # Set flag for restart
-                    QTimer.singleShot(0, self.app.quit) # Tell the app to quit
+                    self.app.is_restarting = True
+                    QTimer.singleShot(0, self.app.quit)
                     self.send_response(200); self.end_headers(); self.wfile.write(b'Restarting application...')
                     return
                 elif self.path == '/quit':
-                    print("Public endpoint '/quit' called.")
-                    QTimer.singleShot(0, self.app.quit) # This is a normal quit
+                    QTimer.singleShot(0, self.app.quit)
                     self.send_response(200); self.end_headers(); self.wfile.write(b'Quitting...')
                     return
                 elif self.path == '/port':
-                    print("Public endpoint '/port' called.")
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json')
                     self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                     self.end_headers()
                     self.wfile.write(json.dumps({'http_port': self.http_port}).encode('utf-8'))
                     return
-                elif self.path == '/':
-                    # Public endpoint '/', let it fall through to super().do_GET()
-                    print("Public endpoint '/' called.")
-                    pass
-            
+                elif self.path == '/': pass
             else:
-                # --- All other endpoints are secured ---
-                if not self.check_auth():
-                    return
-                
+                if not self.check_auth(): return
             super().do_GET()
             
         def do_POST(self):
-            # All POST requests are still secured
-            if not self.check_auth():
-                return
-                
+            if not self.check_auth(): return
             if self.path == '/save_widget_positions':
                 try:
                     content_length = int(self.headers['Content-Length'])
                     post_data = self.rfile.read(content_length)
-                    
                     current_wallpaper_path = self.get_current_wallpaper_path()
                     widget_config_path = os.path.join(current_wallpaper_path, 'widget.json')
-                    
-                    with open(widget_config_path, 'wb') as f:
-                        f.write(post_data)
-                    
-                    self.send_response(200)
-                    self.send_header('Content-type', 'application/json')
-                    self.end_headers()
+                    with open(widget_config_path, 'wb') as f: f.write(post_data)
+                    self.send_response(200); self.send_header('Content-type', 'application/json'); self.end_headers()
                     self.wfile.write(json.dumps({'status': 'success'}).encode('utf-8'))
-                    print(f"Saved widget positions to {widget_config_path}")
                 except Exception as e:
-                    print(f"Error saving widget positions: {e}", file=sys.stderr)
                     self.send_error(500, f"Error saving positions: {e}")
                 return
-            
             self.send_error(404, "Not Found")
-            
     return CustomHandler
 
 
@@ -407,7 +327,7 @@ def start_server(port, handler_class):
     server_thread = threading.Thread(target=server.serve_forever)
     server_thread.daemon = True
     server_thread.start()
-    print(f"Internal HTTP server running at http://localhost:{port} (Bound to localhost only)")
+    print(f"Internal HTTP server running at http://localhost:{port}")
 
 
 # --- (Custom QWebEngineView Class: Unchanged) ---
@@ -430,20 +350,20 @@ class CustomWebEngineView(QWebEngineView):
             self.pause_action.setEnabled(True); self.resume_action.setEnabled(False)
         self.context_menu.exec(event.globalPos())
     def reload_page(self): 
-        # --- MODIFIED: Context menu reload should also do a full restart ---
         print("Context menu reload: Triggering app restart.")
         self.window.app.is_restarting = True
         QTimer.singleShot(0, self.window.app.quit)
 
 
-# --- (AuthWebEnginePage Class: Unchanged) ---
+# --- (AuthWebEnginePage Class: MODIFIED) ---
 class AuthWebEnginePage(QWebEnginePage):
-    def __init__(self, parent, user_agent):
-        super().__init__(parent)
+    # --- CHANGE: Accept 'profile' argument ---
+    def __init__(self, profile, parent, user_agent):
+        super().__init__(profile, parent) # Pass profile to super constructor
         print("Setting custom User-Agent for browser...")
         self.profile().setHttpUserAgent(user_agent)
 
-# --- (WallpaperWindow Class) ---
+# --- (WallpaperWindow Class: MODIFIED) ---
 class WallpaperWindow(QMainWindow):
     def __init__(self1, app_ref, url, auth_token): 
         super().__init__()
@@ -451,7 +371,27 @@ class WallpaperWindow(QMainWindow):
         self1.is_paused = False
         self1.browser = CustomWebEngineView(self1)
         
-        self1.auth_page = AuthWebEnginePage(self1.browser, auth_token)
+        # --- FIX: CREATE PERSISTENT PROFILE ---
+        # 1. Define storage path (e.g. "browser_data" folder next to main.py)
+        storage_path = os.path.join(SCRIPT_DIR, "browser_data")
+        if not os.path.exists(storage_path):
+            os.makedirs(storage_path, exist_ok=True)
+            
+        # 2. Create named profile (Named profiles are persistent by default if path is set)
+        self1.web_profile = QWebEngineProfile("LibrewallProfile", self1)
+        
+        # 3. Configure paths and policy
+        self1.web_profile.setPersistentStoragePath(storage_path)
+        self1.web_profile.setCachePath(storage_path)
+        self1.web_profile.setPersistentCookiesPolicy(
+            QWebEngineProfile.PersistentCookiesPolicy.ForcePersistentCookies
+        )
+        print(f"Browser Persistent Storage Path: {storage_path}")
+
+        # 4. Pass profile to AuthWebEnginePage
+        self1.auth_page = AuthWebEnginePage(self1.web_profile, self1.browser, auth_token)
+        # -------------------------------------
+
         self1.browser.setPage(self1.auth_page)
         
         self1.browser.loadFinished.connect(self1.on_load_finished)
@@ -461,30 +401,20 @@ class WallpaperWindow(QMainWindow):
         self1.window_handle = int(self1.winId())
 
         # --- FIX: ROBUST RESOLUTION CALCULATION ---
-        # Since we forced scale factor = 1 using env var, logical == physical.
         screen = self1.app.primaryScreen()
         geometry = screen.geometry() 
-        
         self1.screen_width = geometry.width()
         self1.screen_height = geometry.height()
-        
-        # Fallback: If Qt reports weird sizes, try WinAPI physical caps
         try:
              hDC = user32.GetDC(0)
-             # DESKTOPHORZRES = 118, DESKTOPVERTRES = 117
              phy_w = user32.GetDeviceCaps(hDC, 118) 
              phy_h = user32.GetDeviceCaps(hDC, 117) 
              user32.ReleaseDC(0, hDC)
-             # Use the larger of the two to be safe
              self1.screen_width = max(self1.screen_width, phy_w)
              self1.screen_height = max(self1.screen_height, phy_h)
-        except:
-             pass
-
+        except: pass
         print(f"Wallpaper Resolution: {self1.screen_width}x{self1.screen_height}")
-        # ------------------------------------------
 
-        # --- FIX: Use setGeometry instead of showMaximized to keep taskbar ---
         self1.setGeometry(0, 0, self1.screen_width, self1.screen_height)
         self1.show()
 
@@ -493,7 +423,6 @@ class WallpaperWindow(QMainWindow):
         print("Status: Live ▶️ (Fully Interactive)")
 
     def on_load_finished(self, ok):
-        # Inject patch UNCONDITIONALLY to fix pixel alignment
         if ok:
             js_patch = """
             (function() {
@@ -520,17 +449,12 @@ class WallpaperWindow(QMainWindow):
             self.show(); QTimer.singleShot(50, self.setup_window_layer)
     def setup_window_layer(self):
         try:
-            # 1. REMOVE TASKBAR ICON (WS_EX_TOOLWINDOW | ~WS_EX_APPWINDOW)
             ex_style = win32gui.GetWindowLong(self.window_handle, win32con.GWL_EXSTYLE)
-            ex_style |= win32con.WS_EX_TOOLWINDOW   # Add ToolWindow (Hides from Taskbar/Alt-Tab)
-            ex_style &= ~win32con.WS_EX_APPWINDOW   # Remove AppWindow (Forces Taskbar item)
+            ex_style |= win32con.WS_EX_TOOLWINDOW   
+            ex_style &= ~win32con.WS_EX_APPWINDOW   
             win32gui.SetWindowLong(self.window_handle, win32con.GWL_EXSTYLE, ex_style)
-
-            # 2. Spawn WorkerW
             progman = win32gui.FindWindow("Progman", None)
             win32gui.SendMessageTimeout(progman, 0x052C, 0, 0, win32con.SMTO_NORMAL, 1000)
-            
-            # 3. Find correct WorkerW
             workerw = None
             def find_workerw(hwnd, _):
                 nonlocal workerw
@@ -539,8 +463,6 @@ class WallpaperWindow(QMainWindow):
                     return False
                 return True
             win32gui.EnumWindows(find_workerw, 0)
-            
-            # 4. Attach to Desktop
             if workerw:
                 print(f"Attaching to Desktop (WorkerW: {workerw})")
                 win32gui.SetParent(self.window_handle, workerw)
@@ -549,7 +471,6 @@ class WallpaperWindow(QMainWindow):
                 safe_height = self.screen_height - 1
                 self.setGeometry(0, 0, self.screen_width, safe_height)
                 win32gui.SetWindowPos(self.window_handle, win32con.HWND_BOTTOM, 0, 0, self.screen_width, safe_height, win32con.SWP_NOACTIVATE)
-        
         except Exception as e:
             print(f"Error setting up window layer: {e}")
     def check_fullscreen(self):
@@ -764,13 +685,11 @@ if __name__ == "__main__":
     try:
         with open(config_path, 'r') as f:
             c = json.load(f)
-            # --- MODIFIED: Check htmlrender logic to force disable global widgets ---
             if c.get("htmlrender") is True:
                 enable_global_widget = False
                 print("HTML Render Mode detected: Global Widgets forcibly DISABLED.")
             elif c.get("Enable_Global_Widget") == True or c.get("Enable_Network_Widget") == True:
                 enable_global_widget = True
-            # ----------------------------------------------------------------------
     except: pass
 
     http_port = HTTP_PORT

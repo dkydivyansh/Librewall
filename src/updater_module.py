@@ -252,8 +252,16 @@ class UpdateWindow(QWidget):
         self.cancel_btn.clicked.connect(self.cancel_download)
         self.cancel_btn.hide()
 
+        # Retry Button (Added for error state)
+        self.retry_btn = QPushButton("Retry")
+        # Use primary style for Retry to encourage action, or Secondary if preferred
+        self.retry_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.retry_btn.clicked.connect(self.retry_update)
+        self.retry_btn.hide()
+
         self.btn_layout.addWidget(self.skip_btn)
         self.btn_layout.addWidget(self.update_btn)
+        self.btn_layout.addWidget(self.retry_btn) # Added to layout
         self.btn_layout.addWidget(self.pause_btn)
         self.btn_layout.addWidget(self.cancel_btn)
         
@@ -288,9 +296,11 @@ class UpdateWindow(QWidget):
         self.info_label.hide()
         self.skip_btn.hide()
         self.update_btn.hide()
+        self.retry_btn.hide() # Ensure retry is hidden
         
         self.title_label.setText("Downloading Update...")
         self.stats_label.show()
+        self.stats_label.setStyleSheet("color: #ffffff;") # Reset color
         self.stats_label.setText("Starting...")
         self.progress_bar.show()
         self.pause_btn.show()
@@ -331,7 +341,9 @@ class UpdateWindow(QWidget):
         self.progress_bar.hide()
         self.pause_btn.hide()
         self.cancel_btn.hide()
+        self.retry_btn.hide() # Hide retry
         self.progress_bar.setValue(0)
+        self.stats_label.setStyleSheet("color: #ffffff;")
         
         self.title_label.setText("Update Available")
         self.info_label.show()
@@ -366,31 +378,12 @@ class UpdateWindow(QWidget):
         self.stats_label.setText(f"Error: {err_msg}")
         self.stats_label.setStyleSheet("color: #ff5555;")
         
-        # Allow Retrying
+        # Hide Pause, Show Retry AND Cancel
         self.pause_btn.hide()
+        self.retry_btn.show()
         self.cancel_btn.show()
-        
-        # Change Cancel button to Retry button logic
-        self.cancel_btn.setText("Retry")
-        
-        # Disconnect previous signals (safe disconnect)
-        try: self.cancel_btn.clicked.disconnect() 
-        except TypeError: pass
-        
-        self.cancel_btn.clicked.connect(self.retry_update)
 
     def retry_update(self):
-        # Reset specific error styling
-        self.stats_label.setStyleSheet("color: #ffffff;")
-        
-        # Reset button to Cancel logic
-        try: self.cancel_btn.clicked.disconnect() 
-        except TypeError: pass
-        
-        self.cancel_btn.setText("Cancel")
-        self.cancel_btn.clicked.connect(self.cancel_download)
-        
-        # Restart
         self.start_download()
 
 def run_update_check(current_version_code, current_version_name, api_base_url):
