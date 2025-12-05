@@ -380,17 +380,20 @@ class WallpaperWindow(QMainWindow):
         
         use_video = False
         video_file = None
+        fps_limit = 60
+        mute_audio = False
 
         if os.path.exists(theme_config_path):
             try:
                 with open(theme_config_path, 'r') as f:
                     config = json.load(f)
-                    # Check for new 'videorender' boolean
                     if config.get('videorender') is True:
                         use_video = True
                         video_file = config.get('media')
-            except Exception as e:
-                print(f"Config Read Error: {e}")
+                        # --- MODIFIED: READ VIDEO SETTINGS ---
+                        fps_limit = config.get('fpsLimit', 60)
+                        mute_audio = config.get('muteAudio', False)
+            except Exception as e: print(f"Config Read Error: {e}")
 
         # 2. Initialize the Appropriate Engine
         if use_video and video_file:
@@ -402,7 +405,12 @@ class WallpaperWindow(QMainWindow):
             
             # Initialize Native Video Widget
             # Ensure NativeVideoWidget is imported at top of file
-            self.video_widget = NativeVideoWidget(full_video_path, self)
+            self.video_widget = NativeVideoWidget(
+                full_video_path, 
+                self, 
+                fps_limit=fps_limit, 
+                mute_audio=mute_audio
+            )
             self.setCentralWidget(self.video_widget)
         
         else:

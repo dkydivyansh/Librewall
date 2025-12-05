@@ -683,7 +683,6 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 data = json.loads(post_body)
                 
                 theme_id = str(data.get('themeId'))
-                enable_global = bool(data.get('enableGlobal'))
                 
                 if not theme_id:
                     self.send_json_response(400, {'error': "Missing 'themeId'"})
@@ -699,15 +698,32 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 with open(config_path, 'r', encoding='utf-8') as f:
                     config_data = json.load(f)
                 
-                config_data['Enable_Global_Widget'] = enable_global
+                # --- Logic 1: Global Widgets (Standard Themes) ---
+                if 'enableGlobal' in data:
+                    config_data['Enable_Global_Widget'] = bool(data.get('enableGlobal'))
+                    # Clean up old key if present
+                    if 'Enable_Network_Widget' in config_data:
+                        del config_data['Enable_Network_Widget']
+
+                # --- Logic 2: Video Settings (Video Themes) ---
+                # Only update if keys are present in the request
+                if 'fpsLimit' in data:
+                    try:
+                        # Parse to int, default to 60 if parsing fails
+                        config_data['fpsLimit'] = int(data.get('fpsLimit'))
+                    except (ValueError, TypeError):
+                        config_data['fpsLimit'] = 60
+
+                if 'muteAudio' in data:
+                    # Parse to bool, default to False if missing/null (though get handles None)
+                    val = data.get('muteAudio')
+                    config_data['muteAudio'] = bool(val) if val is not None else False
                 
-                if 'Enable_Network_Widget' in config_data:
-                    del config_data['Enable_Network_Widget']
-                
+                # Write updated config back to disk
                 with open(config_path, 'w', encoding='utf-8') as f:
                     json.dump(config_data, f, indent=2)
                 
-                print(f"Updated config for '{theme_id}': Set Enable_Global_Widget = {enable_global}")
+                print(f"Updated config for '{theme_id}'")
                 self.send_json_response(200, {'status': 'success', 'message': 'Config updated.'})
 
             except Exception as e:

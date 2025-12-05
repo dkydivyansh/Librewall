@@ -28,7 +28,7 @@ except OSError as e:
     mpv = None
 
 class NativeVideoWidget(QWidget):
-    def __init__(self, video_path, parent=None):
+    def __init__(self, video_path, parent=None, fps_limit=0, mute_audio=False):
         super().__init__(parent)
         self.is_paused = False
         
@@ -72,6 +72,20 @@ class NativeVideoWidget(QWidget):
             self.player['interpolation'] = 'yes' # Enable motion interpolation
             self.player['tscale'] = 'oversample' # Smooth scaling method
 
+            # --- MODIFIED: Apply FPS Limit via Video Filter ---
+            # We use 'vf' (video filter) to drop frames. 
+            # Setting 'fps' directly causes errors or slow-motion.
+            if fps_limit > 0:
+                print(f"Video Engine: Limiting playback to {fps_limit} FPS")
+                self.player.vf = f'fps={fps_limit}'
+
+            # --- MODIFIED: Apply Audio Mute ---
+            if mute_audio:
+                print("Video Engine: Audio Muted")
+                self.player.mute = True
+            else:
+                self.player.mute = False
+
             # 3. SEAMLESS LOOPING (The Fix)
             self.player['loop-file'] = 'inf'
             
@@ -108,7 +122,7 @@ class NativeVideoWidget(QWidget):
         # Separator
         menu.addSeparator()
         
-        # Stop Action (Optional, typically handled by main app)
+        # Stop Action (Optional)
         # action_stop = QAction("Stop Engine", self)
         # action_stop.triggered.connect(self.stop) 
         # menu.addAction(action_stop)
