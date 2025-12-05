@@ -456,22 +456,38 @@ class WallpaperWindow(QMainWindow):
         self.check_timer.start(2000)
 
     def on_load_finished(self, ok):
-        # Only run JS if we are actually using the browser
         if not self.is_video_mode and ok:
             js_patch = """
             (function() {
-                var canvas = document.getElementById("canvas");
-                if (canvas) {
+                // Find ALL canvases (id='c', id='canvas', id='game', etc.)
+                var canvases = document.querySelectorAll("canvas");
+                
+                canvases.forEach(function(canvas) {
+                    // Force Visual Size to Full Screen
+                    canvas.style.width = "100vw";
+                    canvas.style.height = "100vh";
+                    canvas.style.position = "absolute";
+                    canvas.style.top = "0";
+                    canvas.style.left = "0";
+                    
+                    // Fix Internal Resolution (Blur Fix)
                     var dpr = window.devicePixelRatio || 1;
-                    canvas.width = window.innerWidth * dpr;
-                    canvas.height = window.innerHeight * dpr;
-                    var ctx = canvas.getContext("2d");
-                    if(ctx) ctx.scale(dpr, dpr);
-                    canvas.style.width = window.innerWidth + "px";
-                    canvas.style.height = window.innerHeight + "px";
-                }
+                    if (dpr > 0) {
+                        var rect = canvas.getBoundingClientRect();
+                        // Only resize if needed to avoid infinite loops
+                        if (canvas.width !== rect.width * dpr) {
+                            canvas.width = rect.width * dpr;
+                            canvas.height = rect.height * dpr;
+                            var ctx = canvas.getContext("2d");
+                            if(ctx) ctx.scale(dpr, dpr);
+                        }
+                    }
+                });
+                // Force a Resize Event so the Wallpaper Recalculates
+                window.dispatchEvent(new Event('resize'));
             })();
             """
+            self.browser.page().runJavaScript(js_patch)
 
     def pause_wallpaper(self):
         if not self.is_paused:
