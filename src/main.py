@@ -19,6 +19,7 @@ import secrets
 import string  
 from port_map import PORT_PROTOCOL_MAP
 from video_widget import NativeVideoWidget
+import subprocess
 # ==============================================================================
 #  FIX: HIGH DPI SCALING & BACKGROUND RENDERING QUALITY
 # ==============================================================================
@@ -58,9 +59,39 @@ def get_real_screen_scale():
     except Exception as e:
         print(f"DPI Detection Warning: {e}")
         return 1.0
+def get_reliable_windows_id():
+    try:
+        # Hide PowerShell windows by using CREATE_NO_WINDOW flag
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = subprocess.SW_HIDE
 
+        # Get System UUID
+        uuid_cmd = [
+            'powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-Command',
+            "(Get-CimInstance -Class Win32_ComputerSystemProduct).UUID"
+        ]
+        uuid = subprocess.run(
+            uuid_cmd, 
+            capture_output=True, 
+            text=True, 
+            startupinfo=startupinfo,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        ).stdout.strip()
+
+        # Handle possible empty results
+        if not uuid:
+            print("Warning: UUID empty, returning fallback ID.")
+            return "unknown-device-id"
+
+        return uuid
+
+    except Exception as e:
+        print(f"[ERROR] Unable to get reliable ID: {e}")
+        return "error-generating-id"
 # 1. Calculate Scale Immediately
 current_scale = get_real_screen_scale()
+
 
 # 2. SET CHROMIUM FLAGS (The "Magic Fix")
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
@@ -365,16 +396,16 @@ class AuthWebEnginePage(QWebEnginePage):
         self.profile().setHttpUserAgent(user_agent)
 
 # --- (WallpaperWindow Class: MODIFIED) ---
+# --- (WallpaperWindow Class: MODIFIED) ---
 class WallpaperWindow(QMainWindow):
     def __init__(self, app_ref, url, auth_token): 
         super().__init__()
         self.app = app_ref 
         self.is_paused = False
-        self.is_video_mode = False # Flag to track mode
+        self.is_video_mode = False 
+        self.is_app_mode = False # Flag for App Mode
+        self.device_id = None
         
-        # 1. Determine Wallpaper Type from Config
-        # We assume MyHandler is available in the scope (from main.py)
-        # Passing None because the method doesn't use 'self'
         active_theme_path = MyHandler.get_current_wallpaper_path(None)
         theme_config_path = os.path.join(active_theme_path, 'config.json')
         
@@ -387,24 +418,28 @@ class WallpaperWindow(QMainWindow):
             try:
                 with open(theme_config_path, 'r') as f:
                     config = json.load(f)
+                    # Check Video Mode
                     if config.get('videorender') is True:
                         use_video = True
                         video_file = config.get('media')
-                        # --- MODIFIED: READ VIDEO SETTINGS ---
                         fps_limit = config.get('fpsLimit', 60)
                         mute_audio = config.get('muteAudio', False)
+                    
+                    # Check App Mode (Respect Taskbar)
+                    if config.get('htmlrender') is True:
+                        self.is_app_mode = True
+                        print("Mode: App/Widget (Respecting Taskbar)")
+                        self.device_id = get_reliable_windows_id()
+                        print(f"App Mode Detected. ID Generated: {self.device_id}")
+
             except Exception as e: print(f"Config Read Error: {e}")
 
-        # 2. Initialize the Appropriate Engine
+        # 2. Initialize Engine
         if use_video and video_file:
-            print("Mode: Native Video Engine (MPV)")
+            print(f"Mode: Native Video Engine (MPV) [FPS: {fps_limit}, Mute: {mute_audio}]")
             self.is_video_mode = True
-            
-            # Construct full path to the video file
             full_video_path = os.path.join(active_theme_path, video_file)
             
-            # Initialize Native Video Widget
-            # Ensure NativeVideoWidget is imported at top of file
             self.video_widget = NativeVideoWidget(
                 full_video_path, 
                 self, 
@@ -412,17 +447,17 @@ class WallpaperWindow(QMainWindow):
                 mute_audio=mute_audio
             )
             self.setCentralWidget(self.video_widget)
-        
         else:
-            print("Mode: Web Engine (Chromium)")
+            if not self.is_app_mode:
+                print("Mode: Web Engine (Full Screen)")
+
             self.is_video_mode = False
             self.browser = CustomWebEngineView(self)
             
-            # Browser Setup Logic
             storage_path = os.path.join(SCRIPT_DIR, "browser_data")
             if not os.path.exists(storage_path):
-                os.makedirs(storage_path, exist_ok=True)
-                
+                try: os.makedirs(storage_path)
+                except: pass
             self.web_profile = QWebEngineProfile("LibrewallProfile", self)
             self.web_profile.setPersistentStoragePath(storage_path)
             self.web_profile.setCachePath(storage_path)
@@ -436,25 +471,37 @@ class WallpaperWindow(QMainWindow):
             self.browser.setUrl(QUrl(url))
             self.setCentralWidget(self.browser)
 
-        # 3. Window Setup (Common to both)
+        # 3. Window Setup
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnBottomHint)
         self.window_handle = int(self.winId())
 
-        # 4. Resolution Calculation
+        # 4. Resolution & Geometry
         screen = self.app.primaryScreen()
-        geometry = screen.geometry() 
-        self.screen_width = geometry.width()
-        self.screen_height = geometry.height()
-        try:
-             hDC = user32.GetDC(0)
-             phy_w = user32.GetDeviceCaps(hDC, 118) 
-             phy_h = user32.GetDeviceCaps(hDC, 117) 
-             user32.ReleaseDC(0, hDC)
-             self.screen_width = max(self.screen_width, phy_w)
-             self.screen_height = max(self.screen_height, phy_h)
-        except: pass
+        
+        if self.is_app_mode:
+            # APP MODE: Use Work Area (Exclude Taskbar)
+            self.rect = screen.availableGeometry()
+        else:
+            # VIDEO/NORMAL: Use Full Screen
+            self.rect = screen.geometry()
 
-        self.setGeometry(0, 0, self.screen_width, self.screen_height)
+        self.screen_width = self.rect.width()
+        self.screen_height = self.rect.height()
+
+        # Physical Resolution Fallback (Only for Fullscreen modes)
+        if not self.is_app_mode:
+            try:
+                 hDC = user32.GetDC(0)
+                 phy_w = user32.GetDeviceCaps(hDC, 118); phy_h = user32.GetDeviceCaps(hDC, 117) 
+                 user32.ReleaseDC(0, hDC)
+                 self.screen_width = max(self.screen_width, phy_w)
+                 self.screen_height = max(self.screen_height, phy_h)
+                 # Update rect width/height if physical is larger
+                 self.rect.setWidth(self.screen_width)
+                 self.rect.setHeight(self.screen_height)
+            except: pass
+
+        self.setGeometry(self.rect)
         self.show()
 
         # 5. Start Timers
@@ -464,25 +511,28 @@ class WallpaperWindow(QMainWindow):
         self.check_timer.start(2000)
 
     def on_load_finished(self, ok):
-        if not self.is_video_mode and ok:
+        # FIX: Only apply the canvas patch if we are in "App Mode"
+        # Standard 3D wallpapers (WebGL) handle their own resizing/context, 
+        # and this patch breaks them by forcing 2D scaling logic.
+        if self.is_app_mode and ok and self.device_id:
+            js_code = f'window.deviceid = "{self.device_id}";'
+            self.browser.page().runJavaScript(js_code)
+            print(f"Injected global JS variable: window.deviceid = {self.device_id}")
+        if self.is_app_mode and not self.is_video_mode and ok:
             js_patch = """
             (function() {
-                // Find ALL canvases (id='c', id='canvas', id='game', etc.)
                 var canvases = document.querySelectorAll("canvas");
-                
                 canvases.forEach(function(canvas) {
-                    // Force Visual Size to Full Screen
-                    canvas.style.width = "100vw";
-                    canvas.style.height = "100vh";
+                    // Use 100% to fill the window (which is already sized to taskbar)
+                    canvas.style.width = "100%";
+                    canvas.style.height = "100%";
                     canvas.style.position = "absolute";
                     canvas.style.top = "0";
                     canvas.style.left = "0";
                     
-                    // Fix Internal Resolution (Blur Fix)
                     var dpr = window.devicePixelRatio || 1;
                     if (dpr > 0) {
                         var rect = canvas.getBoundingClientRect();
-                        // Only resize if needed to avoid infinite loops
                         if (canvas.width !== rect.width * dpr) {
                             canvas.width = rect.width * dpr;
                             canvas.height = rect.height * dpr;
@@ -491,7 +541,6 @@ class WallpaperWindow(QMainWindow):
                         }
                     }
                 });
-                // Force a Resize Event so the Wallpaper Recalculates
                 window.dispatchEvent(new Event('resize'));
             })();
             """
@@ -514,14 +563,17 @@ class WallpaperWindow(QMainWindow):
             else:
                 self.browser.page().runJavaScript("resumeAnimation();")
             self.show(); QTimer.singleShot(50, self.setup_window_layer)
+
     def setup_window_layer(self):
         try:
             ex_style = win32gui.GetWindowLong(self.window_handle, win32con.GWL_EXSTYLE)
             ex_style |= win32con.WS_EX_TOOLWINDOW   
             ex_style &= ~win32con.WS_EX_APPWINDOW   
             win32gui.SetWindowLong(self.window_handle, win32con.GWL_EXSTYLE, ex_style)
+            
             progman = win32gui.FindWindow("Progman", None)
             win32gui.SendMessageTimeout(progman, 0x052C, 0, 0, win32con.SMTO_NORMAL, 1000)
+            
             workerw = None
             def find_workerw(hwnd, _):
                 nonlocal workerw
@@ -530,16 +582,34 @@ class WallpaperWindow(QMainWindow):
                     return False
                 return True
             win32gui.EnumWindows(find_workerw, 0)
+            
             if workerw:
                 print(f"Attaching to Desktop (WorkerW: {workerw})")
                 win32gui.SetParent(self.window_handle, workerw)
+                
+                # IMPORTANT: Enforce Geometry after attaching
+                # Uses self.rect (Work Area for Apps, Full Screen for others)
+                win32gui.SetWindowPos(
+                    self.window_handle, 
+                    0, 
+                    self.rect.x(), self.rect.y(), self.rect.width(), self.rect.height(), 
+                    win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE
+                )
             else:
                 print("WorkerW not found. Using Fallback.")
-                safe_height = self.screen_height - 1
-                self.setGeometry(0, 0, self.screen_width, safe_height)
-                win32gui.SetWindowPos(self.window_handle, win32con.HWND_BOTTOM, 0, 0, self.screen_width, safe_height, win32con.SWP_NOACTIVATE)
+                # Fallback Safety
+                safe_height = self.rect.height()
+                if not self.is_app_mode: safe_height -= 1
+                
+                win32gui.SetWindowPos(
+                    self.window_handle, 
+                    win32con.HWND_BOTTOM, 
+                    self.rect.x(), self.rect.y(), self.rect.width(), safe_height, 
+                    win32con.SWP_NOACTIVATE
+                )
         except Exception as e:
             print(f"Error setting up window layer: {e}")
+
     def check_fullscreen(self):
         try:
             fg_window = win32gui.GetForegroundWindow()
