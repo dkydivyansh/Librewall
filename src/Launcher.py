@@ -19,7 +19,8 @@ from PyQt6.QtWidgets import QApplication, QMainWindow
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEngineProfile, QWebEngineScript
 import updater_module 
-
+import zlib  # Add this if not present
+import base64 # Add this if not present
 # --- Import for Shortcut Logic ---
 try:
     import win32com.client
@@ -28,6 +29,14 @@ except ImportError:
     HAS_WIN32COM = False
     print("Warning: win32com not found. Auto-start shortcut features will be disabled.")
 
+# --- Import Frontend Assets ---
+try:
+    from frontend import frontend_assets
+    HAS_EMBEDDED_ASSETS = True
+    print("✅ Loaded high-performance embedded assets.")
+except ImportError:
+    HAS_EMBEDDED_ASSETS = False
+    print("⚠️ No embedded assets found. Running in dev (file-system) mode.")
 # --- Hardcode the app version here ---
 CURRENT_APP_VERSION = 1
 CURRENT_APP_VERSION_NAME = "1.0 Beta"
@@ -409,41 +418,65 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
 
     # --- UPDATED do_GET ---
     def do_GET(self):
-        """ Handle custom endpoints and file serving. """
+        routes = {
+            '/': ('DATA_HOME', EDITOR_HTML),
+            f'/{EDITOR_HTML}': ('DATA_HOME', EDITOR_HTML),
+            f'/{DISCOVER_HTML}': ('DATA_DISCOVER', DISCOVER_HTML),
+            f'/{SETTINGS_HTML}': ('DATA_SETTINGS', SETTINGS_HTML),
+        }
 
+        if self.path in routes:
+            asset_var, disk_filename = routes[self.path]
+
+            # 1. DEV MODE: Check Disk First (Hot Reloading)
+            # If the file exists physically, serve it. This allows you to edit HTML
+            # and refresh the app instantly without rebuilding.
+            if os.path.exists(disk_filename):
+                self.path = f'/{disk_filename}'
+                # Let the superclass handle file serving
+                return super().do_GET()
+
+            # 2. PROD MODE: Serve Compressed Embedded Asset
+            # If file is missing (compiled app), load from memory.
+            if HAS_EMBEDDED_ASSETS:
+                # Use the helper function we generated in the asset file
+                html_bytes = frontend_assets.get_asset(asset_var)
+                
+                if html_bytes:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(html_bytes)))
+                    self.end_headers()
+                    self.wfile.write(html_bytes) # Write bytes directly for speed
+                    return
+
+        # --- EXISTING API ENDPOINTS (Keep these exactly as they were) ---
         if self.path == '/installed_themes':
+            # ... (Paste your existing /installed_themes logic here) ...
             try:
                 base_dir = os.path.join(SERVER_ROOT, WALLPAPERS_DIR)
                 if not os.path.isdir(base_dir):
                     self.send_json_response(500, {'error': 'Wallpapers directory not found'})
                     return
-                
-                installed_ids = [
-                    d for d in os.listdir(base_dir) 
-                    if os.path.isdir(os.path.join(base_dir, d))
-                ]
-                
-                self.send_json_response(200, {
-                    'installedIds': installed_ids,
-                    'appVersion': CURRENT_APP_VERSION 
-                })
+                installed_ids = [d for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]
+                self.send_json_response(200, {'installedIds': installed_ids, 'appVersion': CURRENT_APP_VERSION })
             except Exception as e:
                 self.send_json_response(500, {'error': str(e)})
             return
 
         elif self.path == '/wallpapers':
+            # ... (Paste your existing /wallpapers logic here) ...
             try:
                 data = scan_all_wallpapers()
                 self.send_json_response(200, data)
             except Exception as e:
-                print(f"Error generating wallpaper list: {e}")
                 self.send_json_response(500, {'error': f"Error generating wallpaper list: {e}"})
             return
             
         elif self.path == '/get_app_settings':
+            # ... (Paste your existing /get_app_settings logic here) ...
             try:
                 config = read_app_config()
-                # Augment with version info
                 config['appVersion'] = CURRENT_APP_VERSION
                 config['appVersionName'] = CURRENT_APP_VERSION_NAME
                 config['enginePort'] = config.get('port')
@@ -451,16 +484,8 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self.send_json_response(500, {'error': f"Error reading config: {e}"})
             return
-        
-        if self.path == '/':
-            self.path = f'/{EDITOR_HTML}'
-        
-        elif self.path == f'/{DISCOVER_HTML}':
-            self.path = f'/{DISCOVER_HTML}'
 
-        elif self.path == f'/{SETTINGS_HTML}':
-            self.path = f'/{SETTINGS_HTML}'
-            
+        # 3. Final Fallback: Serve static files (css, js, images, or html if embedded is missing)
         return super().do_GET()
 
     def do_POST(self):
@@ -844,13 +869,7 @@ if __name__ == "__main__":
         html_path = os.path.join(SERVER_ROOT, html_file)
         if not os.path.isfile(html_path):
             print(f"Warning: Editor UI file '{html_file}' not found.")
-            try:
-                with open(html_path, 'w') as f:
-                    f.write(f"<html><body><h1>{html_file} Placeholder</h1></body></html>")
-                print(f"Created placeholder {html_file}.")
-            except Exception as e:
-                print(f"Could not create placeholder file: {e}")
-                if html_file == EDITOR_HTML: sys.exit(1)
+           
             
     wallpapers_path = os.path.join(SERVER_ROOT, WALLPAPERS_DIR)
     if not os.path.isdir(wallpapers_path):

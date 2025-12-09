@@ -20,6 +20,15 @@ import string
 from port_map import PORT_PROTOCOL_MAP
 from video_widget import NativeVideoWidget
 import subprocess
+import zlib  # Add this
+import base64 # Add this
+try:
+    from frontend import engine_assets
+    HAS_EMBEDDED_ASSETS = True
+    print("✅ Loaded high-performance embedded engine assets.")
+except ImportError:
+    HAS_EMBEDDED_ASSETS = False
+    print("⚠️ No embedded engine assets found. Running in dev (file-system) mode.")
 # ==============================================================================
 #  FIX: HIGH DPI SCALING & BACKGROUND RENDERING QUALITY
 # ==============================================================================
@@ -182,8 +191,11 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         current_wallpaper_path = self.get_current_wallpaper_path()
         file_path = ""
         mime_type = ""
-        try:
+        
+        try: # <--- THIS TRY WAS MISSING
+            # --- 1. HANDLE ROOT REQUEST (index.html) ---
             if clean_path == '/':
+                # Check if theme uses custom HTML (App Mode)
                 config_path = os.path.join(current_wallpaper_path, 'config.json')
                 is_html_render = False
                 target_html_file = 'index.html' 
@@ -199,13 +211,37 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                     print(f"Error checking theme config for htmlrender: {e}")
 
                 if is_html_render:
+                    # CASE A: Theme Specific HTML -> Serve from Disk
                     print(f"HTML Render Mode: Serving {target_html_file} from theme folder.")
                     file_path = os.path.join(current_wallpaper_path, target_html_file)
+                    mime_type = 'text/html'
                 else:
-                    file_path = os.path.join(SCRIPT_DIR, 'index.html')
-                
-                mime_type = 'text/html'
+                    # CASE B: Standard 3D Mode -> Serve Default index.html
+                    # PRIORITY: Disk (Dev) > Embedded (Prod)
+                    disk_index = os.path.join(SCRIPT_DIR, 'index.html')
+                    
+                    if os.path.exists(disk_index):
+                        # Dev Mode: index.html exists on disk, use it
+                        file_path = disk_index
+                        mime_type = 'text/html'
+                    elif HAS_EMBEDDED_ASSETS:
+                        # Prod Mode: Serve from Memory (Compressed)
+                        html_bytes = engine_assets.get_asset('DATA_INDEX')
+                        if html_bytes:
+                            self.send_response(200)
+                            self.send_header('Content-type', 'text/html')
+                            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                            self.end_headers()
+                            self.wfile.write(html_bytes)
+                            return
+                        else:
+                            self.send_error(404, "Embedded index.html not found.")
+                            return
+                    else:
+                        self.send_error(404, "index.html not found on disk or embedded.")
+                        return
 
+            # --- 2. HANDLE SPECIAL ENDPOINTS ---
             elif clean_path == '/config':
                 file_path = os.path.join(current_wallpaper_path, 'config.json')
                 try:
@@ -272,6 +308,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 relative_path = clean_path.lstrip('/')
                 file_path = os.path.join(current_wallpaper_path, relative_path)
             
+            # --- 3. DETERMINE MIME TYPE ---
             mime_map = {
                 ".css": "text/css", ".js": "application/javascript", ".html": "text/html",
                 ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
@@ -283,10 +320,12 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             if not mime_type:
                 ext = os.path.splitext(file_path)[1].lower()
                 mime_type = mime_map.get(ext, "application/octet-stream")
+
         except Exception as e:
             self.send_error(500, f"Error resolving path: {e}")
             return
         
+        # --- 4. SERVE FILE FROM DISK ---
         try:
             with open(file_path, 'rb') as f:
                 self.send_response(200)
