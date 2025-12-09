@@ -1,5 +1,13 @@
 import sys
 import os
+if sys.stdout is None or sys.stderr is None:
+    class NullWriter:
+        def write(self, text): pass
+        def flush(self): pass
+        def isatty(self): return False
+    
+    sys.stdout = NullWriter()
+    sys.stderr = NullWriter()
 import http.server
 import socketserver
 import threading
@@ -15,7 +23,8 @@ import io
 import urllib.parse
 import cgi 
 from PyQt6.QtCore import QUrl, Qt, QTimer
-from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMenu
+from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEngineProfile, QWebEngineScript
 import updater_module 
@@ -861,8 +870,22 @@ class EditorWindow(QMainWindow):
 
 # --- 5. Main Execution (Updated) ---
 if __name__ == "__main__":
+    # 1. INITIALIZE APP FIRST (Correct)
+    app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(True)
+
+    # 2. SET ICON
+    icon_path = os.path.join(SERVER_ROOT, '1.ico')
+    if os.path.exists(icon_path):
+        app.setWindowIcon(QIcon(icon_path))
+
+    # 3. SET WINDOWS APP ID
+    try:
+        myappid = 'dkydivyansh.librewall.launcher' 
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except: pass
+    
     if not check_single_instance():
-        # Just in case, stop further initialization
         sys.exit(0)
     # --- (File/Dir checks are unchanged) ---
     for html_file in [EDITOR_HTML, DISCOVER_HTML, SETTINGS_HTML]: 
@@ -909,9 +932,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error: Could not start server thread: {e}")
         sys.exit(1)
-
-    # --- (PyQt start is unchanged) ---
-    app = QApplication(sys.argv)
      # --- 2. Check Updates ---
     if not updater_module.run_update_check(CURRENT_APP_VERSION, CURRENT_APP_VERSION_NAME, API_BASE_URL):
         sys.exit(0) # Exit if update is happening or app closed

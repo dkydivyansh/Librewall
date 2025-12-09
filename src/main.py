@@ -1,6 +1,14 @@
 import os
-import ctypes
 import sys
+if sys.stdout is None or sys.stderr is None:
+    class NullWriter:
+        def write(self, text): pass
+        def flush(self): pass
+        def isatty(self): return False
+    
+    sys.stdout = NullWriter()
+    sys.stderr = NullWriter()
+import ctypes
 import win32gui
 import win32con
 import win32api
@@ -120,6 +128,7 @@ os.environ["QT_SCALE_FACTOR"] = "1"
 
 from PyQt6.QtCore import QUrl, Qt, QTimer
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenu
+from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 # --- MODIFIED: Added QWebEngineProfile ---
 from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile 
@@ -849,6 +858,19 @@ def start_websocket_thread(current_process_name):
 
 # --- (Main Execution) ---
 if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    
+    # 2. SET ICON (From Root Directory)
+    # SCRIPT_DIR is already calculated correctly for PyInstaller at the top of your file
+    icon_path = os.path.join(SCRIPT_DIR, 'icon.ico') 
+    if os.path.exists(icon_path):
+        app.setWindowIcon(QIcon(icon_path))
+
+    # 3. SET WINDOWS APP ID
+    try:
+        myappid = 'dkydivyansh.librewall.engine'
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except: pass
     check_single_instance()
     AUTH_TOKEN = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(50))
     os.environ["QTWEBENGINE_REMOTE_DEBUGGING"] = "9222"
@@ -885,8 +907,6 @@ if __name__ == "__main__":
     except: pass
     
     server_url = f"http://localhost:{http_port}"
-    
-    app = QApplication(sys.argv)
     app.is_restarting = False
     window = WallpaperWindow(app_ref=app, url=server_url, auth_token=AUTH_TOKEN)
     start_server(http_port, create_handler_class(window, app, http_port, AUTH_TOKEN))
