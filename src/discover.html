@@ -448,6 +448,32 @@
                 transform: rotate(360deg);
             }
         }
+
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: var(--primary-color);
+            border-radius: 6px;
+            border: 3px solid var(--bg-color);
+            /* Creates padding around the thumb */
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: var(--primary-hover);
+        }
+
+        /* Works on Firefox */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-color) var(--bg-color);
+        }
     </style>
 </head>
 
@@ -555,20 +581,41 @@
                 pageTitle.textContent = 'New Releases';
             }
 
-            // Reset UI: Show Grid, Hide Error
+            // Reset UI
             grid.style.display = 'grid';
             errorView.style.display = 'none';
             paginationControls.style.display = 'flex';
-
             grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:#777;">Loading...</p>';
 
             try {
-                // Check if browser detects offline immediately
-                if (!navigator.onLine) {
-                    throw new Error("Browser offline");
-                }
-
+                if (!navigator.onLine) throw new Error("Browser offline");
                 await fetchInstalledThemes();
+
+                // --- NEW LOGIC: CHECK MINIMUM DISCOVER VERSION ---
+                // We fetch the latest update info to see the restrictions
+                const updateResp = await fetch(`${API_BASE_URL}?action=get_latest_update`);
+                if (updateResp.ok) {
+                    const updateData = await updateResp.json();
+                    const minDiscoverVer = updateData.data ? parseInt(updateData.data.min_discover_version || 0) : 0;
+
+                    if (CURRENT_APP_VERSION < minDiscoverVer) {
+                        const requiredVer = updateData.data.version_name || "Newer";
+                        // Hide grid and show block message
+                        grid.style.display = 'none';
+                        paginationControls.style.display = 'none';
+
+                        // Customizing error view for this specific blocking case
+                        errorView.style.display = 'flex';
+                        errorView.querySelector('.error-icon').textContent = '⚠️';
+                        errorView.querySelector('.error-title').textContent = 'Update Required';
+                        errorView.querySelector('.error-desc').textContent =
+                            `To access the Discover store, you need to update Librewall.\n\nRequired: v${minDiscoverVer}+ \nCurrent: v${CURRENT_APP_VERSION}\n\nPlease restart the application to update.`;
+
+                        document.getElementById('retry-btn').style.display = 'none'; // No retry possible without update
+                        return; // STOP EXECUTION HERE
+                    }
+                }
+                // ------------------------------------------------
 
                 const response = await fetch(url);
                 if (!response.ok) {
@@ -579,11 +626,8 @@
                 grid.innerHTML = '';
 
                 if (data.data && data.data.length > 0) {
-
-                    // --- SORTING LOGIC: Move installed to bottom ---
                     const uninstalledThemes = [];
                     const installedThemes = [];
-
                     data.data.forEach(theme => {
                         if (installedThemeIds.includes(theme.id.toString())) {
                             installedThemes.push(theme);
@@ -591,19 +635,13 @@
                             uninstalledThemes.push(theme);
                         }
                     });
-
-                    // Concatenate: Uninstalled first, then installed
                     const sortedThemes = uninstalledThemes.concat(installedThemes);
-
                     sortedThemes.forEach(theme => {
                         grid.appendChild(createWallpaperCard(theme));
                     });
-                    // ------------------------------------------------
-
                 } else {
                     grid.innerHTML = "<p style='grid-column: 1/-1;'>No themes found.</p>";
                 }
-
                 updatePagination(data.data ? data.data.length : 0);
 
             } catch (err) {

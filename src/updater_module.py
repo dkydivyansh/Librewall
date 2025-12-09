@@ -181,13 +181,17 @@ class DownloadWorker(QThread):
 
 
 class UpdateWindow(QWidget):
-    def __init__(self, current_ver_name, current_ver_code, update_data):
+    def __init__(self, current_ver_name, current_ver_code, update_data, is_force_update=False):
         super().__init__()
         self.update_data = update_data
-        self.current_ver_code = current_ver_code # Store for arguments
+        self.current_ver_code = current_ver_code
         self.worker = None
+        self.is_force_update = is_force_update
         
-        self.setWindowTitle("Librewall Update")
+        # Change window title and allow specific handling for forced updates
+        title_text = "Mandatory Update" if is_force_update else "Update Available"
+        self.setWindowTitle(title_text)
+        
         self.setFixedSize(500, 300)
         # Frameless window
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
@@ -199,8 +203,13 @@ class UpdateWindow(QWidget):
         self.layout.setSpacing(10)
         
         # 1. Header (Dynamic)
-        self.title_label = QLabel("Update Available")
+        self.title_label = QLabel(title_text)
         self.title_label.setObjectName("Title")
+        
+        # Highlight forced update with color
+        if is_force_update:
+            self.title_label.setStyleSheet("color: #ff5555;")
+            
         self.layout.addWidget(self.title_label)
         
         # 2. Version Info (Visible initially)
@@ -209,6 +218,10 @@ class UpdateWindow(QWidget):
             f"New Version: {update_data['version_name']}\n"
             f"Size: {update_data['file_size']}"
         )
+        
+        if is_force_update:
+            info_text += "\n\nThis update is required to continue using the application."
+            
         self.info_label = QLabel(info_text)
         self.info_label.setObjectName("VersionInfo")
         self.layout.addWidget(self.info_label)
@@ -236,6 +249,10 @@ class UpdateWindow(QWidget):
         self.skip_btn = QPushButton("Skip")
         self.skip_btn.setObjectName("SecondaryBtn")
         self.skip_btn.clicked.connect(self.close)
+        
+        # HIDE SKIP BUTTON IF FORCE UPDATE
+        if self.is_force_update:
+            self.skip_btn.hide()
         
         self.update_btn = QPushButton("Update")
         self.update_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -345,9 +362,15 @@ class UpdateWindow(QWidget):
         self.progress_bar.setValue(0)
         self.stats_label.setStyleSheet("color: #ffffff;")
         
-        self.title_label.setText("Update Available")
+        title_text = "Mandatory Update" if self.is_force_update else "Update Available"
+        self.title_label.setText(title_text)
+        
         self.info_label.show()
-        self.skip_btn.show()
+        
+        # Only show Skip if NOT forced
+        if not self.is_force_update:
+            self.skip_btn.show()
+            
         self.update_btn.show()
         self.pause_btn.setText("Pause")
 
@@ -388,7 +411,8 @@ class UpdateWindow(QWidget):
 
 def run_update_check(current_version_code, current_version_name, api_base_url):
     """
-    Returns True if the main app should continue, False if it should exit (update running).
+    Returns True if the main app should continue, False if it should exit.
+    Checks server version and enforces mandatory updates.
     """
     try:
         url = f"{api_base_url}?action=get_latest_update"
@@ -400,13 +424,34 @@ def run_update_check(current_version_code, current_version_name, api_base_url):
             return True 
             
         server_ver = int(update_info.get('version', 0))
+        # Get new variable: Minimum required version
+        min_required_ver = int(update_info.get('min_required_version', 0))
         
         # Check Version CODE (int), but display Version NAME (str)
         if server_ver > current_version_code:
-            # Pass BOTH Name and Code to Window
-            window = UpdateWindow(current_version_name, current_version_code, update_info)
+            
+            # Determine if this update is mandatory
+            is_force_update = (current_version_code < min_required_ver)
+            
+            print(f"Update Check: Current={current_version_code}, Latest={server_ver}, MinReq={min_required_ver}, Forced={is_force_update}")
+
+            # Pass forced state to window
+            window = UpdateWindow(current_version_name, current_version_code, update_info, is_force_update)
             window.show()
-            loop = QApplication.exec() 
+            
+            # Block until window closes
+            QApplication.exec()
+            
+            # --- CRITICAL: CHECK IF WE SHOULD EXIT ---
+            # If it was a force update, and we reached this line, it means
+            # the window closed WITHOUT successfully launching the installer
+            # (because successful install calls sys.exit inside run_installer).
+            # Therefore, the user closed the window or canceled.
+            if is_force_update:
+                print("Mandatory update required. Exiting application.")
+                sys.exit(0) 
+                return False # Should not be reached, but for safety
+
             return True
             
     except Exception as e:

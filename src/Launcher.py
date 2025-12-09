@@ -141,21 +141,6 @@ def check_single_instance(mutex_name=r"Global\librewall", window_title="librewal
 
     # ERROR_ALREADY_EXISTS = 183
     if kernel32.GetLastError() == 183:
-        # Another instance is already running
-
-        # Try to bring the existing window to the front
-        activated = bring_existing_instance_to_front(window_title)
-
-        if not activated:
-            # Fallback if we couldn't find the window for some reason
-            try:
-                show_native_error_box(
-                    "librewall",
-                    "Another instance of librewall is already running."
-                )
-            except NameError:
-                pass
-
         # Close our mutex handle (we are the second instance)
         if mutex_handle:
             kernel32.CloseHandle(mutex_handle)
