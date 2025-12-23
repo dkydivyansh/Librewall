@@ -1,6 +1,5 @@
 ![Librewall Banner](./asset/banner.png)
 # Librewall
-
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)](https://github.com/dkydivyansh/Librewall)
 [![Status](https://img.shields.io/badge/status-Active_Development-green)]()
@@ -13,9 +12,11 @@
 
 ![3D Model Wallpaper](./asset/3Dmodel_preview.gif)
 
+
 **Interactive Web/App Integration**
 
 ![Web App Preview](./asset/web_app_preview.gif)
+
 
 **Customization**
 
