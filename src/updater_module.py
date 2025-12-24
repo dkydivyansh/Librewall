@@ -11,8 +11,6 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, 
     QProgressBar, QHBoxLayout, QApplication, QFrame
 )
-
-# --- Stylesheet for High Contrast (Black/White) ---
 STYLESHEET = """
 QWidget {
     background-color: #121212;
@@ -75,8 +73,8 @@ QProgressBar::chunk {
 
 class DownloadWorker(QThread):
     progress = pyqtSignal(int)
-    stats = pyqtSignal(str) # Emits formatted string "50MB / 150MB - 2 MB/s"
-    finished = pyqtSignal(str) # Emits path to downloaded file
+    stats = pyqtSignal(str) 
+    finished = pyqtSignal(str) 
     error = pyqtSignal(str)
 
     def __init__(self, url, filename, expected_hash=None):
@@ -112,7 +110,7 @@ class DownloadWorker(QThread):
 
                 with open(filepath, 'wb') as f:
                     while self.is_running:
-                        # Pause Logic
+  
                         while self.is_paused:
                             time.sleep(0.1)
                             if not self.is_running: break
@@ -126,9 +124,8 @@ class DownloadWorker(QThread):
                         downloaded += len(buffer)
                         f.write(buffer)
                         
-                        # Stats Calculation
                         current_time = time.time()
-                        if current_time - last_time >= 1.0: # Update every second
+                        if current_time - last_time >= 1.0: 
                             speed = (downloaded - last_downloaded) / (current_time - last_time)
                             
                             speed_str = f"{self.format_bytes(speed)}/s"
@@ -144,12 +141,12 @@ class DownloadWorker(QThread):
                             self.progress.emit(percent)
             
             if not self.is_running:
-                # Cleanup if cancelled
+              
                 if os.path.exists(filepath):
                     os.remove(filepath)
                 return
 
-            # Verify Hash
+      
             if self.expected_hash:
                 self.stats.emit("Verifying integrity...")
                 file_hash = self.calculate_sha256(filepath)
@@ -188,31 +185,26 @@ class UpdateWindow(QWidget):
         self.worker = None
         self.is_force_update = is_force_update
         
-        # Change window title and allow specific handling for forced updates
         title_text = "Mandatory Update" if is_force_update else "Update Available"
         self.setWindowTitle(title_text)
         
         self.setFixedSize(500, 300)
-        # Frameless window
+      
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.setStyleSheet(STYLESHEET)
         
-        # --- UI Initialization ---
         self.layout = QVBoxLayout()
         self.layout.setContentsMargins(30, 30, 30, 30)
         self.layout.setSpacing(10)
         
-        # 1. Header (Dynamic)
         self.title_label = QLabel(title_text)
         self.title_label.setObjectName("Title")
         
-        # Highlight forced update with color
         if is_force_update:
             self.title_label.setStyleSheet("color: #ff5555;")
             
         self.layout.addWidget(self.title_label)
         
-        # 2. Version Info (Visible initially)
         info_text = (
             f"Current Version: {current_ver_name}\n"
             f"New Version: {update_data['version_name']}\n"
@@ -226,39 +218,27 @@ class UpdateWindow(QWidget):
         self.info_label.setObjectName("VersionInfo")
         self.layout.addWidget(self.info_label)
         
-        # 3. Stats Label (Hidden initially)
         self.stats_label = QLabel("")
         self.stats_label.setObjectName("Stats")
         self.stats_label.hide()
         self.layout.addWidget(self.stats_label)
 
         self.layout.addStretch()
-
-        # 4. Progress Bar (Hidden initially)
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
         self.progress_bar.setTextVisible(False)
         self.progress_bar.hide()
         self.layout.addWidget(self.progress_bar)
-        
-        # 5. Buttons Layout
         self.btn_layout = QHBoxLayout()
-        
-        # Initial Buttons
         self.skip_btn = QPushButton("Skip")
         self.skip_btn.setObjectName("SecondaryBtn")
         self.skip_btn.clicked.connect(self.close)
-        
-        # HIDE SKIP BUTTON IF FORCE UPDATE
         if self.is_force_update:
-            self.skip_btn.hide()
-        
+            self.skip_btn.hide()        
         self.update_btn = QPushButton("Update")
         self.update_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.update_btn.clicked.connect(self.start_download)
-        
-        # Download Mode Buttons (Hidden initially)
         self.pause_btn = QPushButton("Pause")
         self.pause_btn.setObjectName("SecondaryBtn")
         self.pause_btn.clicked.connect(self.toggle_pause)
@@ -268,34 +248,23 @@ class UpdateWindow(QWidget):
         self.cancel_btn.setObjectName("SecondaryBtn")
         self.cancel_btn.clicked.connect(self.cancel_download)
         self.cancel_btn.hide()
-
-        # Retry Button (Added for error state)
         self.retry_btn = QPushButton("Retry")
-        # Use primary style for Retry to encourage action, or Secondary if preferred
         self.retry_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.retry_btn.clicked.connect(self.retry_update)
         self.retry_btn.hide()
-
         self.btn_layout.addWidget(self.skip_btn)
         self.btn_layout.addWidget(self.update_btn)
-        self.btn_layout.addWidget(self.retry_btn) # Added to layout
+        self.btn_layout.addWidget(self.retry_btn)
         self.btn_layout.addWidget(self.pause_btn)
         self.btn_layout.addWidget(self.cancel_btn)
-        
         self.layout.addLayout(self.btn_layout)
         self.setLayout(self.layout)
-        
-        # Center on screen
         if QApplication.primaryScreen():
             geo = self.frameGeometry()
             center = QApplication.primaryScreen().availableGeometry().center()
             geo.moveCenter(center)
             self.move(geo.topLeft())
-            
-        # For Mouse Move
         self.drag_pos = None
-
-    # --- Mouse Events for Dragging ---
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             self.drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
@@ -305,39 +274,29 @@ class UpdateWindow(QWidget):
         if event.buttons() == Qt.MouseButton.LeftButton and self.drag_pos:
             self.move(event.globalPosition().toPoint() - self.drag_pos)
             event.accept()
-
-    # --- Logic ---
-
     def start_download(self):
-        # UI Transition
         self.info_label.hide()
         self.skip_btn.hide()
         self.update_btn.hide()
-        self.retry_btn.hide() # Ensure retry is hidden
-        
+        self.retry_btn.hide()
         self.title_label.setText("Downloading Update...")
         self.stats_label.show()
-        self.stats_label.setStyleSheet("color: #ffffff;") # Reset color
+        self.stats_label.setStyleSheet("color: #ffffff;")
         self.stats_label.setText("Starting...")
         self.progress_bar.show()
         self.pause_btn.show()
         self.cancel_btn.show()
-        
-        # Start Worker
         url = self.update_data.get('installer_url')
         expected_hash = self.update_data.get('installer_hash')
         filename = "librewall_setup.exe"
-        
         self.worker = DownloadWorker(url, filename, expected_hash)
         self.worker.progress.connect(self.progress_bar.setValue)
         self.worker.stats.connect(self.stats_label.setText)
         self.worker.finished.connect(self.run_installer)
         self.worker.error.connect(self.on_error)
         self.worker.start()
-
     def toggle_pause(self):
         if not self.worker: return
-        
         if self.worker.is_paused:
             self.worker.resume()
             self.pause_btn.setText("Pause")
@@ -353,12 +312,11 @@ class UpdateWindow(QWidget):
             self.worker.wait()
             self.worker = None
         
-        # Reset UI to initial state
         self.stats_label.hide()
         self.progress_bar.hide()
         self.pause_btn.hide()
         self.cancel_btn.hide()
-        self.retry_btn.hide() # Hide retry
+        self.retry_btn.hide() 
         self.progress_bar.setValue(0)
         self.stats_label.setStyleSheet("color: #ffffff;")
         
@@ -367,7 +325,6 @@ class UpdateWindow(QWidget):
         
         self.info_label.show()
         
-        # Only show Skip if NOT forced
         if not self.is_force_update:
             self.skip_btn.show()
             
@@ -378,30 +335,22 @@ class UpdateWindow(QWidget):
         self.title_label.setText("Installing...")
         self.stats_label.setText("Launching installer...")
         try:
-            # 1. Check if file exists
             if not os.path.exists(path):
                 raise Exception("Installer file missing after download.")
-
-            # 2. Prepare Command with Arguments
-            # Arguments: /PREV_VERSION=1
             cmd = [path, f"/PREV_VERSION={self.current_ver_code}"]
             
-            # 3. Launch Process
             subprocess.Popen(cmd)
             
-            # 4. Success? Force Exit
             QApplication.quit() 
             sys.exit(0)
 
         except Exception as e:
-            # 5. Failure? Show Error
             self.on_error(f"Launch failed: {e}")
 
     def on_error(self, err_msg):
         self.stats_label.setText(f"Error: {err_msg}")
         self.stats_label.setStyleSheet("color: #ff5555;")
         
-        # Hide Pause, Show Retry AND Cancel
         self.pause_btn.hide()
         self.retry_btn.show()
         self.cancel_btn.show()
@@ -410,10 +359,6 @@ class UpdateWindow(QWidget):
         self.start_download()
 
 def run_update_check(current_version_code, current_version_name, api_base_url):
-    """
-    Returns True if the main app should continue, False if it should exit.
-    Checks server version and enforces mandatory updates.
-    """
     try:
         url = f"{api_base_url}?action=get_latest_update"
         with urllib.request.urlopen(url, timeout=5) as response:
@@ -424,33 +369,22 @@ def run_update_check(current_version_code, current_version_name, api_base_url):
             return True 
             
         server_ver = int(update_info.get('version', 0))
-        # Get new variable: Minimum required version
         min_required_ver = int(update_info.get('min_required_version', 0))
         
-        # Check Version CODE (int), but display Version NAME (str)
         if server_ver > current_version_code:
-            
-            # Determine if this update is mandatory
             is_force_update = (current_version_code < min_required_ver)
             
             print(f"Update Check: Current={current_version_code}, Latest={server_ver}, MinReq={min_required_ver}, Forced={is_force_update}")
 
-            # Pass forced state to window
             window = UpdateWindow(current_version_name, current_version_code, update_info, is_force_update)
             window.show()
             
-            # Block until window closes
             QApplication.exec()
             
-            # --- CRITICAL: CHECK IF WE SHOULD EXIT ---
-            # If it was a force update, and we reached this line, it means
-            # the window closed WITHOUT successfully launching the installer
-            # (because successful install calls sys.exit inside run_installer).
-            # Therefore, the user closed the window or canceled.
             if is_force_update:
                 print("Mandatory update required. Exiting application.")
                 sys.exit(0) 
-                return False # Should not be reached, but for safety
+                return False
 
             return True
             

@@ -1,4 +1,3 @@
-/* --- Modern Widget System --- */
 body {
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -17,7 +16,6 @@ body {
     display: none;
 }
 
-/* --- MODERN WIDGET CONTAINER (Default) --- */
 .widget-container {
     background-color: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(12px);
@@ -35,7 +33,6 @@ body {
     min-height: 150px;
 }
 
-/* --- SPECIAL: Transparent Clock --- */
 #live-clock {
     background-color: transparent;
     backdrop-filter: none;
@@ -46,7 +43,6 @@ body {
     min-height: 100px;
 }
 
-/* --- Edit Mode (Dragging/Resizing) --- */
 body.is-dragging #background-click-catcher { display: block; }
 body.is-dragging .widget-container {
     cursor: move;
@@ -59,7 +55,6 @@ body.is-dragging #live-clock {
     -webkit-backdrop-filter: blur(5px);
 }
 
-/* --- Resize Handle (Hidden by default) --- */
 .resize-handle {
     position: absolute;
     bottom: 0;
@@ -68,7 +63,7 @@ body.is-dragging #live-clock {
     height: 15px;
     cursor: se-resize;
     z-index: 16;
-    display: none; /* <-- HIDDEN BY DEFAULT */
+    display: none; 
 }
 body.is-dragging .resize-handle {
     display: block;
@@ -80,7 +75,6 @@ body.is-dragging .widget-container:not(#live-clock) .resize-handle {
      border-color: #4a90e2;
 }
 
-/* --- Individual Container Sizing & Positioning --- */
 #live-clock {
     top: 5vh;
     right: 5vw;
@@ -115,7 +109,6 @@ body.is-dragging .widget-container:not(#live-clock) .resize-handle {
     height: 25vh;
 }
 
-/* --- Live Clock Styles --- */
 #clock-time {
   font-weight: 700;
   font-size: clamp(3.5rem, 10vw, 5rem);
@@ -129,7 +122,6 @@ body.is-dragging .widget-container:not(#live-clock) .resize-handle {
   opacity: 0.8;
 }
 
-/* --- Network Widget Content Styles --- */
 .widget-container h2 {
     font-weight: 500;
     border-bottom: 1px solid rgba(255, 255, 255, 0.3);
@@ -139,14 +131,12 @@ body.is-dragging .widget-container:not(#live-clock) .resize-handle {
     font-size: 1.2rem;
 }
 
-/* --- NEW: Widget Count Style --- */
 .widget-count {
     float: right;
     color: #aaa;
     font-size: 1rem;
     font-weight: 400;
 }
-/* --- End New Style --- */
 
 #ws-status {
     float: right;
@@ -156,7 +146,7 @@ body.is-dragging .widget-container:not(#live-clock) .resize-handle {
     border-radius: 4px;
     color: #000;
     background-color: #f4a261;
-    margin-left: 10px; /* Add margin */
+    margin-left: 10px; 
 }
 #ws-status.connected { background-color: #50e3c2; }
 #ws-status.error { background-color: #e63946; color: #fff; }
@@ -178,7 +168,6 @@ body.is-dragging .widget-container:not(#live-clock) .resize-handle {
 #upload-speed { color: #e94c4c; }
 #download-speed { color: #50e3c2; }
 
-/* --- Modern List/Log Styles --- */
 .widget-container pre {
     background-color: transparent;
     border-radius: 5px;
@@ -193,7 +182,6 @@ body.is-dragging .widget-container:not(#live-clock) .resize-handle {
     overflow-y: auto;
 }
 
-/* --- Modern Scrollbar --- */
 .widget-container pre::-webkit-scrollbar { width: 8px; }
 .widget-container pre::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
 .widget-container pre::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.4); border-radius: 4px; }

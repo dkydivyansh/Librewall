@@ -6,8 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wallpaper Editor</title>
     <style>
-        /* --- CORE STYLES --- */
-        input,
+                input,
         textarea {
             -webkit-user-select: text;
             user-select: text;
@@ -32,11 +31,11 @@
             --secondary-color: #6c757d;
             --secondary-hover: #5a6268;
             --video-color: #e63946;
-            /* Red for Video */
+
             --app-color: #0d6efd;
-            /* Blue for App */
+
             --3d-color: #2a9d8f;
-            /* Teal for 3D */
+
         }
 
         body {
@@ -50,7 +49,6 @@
             cursor: default;
         }
 
-        /* --- HEADER --- */
         .header {
             background-color: var(--card-bg);
             padding: 0.75rem 1.5rem;
@@ -125,12 +123,11 @@
             padding-bottom: 0.5rem;
         }
 
-        /* --- PERFORMANCE GRID --- */
         .wallpaper-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 1.5rem;
-            /* Performance: tells browser this section calculates layout independently */
+
             contain: content;
         }
 
@@ -144,7 +141,7 @@
             position: relative;
             display: flex;
             flex-direction: column;
-            /* CRITICAL: Enforce aspect ratio to prevent layout shifts */
+
             aspect-ratio: 16 / 9;
         }
 
@@ -154,7 +151,6 @@
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
         }
 
-        /* --- TYPE LABELS (NEW) --- */
         .type-label {
             position: absolute;
             top: 10px;
@@ -183,21 +179,17 @@
             background-color: var(--3d-color);
         }
 
-        /* --- OPTIMIZED IMAGE CONTAINER (Fixes Blank/Lag) --- */
         .image-container {
             width: 100%;
             height: 100%;
             position: relative;
             background-color: #2a2a2a;
-            /* Fallback color */
 
-            /* Skeleton Loader Animation */
             background: linear-gradient(90deg, #2b2b2b 25%, #3a3a3a 50%, #2b2b2b 75%);
             background-size: 200% 100%;
             animation: loadingSkeleton 1.5s infinite;
         }
 
-        /* Remove skeleton animation when data is loaded */
         .image-container.loaded {
             animation: none;
             background: transparent;
@@ -209,7 +201,7 @@
             object-fit: cover;
             display: block;
             opacity: 0;
-            /* Hidden by default until JS confirms load */
+
             transition: opacity 0.3s ease-in-out;
             position: absolute;
             top: 0;
@@ -290,7 +282,6 @@
             color: #ff9a9a;
         }
 
-        /* --- MODALS --- */
         .lightbox-overlay {
             position: fixed;
             top: 0;
@@ -369,7 +360,7 @@
         .lightbox-image img {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            object-fit: cover;
             display: block;
         }
 
@@ -431,7 +422,6 @@
             border-radius: 4px;
         }
 
-        /* Buttons */
         .btn {
             padding: 0.75rem 1.25rem;
             border: none;
@@ -496,7 +486,6 @@
             margin-top: 1.5rem;
         }
 
-        /* Loader */
         #loader {
             position: fixed;
             top: 0;
@@ -528,6 +517,29 @@
             100% {
                 transform: rotate(360deg);
             }
+        }
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: var(--primary-color);
+            border-radius: 6px;
+            border: 3px solid var(--bg-color); 
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: var(--primary-hover);
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-color) var(--bg-color);
         }
     </style>
 </head>
@@ -567,7 +579,7 @@
 
                 <div class="lightbox-settings">
                     <h3>Settings</h3>
-                    <!-- Global Widget Setting -->
+
                     <div class="setting-row" id="setting-row-global">
                         <label for="select-global-widgets">Enable Global Widgets</label>
                         <select id="select-global-widgets">
@@ -576,7 +588,6 @@
                         </select>
                     </div>
 
-                    <!-- Video Specific Settings -->
                     <div id="setting-row-video" style="display: none;">
                         <div class="setting-row">
                             <label for="video-fps-limit">Target FPS</label>
@@ -642,10 +653,20 @@
             </div>
         </div>
     </div>
+    <div id="import-warning-overlay" class="lightbox-overlay">
+        <div class="confirm-box" style="max-width: 450px; border-color: var(--danger-color);">
+            <span class="close-icon" id="import-warning-close">&times;</span>
+            <h3 style="color: var(--danger-color);">Security Warning</h3>
+            <p>Import external files at your own risk. They may contain malware and can harm your system.</p>
+            <div class="confirm-actions">
+                <button class="btn btn-secondary" id="import-warning-cancel">Cancel</button>
+                <button class="btn btn-danger" id="import-warning-continue">Continue</button>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // --- GLOBALS ---
-        const lightboxOverlay = document.getElementById('lightbox-overlay');
+               const lightboxOverlay = document.getElementById('lightbox-overlay');
         const validGrid = document.getElementById('wallpaper-grid-valid');
         const invalidGrid = document.getElementById('wallpaper-grid-invalid');
         const invalidHeader = document.getElementById('invalid-header');
@@ -664,14 +685,14 @@
         let isEngineRunning = false;
         let currentSettingListener = null;
 
-        // --- OPTIMIZED VIRTUALIZATION (Lag & Blank Image Fix) ---
-        // Keeps track of unload timers so we can cancel them if user scrolls back quickly
         const loadTimeouts = new Map();
 
         const OBSERVER_OPTIONS = {
             root: null,
-            rootMargin: '200px', // Start loading 200px before image enters screen
-            threshold: 0.01      // Trigger as soon as 1% is visible
+            rootMargin: '200px', 
+
+            threshold: 0.01      
+
         };
 
         const imageObserver = new IntersectionObserver((entries) => {
@@ -681,34 +702,34 @@
                 if (!img || !img.dataset.src) return;
 
                 if (entry.isIntersecting) {
-                    // --- ENTERING VIEWPORT: LOAD ---
 
-                    // 1. Cancel any pending unload (Debounce)
                     if (loadTimeouts.has(img)) {
                         clearTimeout(loadTimeouts.get(img));
                         loadTimeouts.delete(img);
                     }
 
-                    // 2. Load if not already loaded
                     if (!img.getAttribute('src')) {
                         img.src = img.dataset.src;
                         img.onload = () => {
-                            img.classList.add('visible'); // Fade in
-                            container.classList.add('loaded'); // Stop skeleton animation
+                            img.classList.add('visible'); 
+
+                            container.classList.add('loaded'); 
+
                         };
                         img.onerror = () => {
-                            // On error, just show the dark background, no skeleton
+
                             container.classList.add('loaded');
                         };
                     }
                 } else {
-                    // --- LEAVING VIEWPORT: UNLOAD BUFFER ---
-                    // Don't unload immediately. Wait 2 seconds. This buffer prevents lag.
+
                     if (!loadTimeouts.has(img) && img.classList.contains('visible')) {
                         const timerId = setTimeout(() => {
-                            img.removeAttribute('src'); // Kill decoder to save CPU
+                            img.removeAttribute('src'); 
+
                             img.classList.remove('visible');
-                            container.classList.remove('loaded'); // Restart skeleton
+                            container.classList.remove('loaded'); 
+
                             loadTimeouts.delete(img);
                         }, 2000);
                         loadTimeouts.set(img, timerId);
@@ -719,23 +740,20 @@
 
         function observeLazyImages() {
             imageObserver.disconnect();
-            // Watch the container, not the image, for DOM stability
+
             const containers = document.querySelectorAll('.image-container');
             containers.forEach(c => imageObserver.observe(c));
         }
 
-        // --- CREATE CARD (Structure Updated for Virtualization) ---
         function createWallpaperCard(wallpaper, isInvalid = false) {
             const card = document.createElement('div');
             card.className = 'wallpaper-card';
             if (isInvalid) card.classList.add('invalid-card');
             card.onclick = () => showLightbox(wallpaper, isInvalid);
 
-            // 1. Wrapper for skeleton + image
             const imgContainer = document.createElement('div');
             imgContainer.className = 'image-container';
 
-            // 2. Image (Hidden initially, src empty)
             const img = document.createElement('img');
             img.dataset.src = wallpaper.thumbnailUrl || '';
             img.alt = wallpaper.themeName;
@@ -743,7 +761,6 @@
             imgContainer.appendChild(img);
             card.appendChild(imgContainer);
 
-            // 3. Active Label
             if (wallpaper.themeId === activeThemeId) {
                 card.classList.add('is-active');
                 const label = document.createElement('div');
@@ -752,7 +769,6 @@
                 card.appendChild(label);
             }
 
-            // --- 4. TYPE LABEL (NEW) ---
             const config = wallpaper.config || {};
             let typeLabel = null;
             let typeClass = '';
@@ -764,7 +780,7 @@
                 typeLabel = 'APP';
                 typeClass = 'app';
             } else if (config.modelFile === 'model.glb') {
-                // 3D Model Check (Modified as per request)
+
                 typeLabel = '3D';
                 typeClass = 'model3d';
             }
@@ -775,9 +791,7 @@
                 badge.textContent = typeLabel;
                 card.appendChild(badge);
             }
-            // ---------------------------
 
-            // 5. Info Overlay
             const info = document.createElement('div');
             info.className = 'wallpaper-info';
             const title = document.createElement('h3');
@@ -798,7 +812,6 @@
             return card;
         }
 
-        // --- LOAD WALLPAPERS ---
         function loadWallpapers() {
             checkEngineStatus();
             return fetch('/wallpapers')
@@ -822,7 +835,6 @@
                         invalidHeader.style.display = 'none';
                     }
 
-                    // CRITICAL: Start observing immediately after DOM update
                     requestAnimationFrame(() => observeLazyImages());
                 })
                 .catch(e => {
@@ -843,7 +855,6 @@
             });
         });
 
-        // --- ENGINE STATUS LOGIC ---
         async function checkEngineStatus() {
             try {
                 const r = await fetch('/wallpapers', { cache: 'no-cache' });
@@ -879,8 +890,8 @@
             setTimeout(checkEngineStatus, 2000);
         };
 
-        // --- LIGHTBOX LOGIC ---
         function showLightbox(wp, isInvalid) {
+
             currentWallpaper = wp; isConfigDirty = false;
             document.getElementById('lightbox-img').src = wp.thumbnailUrl || '';
             document.getElementById('lightbox-title').textContent = wp.themeName;
@@ -894,24 +905,19 @@
             const delBtn = document.getElementById('lightbox-delete');
             const settingsDiv = document.querySelector('.lightbox-settings');
 
-            // --- CONFIG UI LOGIC ---
             const config = wp.config || {};
 
-            // 1. Reset Visibility
             settingsDiv.style.display = 'block';
             globalWidgetsRow.style.display = 'none';
             videoSettingsRow.style.display = 'none';
 
-            // 2. Logic Selection
             if (config.htmlrender === true) {
-                // HTML Render: Hide entire settings tab
+
                 settingsDiv.style.display = 'none';
             } else if (config.videorender === true) {
-                // Video Render: Show Video Settings, Hide Global
+
                 videoSettingsRow.style.display = 'block';
 
-                // Load values (with defaults)
-                // Use explicit undefined check so '0' doesn't become '60'
                 const fps = config.fpsLimit !== undefined ? config.fpsLimit : "60";
                 document.getElementById('video-fps-limit').value = fps;
 
@@ -919,12 +925,11 @@
                 document.getElementById('video-mute').value = mute.toString();
 
             } else {
-                // 3D/Standard: Show Global Widgets, Hide Video
+
                 globalWidgetsRow.style.display = 'flex';
                 globalWidgetsSelect.value = (config.Enable_Global_Widget || config.Enable_Network_Widget) ? "true" : "false";
             }
 
-            // 3. Setup Listeners
             if (currentSettingListener) {
                 globalWidgetsSelect.removeEventListener('change', currentSettingListener);
                 document.getElementById('video-fps-limit').removeEventListener('change', currentSettingListener);
@@ -937,17 +942,23 @@
             document.getElementById('video-fps-limit').addEventListener('change', currentSettingListener);
             document.getElementById('video-mute').addEventListener('change', currentSettingListener);
 
-            // -----------------------
-
             actBtn.disabled = false;
             if (!isInvalid) {
                 descEl.innerHTML = wp.description || "No description.";
                 settingsDiv.style.display = (settingsDiv.style.display === 'none') ? 'none' : 'block';
 
                 if (wp.themeId === activeThemeId) {
-                    actBtn.style.display = 'none'; delBtn.style.display = 'none';
+                    actBtn.style.display = 'none'; 
+                    delBtn.style.display = 'none';
                 } else {
-                    actBtn.style.display = 'block'; delBtn.style.display = 'block';
+                    actBtn.style.display = 'block'; 
+
+                    if (wp.themeName === "Default Theme") {
+                        delBtn.style.display = 'none';
+                    } else {
+                        delBtn.style.display = 'block';
+                    }
+
                     actBtn.textContent = isEngineRunning ? "Activate Theme" : "Start Engine & Activate";
                 }
             } else {
@@ -965,15 +976,32 @@
             currentWallpaper = null; isConfigDirty = false;
         }
 
-        // --- BUTTON ACTIONS ---
         document.getElementById('refresh-btn').onclick = () => {
             const l = document.getElementById('loader');
             l.style.display = 'flex'; requestAnimationFrame(() => l.style.opacity = '1');
             loadWallpapers().finally(() => { l.style.opacity = '0'; setTimeout(() => l.style.display = 'none', 500); });
         };
 
-        document.getElementById('import-btn').onclick = () => document.getElementById('import-file-input').click();
+        document.getElementById('refresh-btn').onclick = () => {
+            const l = document.getElementById('loader');
+            l.style.display = 'flex'; requestAnimationFrame(() => l.style.opacity = '1');
+            loadWallpapers().finally(() => { l.style.opacity = '0'; setTimeout(() => l.style.display = 'none', 500); });
+        };
 
+        const importOverlay = document.getElementById('import-warning-overlay');
+
+        document.getElementById('import-btn').onclick = () => {
+            importOverlay.style.display = 'flex';
+        };
+
+        document.getElementById('import-warning-close').onclick = () => importOverlay.style.display = 'none';
+        document.getElementById('import-warning-cancel').onclick = () => importOverlay.style.display = 'none';
+
+        document.getElementById('import-warning-continue').onclick = () => {
+            importOverlay.style.display = 'none';
+            document.getElementById('import-file-input').click(); 
+
+        };
         document.getElementById('import-file-input').onchange = async (e) => {
             if (!e.target.files[0]) return;
             const btn = document.getElementById('import-btn');
@@ -987,7 +1015,6 @@
             finally { btn.disabled = false; btn.textContent = txt; e.target.value = null; }
         };
 
-        // --- STANDARD MODAL CLOSERS ---
         document.getElementById('lightbox-close').onclick = () => hideLightbox(false);
         document.getElementById('lightbox-overlay').onclick = (e) => { if (e.target === lightboxOverlay) hideLightbox(false); };
 
@@ -1020,7 +1047,6 @@
             } catch (e) { showAlert('Error', e.message); btn.disabled = false; btn.textContent = "Activate"; }
         };
 
-        // --- SETTINGS SAVE LOGIC ---
         function updateSaveButtonState() {
             if (!isConfigDirty || !currentWallpaper) { saveSettingsBtn.style.display = 'none'; return; }
             saveSettingsBtn.style.display = 'block'; saveSettingsBtn.disabled = false;
@@ -1033,12 +1059,11 @@
                 const config = currentWallpaper.config || {};
                 const payload = { themeId: currentWallpaper.themeId };
 
-                // Capture data based on mode
                 if (config.videorender === true) {
                     payload.fpsLimit = document.getElementById('video-fps-limit').value;
                     payload.muteAudio = document.getElementById('video-mute').value === "true";
                 } else if (!config.htmlrender) {
-                    // Standard 3D mode
+
                     payload.enableGlobal = globalWidgetsSelect.value === "true";
                 }
 
@@ -1047,7 +1072,6 @@
 
                 isConfigDirty = false;
 
-                // Update local model
                 if (config.videorender === true) {
                     currentWallpaper.config.fpsLimit = payload.fpsLimit;
                     currentWallpaper.config.muteAudio = payload.muteAudio;
@@ -1064,7 +1088,6 @@
             finally { updateSaveButtonState(); }
         };
 
-        // --- ALERTS & HELPERS ---
         function showAlert(title, msg) {
             document.getElementById('alert-title').textContent = title;
             document.getElementById('alert-message').textContent = msg;
@@ -1073,7 +1096,6 @@
         document.getElementById('alert-ok').onclick = () => document.getElementById('alert-overlay').style.display = 'none';
         document.getElementById('alert-close').onclick = () => document.getElementById('alert-overlay').style.display = 'none';
 
-        // Unsaved Modal Helpers
         document.getElementById('unsaved-cancel').onclick = () => document.getElementById('unsaved-overlay').style.display = 'none';
         document.getElementById('unsaved-close').onclick = () => document.getElementById('unsaved-overlay').style.display = 'none';
         document.getElementById('unsaved-confirm').onclick = () => hideLightbox(true);

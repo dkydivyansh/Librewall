@@ -1,5 +1,3 @@
-// === CLOCK WIDGET LOGIC ===
-
 function updateClock() {
   const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const now = new Date();
@@ -8,7 +6,7 @@ function updateClock() {
   let seconds = now.getSeconds();
   const day = dayNames[now.getDay()];
   const ampm = hours >= 12 ? 'PM' : 'AM';
-  
+
   hours = hours % 12;
   hours = hours ? hours : 12;
   hours = hours < 10 ? '0' + hours : hours;
@@ -16,19 +14,16 @@ function updateClock() {
   seconds = seconds < 10 ? '0' + seconds : seconds;
 
   const timeString = `${hours}:${minutes}:${seconds} ${ampm}`;
-  
+
   try {
     document.getElementById('clock-time').textContent = timeString;
     document.getElementById('clock-day').textContent = day;
   } catch (e) {}
 }
 
-// === NETWORK WIDGET LOGIC ===
-
 let wsPort = null;
 let networkWidgetEnabled = false;
 
-// --- Helper Functions ---
 function formatBits(bits, perSecond = false) {
     if (!bits || bits === 0) return '0 ' + (perSecond ? 'bps' : 'b');
     const k = 1000;
@@ -44,16 +39,14 @@ function formatBytes(bytes) {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
-// --- Main UI Update Function ---
 function updateNetworkUI(data) {
     try {
-        // 1. Traffic Data
+
         document.getElementById('upload-speed').textContent = formatBits(data.upload_bps, true);
         document.getElementById('download-speed').textContent = formatBits(data.download_bps, true);
         document.getElementById('total-sent').textContent = formatBytes(data.total_sent);
         document.getElementById('total-recv').textContent = formatBytes(data.total_recv);
 
-        // 2. Listening Ports
         document.getElementById('listening-count').textContent = `(${data.listening_count})`; 
         const listeningList = document.getElementById('listening-list');
         let listeningHtml = '';
@@ -68,7 +61,6 @@ function updateNetworkUI(data) {
         }
         listeningList.textContent = listeningHtml;
 
-        // 3. Active Connections
         document.getElementById('active-count').textContent = `(${data.active_count})`; 
         const activeList = document.getElementById('active-list');
         let activeHtml = '';
@@ -83,7 +75,6 @@ function updateNetworkUI(data) {
         }
         activeList.textContent = activeHtml;
 
-        // 4. Live Traffic Log (Newest at bottom)
         const trafficLog = document.getElementById('traffic-log-list');
         let trafficHtml = '';
         if (data.live_traffic_log.length === 0) {
@@ -107,7 +98,6 @@ function updateNetworkUI(data) {
     }
 }
 
-// --- WebSocket Connection Logic ---
 function connectWebSocket(port) {
     const wsStatus = document.getElementById('ws-status');
     if (!wsStatus) return; 
@@ -115,7 +105,7 @@ function connectWebSocket(port) {
     wsStatus.textContent = 'Connecting...';
     wsStatus.className = '';
     console.log(`Attempting to connect to WebSocket at ws://localhost:${port}`);
-    
+
     const socket = new WebSocket(`ws://localhost:${port}`);
 
     socket.onopen = () => {
@@ -139,34 +129,32 @@ function connectWebSocket(port) {
     };
 }
 
-// --- Initialization ---
 async function initNetworkWidget() {
     try {
         const configResponse = await fetch('/config');
         const config = await configResponse.json();
-        
-        // --- MODIFIED: Check for either the new OR old flag ---
+
         networkWidgetEnabled = config.Enable_Global_Widget === true || config.Enable_Network_Widget === true;
 
         const networkWidgets = [
             'traffic-data', 'listening-ports', 
             'live-traffic-log', 'active-connections'
         ];
-        
+
         const clockWidget = document.getElementById('live-clock');
 
         if (!networkWidgetEnabled) {
-            // --- MODIFIED: Updated log message ---
+
             console.log("Network/Global Widgets are disabled by config.json. Hiding UI.");
             networkWidgets.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
             });
-            if (clockWidget) clockWidget.style.display = 'none'; // Also hide clock
+            if (clockWidget) clockWidget.style.display = 'none'; 
+
             return;
         }
 
-        // --- This part now only runs if widgets are enabled ---
         const appConfigResponse = await fetch('/app_config.json');
         const appConfig = await appConfigResponse.json();
         wsPort = appConfig.ws_port;
@@ -186,9 +174,6 @@ async function initNetworkWidget() {
     }
 }
 
-
-// === DRAGGABLE & RESIZABLE WIDGET LOGIC ===
-
 let isDraggable = false;
 let activeContainer = null;
 let offsetX = 0, offsetY = 0;
@@ -207,7 +192,7 @@ async function savePositions() {
             height: container.style.height
         };
     });
-    
+
     try {
         const response = await fetch('/save_widget_positions', { 
             method: 'POST',
@@ -224,7 +209,6 @@ async function savePositions() {
     }
 }
 
-// --- NEW: Function to apply default positions ---
 function applyDefaultPositions() {
     console.log("Applying default widget positions.");
     const defaultPositions = {
@@ -234,7 +218,7 @@ function applyDefaultPositions() {
         "live-traffic-log": { "top": "891.188px", "left": "1808.8px", "right": "auto", "width": "683.188px", "height": "476.594px" },
         "active-connections": { "top": "299.391px", "left": "1812.81px", "right": "auto", "width": "675.188px", "height": "572px" }
     };
-    
+
     Object.keys(defaultPositions).forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -248,55 +232,52 @@ function applyDefaultPositions() {
     });
 }
 
-// --- MODIFIED: restorePositions now uses defaults as a fallback ---
 async function restorePositions() {
     try {
         const response = await fetch('/widget.json');
         if (!response.ok) {
             console.log("widget.json not found, using default CSS positions.");
-            applyDefaultPositions(); // <-- Use defaults
+            applyDefaultPositions(); 
+
             return; 
         }
-        
+
         const positions = await response.json();
-        
+
         if (positions && Object.keys(positions).length > 0) {
             Object.keys(positions).forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     const pos = positions[id];
                     if(pos.top) el.style.top = pos.top;
-                    // --- THIS IS THE FIX ---
+
                     if(pos.left) el.style.left = pos.left; 
-                    // --- END FIX ---
+
                     if(pos.right) el.style.right = pos.right;
-                    
+
                     if (pos.right && pos.left === 'auto') {
                         el.style.left = 'auto';
                     } else {
                         el.style.right = 'auto';
                     }
-                    
+
                     if (pos.width) el.style.width = pos.width;
                     if (pos.height) el.style.height = pos.height;
                 }
             });
             console.log("Draggable widget positions and sizes restored from server (widget.json).");
         } else {
-            // File was found but was empty, use defaults
+
             console.log("widget.json was empty, using default positions.");
             applyDefaultPositions();
         }
     } catch (e) {
-        // File was corrupt or another error, use defaults
+
         console.error("Failed to restore widget positions:", e);
         applyDefaultPositions();
     }
 }
 
-// --- (Drag/Resize functions are unchanged) ---
-
-// --- DRAG (Move) Functions ---
 function onContainerMouseDown(e) {
     if (!isDraggable || e.target.classList.contains('resize-handle')) return;
     e.preventDefault(); 
@@ -321,7 +302,6 @@ function onDragEnd() {
     window.removeEventListener('mouseup', onDragEnd);
 }
 
-// --- RESIZE Functions ---
 function onResizeMouseDown(e) {
     if (!isDraggable) return;
     e.preventDefault();
@@ -350,7 +330,6 @@ function onResizeEnd() {
     window.removeEventListener('mouseup', onResizeEnd);
 }
 
-// --- Event Handlers ---
 function onContainerDoubleClick(e) {
     const container = e.target.closest('.widget-container');
     if (container && !isDraggable) {
@@ -370,7 +349,7 @@ function onBackgroundClick() {
 
 async function initDraggableSystem() {
     await restorePositions(); 
-    
+
     document.querySelectorAll('.widget-container').forEach(container => {
         container.addEventListener('dblclick', onContainerDoubleClick);
         container.addEventListener('mousedown', onContainerMouseDown);
@@ -384,7 +363,6 @@ async function initDraggableSystem() {
     }
 }
 
-// === MAIN INITIALIZATION ===
 updateClock();
 setInterval(updateClock, 1000);
 

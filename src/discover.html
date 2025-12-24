@@ -448,7 +448,6 @@
                 transform: rotate(360deg);
             }
         }
-
         ::-webkit-scrollbar {
             width: 12px;
             height: 12px;
@@ -461,8 +460,7 @@
         ::-webkit-scrollbar-thumb {
             background-color: var(--primary-color);
             border-radius: 6px;
-            border: 3px solid var(--bg-color);
-            /* Creates padding around the thumb */
+            border: 3px solid var(--bg-color); /* Creates padding around the thumb */
         }
 
         ::-webkit-scrollbar-thumb:hover {
@@ -596,21 +594,35 @@
                 const updateResp = await fetch(`${API_BASE_URL}?action=get_latest_update`);
                 if (updateResp.ok) {
                     const updateData = await updateResp.json();
-                    const minDiscoverVer = updateData.data ? parseInt(updateData.data.min_discover_version || 0) : 0;
+                    const apiData = updateData.data;
+                    if (apiData && apiData.discover_enabled === false) {
+    grid.style.display = 'none';
+    paginationControls.style.display = 'none';
+    
+    errorView.style.display = 'flex';
+    errorView.querySelector('.error-icon').textContent = '📢';
+    errorView.querySelector('.error-title').textContent = 'Notice';
+    errorView.querySelector('.error-desc').textContent = apiData.discover_message || "Discover is currently disabled.";
+    
+    document.getElementById('retry-btn').style.display = 'none';
+    return; // Stop execution
+}
 
+                    const minDiscoverVer = updateData.data ? parseInt(updateData.data.min_discover_version || 0) : 0;
+                    
                     if (CURRENT_APP_VERSION < minDiscoverVer) {
                         const requiredVer = updateData.data.version_name || "Newer";
                         // Hide grid and show block message
                         grid.style.display = 'none';
                         paginationControls.style.display = 'none';
-
+                        
                         // Customizing error view for this specific blocking case
                         errorView.style.display = 'flex';
                         errorView.querySelector('.error-icon').textContent = '⚠️';
                         errorView.querySelector('.error-title').textContent = 'Update Required';
-                        errorView.querySelector('.error-desc').textContent =
+                        errorView.querySelector('.error-desc').textContent = 
                             `To access the Discover store, you need to update Librewall.\n\nRequired: v${minDiscoverVer}+ \nCurrent: v${CURRENT_APP_VERSION}\n\nPlease restart the application to update.`;
-
+                        
                         document.getElementById('retry-btn').style.display = 'none'; // No retry possible without update
                         return; // STOP EXECUTION HERE
                     }
