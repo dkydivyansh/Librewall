@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Discover Wallpapers</title>
     <style>
-        :root {
+                :root {
             --bg-color: #1a1a1a;
             --card-bg: #2b2b2b;
             --text-color: #eaeaea;
@@ -23,6 +23,9 @@
             --primary-hover: #0b5ed7;
             --secondary-color: #6c757d;
             --secondary-hover: #5a6268;
+            --video-color: #e63946; 
+    --app-color: #0d6efd;
+    --3d-color: #2a9d8f; 
         }
 
         #retry-btn {
@@ -67,7 +70,6 @@
             cursor: default;
         }
 
-        /* --- Header --- */
         .header {
             background-color: var(--card-bg);
             padding: 0.75rem 1.5rem;
@@ -139,7 +141,6 @@
             padding-bottom: 0.5rem;
         }
 
-        /* --- Grid & Card --- */
         .wallpaper-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -229,7 +230,6 @@
             box-shadow: none;
         }
 
-        /* --- Error View --- */
         .error-container {
             display: none;
             flex-direction: column;
@@ -290,7 +290,6 @@
             cursor: not-allowed;
         }
 
-        /* --- Lightbox --- */
         .lightbox-overlay {
             position: fixed;
             top: 0;
@@ -415,7 +414,6 @@
             cursor: not-allowed;
         }
 
-        /* --- Loader --- */
         #loader {
             position: fixed;
             top: 0;
@@ -460,18 +458,66 @@
         ::-webkit-scrollbar-thumb {
             background-color: var(--primary-color);
             border-radius: 6px;
-            border: 3px solid var(--bg-color); /* Creates padding around the thumb */
+            border: 3px solid var(--bg-color); 
         }
 
         ::-webkit-scrollbar-thumb:hover {
             background-color: var(--primary-hover);
         }
 
-        /* Works on Firefox */
         * {
             scrollbar-width: thin;
             scrollbar-color: var(--primary-color) var(--bg-color);
         }
+
+        .filter-select {
+    background: #1a1a1a;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 0.5rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    margin-right: 10px;
+    outline: none;
+    cursor: pointer;
+}
+
+.filter-select:hover {
+    border-color: var(--hover-border);
+}
+
+.filter-select option {
+    background: var(--modal-bg);
+    color: var(--text-color);
+}
+
+.type-label {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.75);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    z-index: 10;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.type-label.video {
+    background-color: var(--video-color);
+}
+
+.type-label.app {
+    background-color: var(--app-color);
+}
+
+.type-label.model3d {
+    background-color: var(--3d-color);
+}
     </style>
 </head>
 
@@ -481,13 +527,19 @@
     </div>
 
     <header class="header">
-        <a href="/" class="header-btn">&larr; Back</a>
-        <h1 class="header-title">Discover</h1>
-        <form class="search-form" id="search-form">
-            <input type="search" id="search-input" placeholder="Search themes...">
-            <button type="submit">🔍</button>
-        </form>
-    </header>
+    <a href="/" class="header-btn">&larr; Back</a>
+    <h1 class="header-title">Discover</h1>
+    <form class="search-form" id="search-form">
+        <select id="filter-select" class="filter-select" style="background: #1a1a1a; border: 1px solid var(--border-color); color: var(--text-color); padding: 0.5rem; border-radius: 6px; margin-right: 10px;">
+            <option value="all">All Types</option>
+            <option value="3d">3D Models</option>
+            <option value="video">Videos</option>
+            <option value="app">Apps</option>
+        </select>
+        <input type="search" id="search-input" placeholder="Search themes...">
+        <button type="submit">🔍</button>
+    </form>
+</header>
 
     <main class="content-wrapper">
         <h2 id="page-title">New Releases</h2>
@@ -527,8 +579,7 @@
 
 
     <script>
-        // --- API & Page State ---
-        const API_BASE_URL = 'https://example.com/api/v1';
+                const API_BASE_URL = 'https://example.com/api/v1';
         const API_PAGE_LIMIT = 50;
 
         let CURRENT_APP_VERSION = 1;
@@ -537,7 +588,6 @@
         let currentTheme = null;
         let installedThemeIds = [];
 
-        // --- DOM Elements ---
         const lightboxOverlay = document.getElementById('lightbox-overlay');
         const lightboxClose = document.getElementById('lightbox-close');
 
@@ -567,19 +617,22 @@
                 console.error("Could not fetch installed themes list:", err);
             }
         }
-
+        let currentFilter = 'all';
         async function fetchWallpapers() {
             let url = '';
 
-            if (currentSearchQuery) {
-                url = `${API_BASE_URL}?action=search&query=${currentSearchQuery}&page=${currentPage}`;
-                pageTitle.textContent = `Searching for "${currentSearchQuery}"`;
-            } else {
-                url = `${API_BASE_URL}?action=discover&page=${currentPage}`;
-                pageTitle.textContent = 'New Releases';
-            }
+    if (currentSearchQuery) {
+        url = `${API_BASE_URL}?action=search&query=${currentSearchQuery}&page=${currentPage}`;
+        pageTitle.textContent = `Searching for "${currentSearchQuery}"`;
+    } else if (currentFilter !== 'all') {
 
-            // Reset UI
+        url = `${API_BASE_URL}?action=filter&type=${currentFilter}&page=${currentPage}`;
+        pageTitle.textContent = `${currentFilter.toUpperCase()} Wallpapers`;
+    } else {
+        url = `${API_BASE_URL}?action=discover&page=${currentPage}`;
+        pageTitle.textContent = 'New Releases';
+    }
+
             grid.style.display = 'grid';
             errorView.style.display = 'none';
             paginationControls.style.display = 'flex';
@@ -589,8 +642,6 @@
                 if (!navigator.onLine) throw new Error("Browser offline");
                 await fetchInstalledThemes();
 
-                // --- NEW LOGIC: CHECK MINIMUM DISCOVER VERSION ---
-                // We fetch the latest update info to see the restrictions
                 const updateResp = await fetch(`${API_BASE_URL}?action=get_latest_update`);
                 if (updateResp.ok) {
                     const updateData = await updateResp.json();
@@ -598,36 +649,37 @@
                     if (apiData && apiData.discover_enabled === false) {
     grid.style.display = 'none';
     paginationControls.style.display = 'none';
-    
+
     errorView.style.display = 'flex';
     errorView.querySelector('.error-icon').textContent = '📢';
     errorView.querySelector('.error-title').textContent = 'Notice';
     errorView.querySelector('.error-desc').textContent = apiData.discover_message || "Discover is currently disabled.";
-    
+
     document.getElementById('retry-btn').style.display = 'none';
-    return; // Stop execution
+    return; 
+
 }
 
                     const minDiscoverVer = updateData.data ? parseInt(updateData.data.min_discover_version || 0) : 0;
-                    
+
                     if (CURRENT_APP_VERSION < minDiscoverVer) {
                         const requiredVer = updateData.data.version_name || "Newer";
-                        // Hide grid and show block message
+
                         grid.style.display = 'none';
                         paginationControls.style.display = 'none';
-                        
-                        // Customizing error view for this specific blocking case
+
                         errorView.style.display = 'flex';
                         errorView.querySelector('.error-icon').textContent = '⚠️';
                         errorView.querySelector('.error-title').textContent = 'Update Required';
                         errorView.querySelector('.error-desc').textContent = 
                             `To access the Discover store, you need to update Librewall.\n\nRequired: v${minDiscoverVer}+ \nCurrent: v${CURRENT_APP_VERSION}\n\nPlease restart the application to update.`;
-                        
-                        document.getElementById('retry-btn').style.display = 'none'; // No retry possible without update
-                        return; // STOP EXECUTION HERE
+
+                        document.getElementById('retry-btn').style.display = 'none'; 
+
+                        return; 
+
                     }
                 }
-                // ------------------------------------------------
 
                 const response = await fetch(url);
                 if (!response.ok) {
@@ -691,7 +743,6 @@
                 };
             }
 
-            // Check if installed
             if (installedThemeIds.includes(theme.id.toString())) {
                 const label = document.createElement('div');
                 label.className = 'card-label installed-label';
@@ -699,13 +750,27 @@
                 card.appendChild(label);
             }
 
-            // Check if interactive
-            if (theme.interactive === true) {
-                const label = document.createElement('div');
-                label.className = 'card-label interactive-label';
-                label.textContent = 'Interactive';
-                card.appendChild(label);
-            }
+            const type = theme.type || '3d'; 
+
+    let typeLabelText = '';
+    let typeClass = '';
+
+    if (type === 'video') {
+        typeLabelText = 'VIDEO';
+        typeClass = 'video';
+    } else if (type === 'app') {
+        typeLabelText = 'APP';
+        typeClass = 'app';
+    } else {
+        typeLabelText = '3D';
+        typeClass = 'model3d';
+    }
+
+    const typeBadge = document.createElement('div');
+    typeBadge.className = `type-label ${typeClass}`; 
+
+    typeBadge.textContent = typeLabelText;
+    card.appendChild(typeBadge);
 
             const img = document.createElement('img');
             img.src = theme.thumbnailUrl || '';
@@ -728,7 +793,6 @@
                 warning.textContent = `Requires App v${minVersion}`;
                 info.appendChild(warning);
 
-                // Allow click to see requirement detail
                 card.onclick = () => {
                     showLightbox(theme, true);
                 };
@@ -798,7 +862,6 @@
 
                 installedThemeIds.push(currentTheme.id.toString());
 
-                // Refresh to re-sort (moves newly installed to bottom)
                 fetchWallpapers();
 
                 setTimeout(hideLightbox, 2000);
@@ -809,8 +872,6 @@
                 installBtn.disabled = false;
             }
         }
-
-        // --- Event Listeners ---
 
         searchForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -851,6 +912,16 @@
                 }, 500);
             }
         });
+
+        document.getElementById('filter-select').addEventListener('change', (e) => {
+    currentPage = 1;
+    currentFilter = e.target.value;
+
+    searchInput.value = '';
+    currentSearchQuery = '';
+
+    fetchWallpapers();
+});
 
     </script>
 </body>

@@ -78,10 +78,6 @@ SW_SHOWNORMAL = 1
 EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
 
 def _get_hwnd_by_title_substring(substring: str) -> int:
-    """
-    Enumerate all top-level windows and return the first hwnd whose title
-    contains the given substring (case-insensitive).
-    """
     substring = substring.lower()
     found_hwnd = ctypes.c_ulong(0)
 
@@ -109,11 +105,6 @@ def _get_hwnd_by_title_substring(substring: str) -> int:
     return found_hwnd.value
 
 def bring_existing_instance_to_front(window_title="librewall") -> bool:
-    """
-    Try multiple strategies to find and focus the existing instance window.
-    Returns True on success, False otherwise.
-    """
-
     hwnd = user32.FindWindowW(None, window_title)
 
     if not hwnd:
@@ -159,6 +150,38 @@ def check_single_instance(mutex_name=r"Global\librewall", window_title="librewal
     return True  
 
 API_BASE_URL = "https://example.com/api/v1"
+LOADING_HTML_CONTENT = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Loading Librewall...</title>
+    <style>
+        body { background: #121212; color: white; display: flex; flex-direction: column; 
+               justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
+        .loader { border: 4px solid #333; border-top: 4px solid #3498db; border-radius: 50%; 
+                  width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="loader"></div>
+    <div id="status">Initializing Engine...</div>
+    <script>
+        const targetUrl = "http://127.0.0.1:5001";
+        async function checkServer() {
+            try {
+                // Fetch with no-cache to ensure the server is actually responding
+                await fetch(targetUrl, { mode: 'no-cors', cache: 'no-store' });
+                window.location.replace(targetUrl);
+            } catch (e) {
+                setTimeout(checkServer, 100); // Check again in 100ms
+            }
+        }
+        checkServer();
+    </script>
+</body>
+</html>
+"""
 
 ENGINE_EXE_PATH = os.path.join(SERVER_ROOT, 'engine.exe')
 MAIN_PY_PATH = os.path.join(SERVER_ROOT, 'main.py') 
@@ -174,7 +197,6 @@ else:
     print("WARNING: No 'engine.exe' or 'main.py' found in server root.")
 
 def read_app_config():
-    """Reads the main app_config.json file."""
     config_path = os.path.join(SERVER_ROOT, APP_CONFIG_FILE)
 
     defaults = {'active_theme': '', 'port': 8080, 'auto_start': True} 
@@ -191,7 +213,6 @@ def read_app_config():
         return defaults
 
 def update_startup_shortcut(enable: bool):
-    """Adds or removes the application shortcut from the Windows Startup folder."""
     if not HAS_WIN32COM:
         return False, "win32com library not installed."
 
@@ -240,10 +261,6 @@ def update_startup_shortcut(enable: bool):
         return False, str(e)
 
 def validate_wallpaper(theme_dir_name, theme_path):
-    """
-    Validates a single wallpaper theme directory.
-    Checks for config.json and all assets listed within it.
-    """
     config_path = os.path.join(theme_path, 'config.json')
 
     if not os.path.isfile(config_path):
@@ -317,7 +334,6 @@ def validate_wallpaper(theme_dir_name, theme_path):
     return wallpaper_data
 
 def scan_all_wallpapers():
-    """Scans wallpapers and includes data from app_config.json."""
     valid_wallpapers = []
     invalid_wallpapers = []
 
@@ -352,9 +368,6 @@ def scan_all_wallpapers():
     }
 
 def is_engine_running(port):
-    """
-    Checks if the Engine is running by attempting to connect to its port.
-    """
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(1) 
@@ -364,9 +377,6 @@ def is_engine_running(port):
         return False
 
 def start_engine_process():
-    """
-    Launches the engine process via subprocess.
-    """
     if not ENGINE_RUN_COMMAND:
         raise FileNotFoundError("Engine executable or script not found.")
 
@@ -470,7 +480,6 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
-        """Handle POST requests for themes, engine control, and settings."""
 
         if self.path == '/save_app_settings':
             try:
@@ -718,7 +727,6 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
 
         elif self.path == '/start_engine':
             try:
-
                 start_engine_process()
                 self.send_json_response(200, {'status': 'success', 'message': 'Engine start command issued.'})
             except Exception as e:
@@ -777,7 +785,6 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
         self.send_json_response(404, {'error': "Not Found"})
 
 def start_editor_server(port):
-    """ Starts the HTTP server. This function will block."""
     Handler = EditorHTTPHandler
     httpd = socketserver.TCPServer(("", port), Handler)
 
@@ -787,17 +794,12 @@ def start_editor_server(port):
     httpd.serve_forever()
 
 class EditorWindow(QMainWindow):
-    """
-    This is the main desktop window for the editor application.
-    """
     def __init__(self, url):
         super().__init__()
         self.setWindowTitle("librewall") 
-
         self.resize(1400, 900) 
         self.webEngineView = QWebEngineView(self)
         self.webEngineView.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
-
         no_select_script = QWebEngineScript()
         no_select_script.setName("DisableSelection")
         no_select_script.setSourceCode("""
@@ -814,18 +816,12 @@ class EditorWindow(QMainWindow):
         no_select_script.setInjectionPoint(QWebEngineScript.InjectionPoint.DocumentReady)
         no_select_script.setWorldId(QWebEngineScript.ScriptWorldId.MainWorld)
         no_select_script.setRunsOnSubFrames(True)
-
         self.webEngineView.page().profile().scripts().insert(no_select_script)
-
         self.setCentralWidget(self.webEngineView)
-
         QWebEngineProfile.defaultProfile().clearHttpCache()
-
         self.webEngineView.settings().setAttribute(self.webEngineView.settings().WebAttribute.WebGLEnabled, True)
         self.webEngineView.settings().setAttribute(self.webEngineView.settings().WebAttribute.LocalContentCanAccessFileUrls, True)
-
-        QTimer.singleShot(200, lambda: self.webEngineView.setUrl(QUrl(url)))
-
+        self.webEngineView.setHtml(LOADING_HTML_CONTENT, QUrl("about:blank"))
         self.show()
 
 if __name__ == "__main__":
