@@ -29,16 +29,15 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEngineProfile, QWebEngineScript
 import updater_module 
 import zlib  
-
 import base64 
-
+import ctypes
+from ctypes import wintypes
 try:
     import win32com.client
     HAS_WIN32COM = True
 except ImportError:
     HAS_WIN32COM = False
     print("Warning: win32com not found. Auto-start shortcut features will be disabled.")
-
 try:
     from frontend import frontend_assets
     HAS_EMBEDDED_ASSETS = True
@@ -47,9 +46,11 @@ except ImportError:
     HAS_EMBEDDED_ASSETS = False
     print("⚠️ No embedded assets found. Running in dev (file-system) mode.")
 
+
+
+API_BASE_URL = "#"
 CURRENT_APP_VERSION = 1
 CURRENT_APP_VERSION_NAME = "1.0 Beta"
-
 WALLPAPERS_DIR = 'wallpapers'
 EDITOR_PORT = 5001
 EDITOR_SERVER_URL = f"http://localhost:{EDITOR_PORT}"
@@ -57,18 +58,15 @@ EDITOR_HTML = 'home.html'
 DISCOVER_HTML = 'discover.html'
 SETTINGS_HTML = 'settings.html'
 
+
+
 if getattr(sys, 'frozen', False):
 
     SERVER_ROOT = os.path.dirname(sys.executable)
 else:
-
     SERVER_ROOT = os.path.abspath(os.path.dirname(__file__))
-
 print(f"Server Root detected as: {SERVER_ROOT}")
 APP_CONFIG_FILE = 'app_config.json'
-import ctypes
-from ctypes import wintypes
-
 user32   = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
 
@@ -149,7 +147,6 @@ def check_single_instance(mutex_name=r"Global\librewall", window_title="librewal
 
     return True  
 
-API_BASE_URL = "https://example.com/api/v1"
 LOADING_HTML_CONTENT = """
 <!DOCTYPE html>
 <html>
@@ -174,7 +171,7 @@ LOADING_HTML_CONTENT = """
                 await fetch(targetUrl, { mode: 'no-cors', cache: 'no-store' });
                 window.location.replace(targetUrl);
             } catch (e) {
-                setTimeout(checkServer, 100); // Check again in 100ms
+                setTimeout(checkServer, 100); 
             }
         }
         checkServer();
@@ -466,12 +463,12 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
             return
 
         elif self.path == '/get_app_settings':
-
             try:
                 config = read_app_config()
                 config['appVersion'] = CURRENT_APP_VERSION
                 config['appVersionName'] = CURRENT_APP_VERSION_NAME
                 config['enginePort'] = config.get('port')
+                config['apiBaseUrl'] = API_BASE_URL 
                 self.send_json_response(200, config)
             except Exception as e:
                 self.send_json_response(500, {'error': f"Error reading config: {e}"})

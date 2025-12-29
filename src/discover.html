@@ -579,7 +579,41 @@
 
 
     <script>
-                const API_BASE_URL = 'https://example.com/api/v1';
+
+function showEndpointError() {
+    grid.innerHTML = '';
+    grid.style.display = 'none';
+    paginationControls.style.display = 'none';
+    
+    errorView.style.display = 'flex';
+    errorView.querySelector('.error-icon').textContent = '🛠️';
+    errorView.querySelector('.error-title').textContent = 'Endpoint Not Initialized';
+    errorView.querySelector('.error-desc').textContent = 
+        "The application could not retrieve the API configuration.";
+}
+        let API_BASE_URL = '#'; 
+async function initializeSettings() {
+    try {
+        const response = await fetch('/get_app_settings');
+        const settings = await response.json();
+        if (settings.apiBaseUrl) {
+            API_BASE_URL = settings.apiBaseUrl;
+            console.log("API URL synced from backend:", API_BASE_URL);
+            return true;
+        }
+    } catch (err) {
+        console.error("Failed to sync settings from backend:", err);
+    }
+    return false;
+}
+document.addEventListener('DOMContentLoaded', async () => {
+    const isInitialized = await initializeSettings(); 
+    if (!isInitialized || API_BASE_URL === '#') {
+        showEndpointError();
+    } else {
+        fetchWallpapers();
+    }
+});
         const API_PAGE_LIMIT = 50;
 
         let CURRENT_APP_VERSION = 1;
@@ -619,7 +653,12 @@
         }
         let currentFilter = 'all';
         async function fetchWallpapers() {
-            let url = '';
+    if (!API_BASE_URL || API_BASE_URL === '#') {
+        console.warn("fetchWallpapers called before API_BASE_URL was ready.");
+        return;
+    }
+
+    let url = '';
 
     if (currentSearchQuery) {
         url = `${API_BASE_URL}?action=search&query=${currentSearchQuery}&page=${currentPage}`;
