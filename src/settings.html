@@ -17,6 +17,8 @@
             --primary-hover: #0b5ed7;
             --success-color: #2a9d8f;
             --success-hover: #268a7f;
+            --danger-color: #dc3545;
+            --danger-hover: #bb2d3b;
         }
 
         body {
@@ -103,7 +105,6 @@
             font-weight: 500;
         }
 
-        /* Dropdown Select Style */
         .setting-select {
             background-color: #444;
             color: var(--text-color);
@@ -122,7 +123,25 @@
             box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
         }
 
-        /* Dev Info */
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
         .dev-info {
             font-size: 0.9rem;
             color: var(--author-color);
@@ -137,8 +156,6 @@
         .dev-info a:hover {
             text-decoration: underline;
         }
-
-        /* Save Button */
         #save-btn {
             position: fixed;
             bottom: 2rem;
@@ -184,13 +201,16 @@
     <main class="content-wrapper">
         <h2>General</h2>
         <div class="settings-card">
-
             <div class="setting-row">
                 <span class="setting-label">Auto Start Engine</span>
                 <select id="auto-start" class="setting-select">
                     <option value="true">Enabled</option>
                     <option value="false">Disabled</option>
                 </select>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">App Tour</span>
+                <button id="retake-tour-btn" class="btn btn-primary">Retake Tour</button>
             </div>
         </div>
 
@@ -212,6 +232,7 @@
         const autoStartSelect = document.getElementById('auto-start');
         const saveBtn = document.getElementById('save-btn');
         const appVersionSpan = document.getElementById('app-version');
+        const retakeTourBtn = document.getElementById('retake-tour-btn'); // NEW
 
         let initialState = {
             auto_start: "true"
@@ -256,6 +277,30 @@
 
         autoStartSelect.addEventListener('change', checkChanges);
 
+
+        retakeTourBtn.addEventListener('click', async () => {
+            retakeTourBtn.disabled = true;
+            retakeTourBtn.textContent = "Redirecting...";
+
+            try {
+                await fetch('/save_app_settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tour: false })
+                });
+
+                window.location.href = '/';
+                
+            } catch (error) {
+                console.error("Failed to reset tour:", error);
+                retakeTourBtn.textContent = "Error";
+                setTimeout(() => {
+                    retakeTourBtn.disabled = false;
+                    retakeTourBtn.textContent = "Retake Tour";
+                }, 2000);
+            }
+        });
+
         saveBtn.addEventListener('click', async () => {
             saveBtn.disabled = true;
             saveBtn.textContent = 'Saving...';
@@ -265,7 +310,6 @@
             };
 
             try {
-                // 1. Save config to backend
                 const response = await fetch('/save_app_settings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -274,10 +318,6 @@
 
                 if (!response.ok) throw new Error('Failed to save settings');
 
-                // Note: Engine reload logic removed as icon hiding was the primary reason for it.
-                // Shortcut changes take effect immediately without engine restart.
-
-                // Update initial state
                 initialState = {
                     auto_start: payload.auto_start.toString()
                 };
@@ -298,8 +338,6 @@
                 }, 2000);
             }
         });
-
-        // Initialize
         loadSettings();
     </script>
 </body>

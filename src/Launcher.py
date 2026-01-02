@@ -5,7 +5,6 @@ if sys.stdout is None or sys.stderr is None:
         def write(self, text): pass
         def flush(self): pass
         def isatty(self): return False
-
     sys.stdout = NullWriter()
     sys.stderr = NullWriter()
 import http.server
@@ -41,27 +40,23 @@ except ImportError:
 try:
     from frontend import frontend_assets
     HAS_EMBEDDED_ASSETS = True
-    print("✅ Loaded high-performance embedded assets.")
+    print(" Loaded high-performance embedded assets.")
 except ImportError:
     HAS_EMBEDDED_ASSETS = False
-    print("⚠️ No embedded assets found. Running in dev (file-system) mode.")
+    print(" No embedded assets found. Running in dev (file-system) mode.")
 
 
 
-API_BASE_URL = "#"
+API_BASE_URL = "https://dkydivyansh.com/Project/api/wallpapers/index.php"
 CURRENT_APP_VERSION = 1
-CURRENT_APP_VERSION_NAME = "1.0 Beta"
+CURRENT_APP_VERSION_NAME = "1.4.1"
 WALLPAPERS_DIR = 'wallpapers'
 EDITOR_PORT = 5001
 EDITOR_SERVER_URL = f"http://localhost:{EDITOR_PORT}"
 EDITOR_HTML = 'home.html'
 DISCOVER_HTML = 'discover.html'
 SETTINGS_HTML = 'settings.html'
-
-
-
 if getattr(sys, 'frozen', False):
-
     SERVER_ROOT = os.path.dirname(sys.executable)
 else:
     SERVER_ROOT = os.path.abspath(os.path.dirname(__file__))
@@ -484,10 +479,10 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 post_body = self.rfile.read(content_len)
                 data = json.loads(post_body)
 
-                new_auto_start = data.get('auto_start')
-
                 app_config = read_app_config()
-
+                if 'tour' in data:
+                    app_config['tour'] = bool(data.get('tour'))
+                new_auto_start = data.get('auto_start')
                 if new_auto_start is not None:
                     app_config['auto_start'] = bool(new_auto_start)
 

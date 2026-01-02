@@ -1,4 +1,3 @@
-#TODO Video Reviloition Control 
 import sys
 import os
 import ctypes
@@ -50,9 +49,9 @@ class NativeVideoWidget(QWidget):
             self.player['linear-downscaling'] = 'yes'
             self.player['sigmoid-upscaling'] = 'yes'
             self.player['deband'] = 'yes'
-            self.player['video-sync'] = 'display-resample' 
-            self.player['interpolation'] = 'yes' 
-            self.player['tscale'] = 'oversample' 
+            self.player['video-sync'] = 'display-resample'
+            self.player['interpolation'] = 'yes'
+            self.player['tscale'] = 'oversample'
             if fps_limit > 0:
                 print(f"Video Engine: Limiting playback to {fps_limit} FPS")
                 self.player.vf = f'fps={fps_limit}'
@@ -63,14 +62,15 @@ class NativeVideoWidget(QWidget):
                 self.player.mute = False
             self.player['loop-file'] = 'inf'
             self.player['cache'] = 'yes'
-            self.player['demuxer-max-bytes'] = '500M'    
+            self.player['demuxer-max-bytes'] = '500M'  
             self.player['demuxer-readahead-secs'] = '20' 
-            self.player['keep-open'] = 'yes'
+
+            self.player['keep-open'] = 'yes'           
             if os.path.exists(video_path):
                 print(f"Video Engine: Playing {video_path}")
                 self.player.play(video_path)
             else:
-                print(f"Video Engine Error: File not found {video_path}")
+                print(f"Video Engine Error: File not found {video_path}")                
         except Exception as e:
             print(f"Video Engine Initialization Failed: {e}")
     def contextMenuEvent(self, event):
@@ -80,7 +80,7 @@ class NativeVideoWidget(QWidget):
             action_pause.triggered.connect(lambda: self.set_paused(False))
         else:
             action_pause = QAction("Pause Wallpaper", self)
-            action_pause.triggered.connect(lambda: self.set_paused(True))
+            action_pause.triggered.connect(lambda: self.set_paused(True))       
         menu.addAction(action_pause)
         menu.addSeparator()
         menu.exec(event.globalPos())

@@ -1,12 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
-
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
+<script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wallpaper Editor</title>
+<style>    .welcome-modal {
+        display: none; 
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.85);
+        z-index: 20000; 
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .welcome-box {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        padding: 2rem;
+        border-radius: 12px;
+        text-align: center;
+        max-width: 500px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    }
+
+    .welcome-box h2 {
+        color: var(--primary-color);
+        margin-top: 0;
+    }
+
+    .welcome-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 1.5rem;
+    }
+
+    .driver-overlay {
+        z-index: 99998 !important;
+        opacity: 0.85 !important;
+        pointer-events: none !important;
+        transition: all 0.3s ease-out !important;
+    }
+
+    .driver-popover {
+        z-index: 99999 !important;
+        position: fixed !important;
+        pointer-events: auto !important;
+        transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1), opacity 0.3s ease !important;
+    }
+
+    .driver-popover.driverjs-theme {
+        background-color: var(--card-bg);
+        color: var(--text-color);
+        border: 1px solid var(--primary-color);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+        min-width: 350px;
+        border-radius: 8px;
+    }
+
+    .driver-popover.driverjs-theme .driver-popover-title {
+        color: #ffffff;
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 10px;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+
+    .driver-popover.driverjs-theme .driver-popover-description {
+        color: #cccccc;
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+    .driver-popover.driverjs-theme.wide-box {
+        min-width: 500px !important; 
+        width: 500px !important;     
+    }
+
+    .driver-popover.driverjs-theme button {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 8px 18px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: normal; 
+        text-shadow: none;   
+        font-size: 0.9rem;
+        transition: background 0.2s ease;
+    }
+
+    .driver-popover.driverjs-theme button:hover {
+        background-color: var(--primary-hover);
+        transform: translateY(-1px);
+    }
+
+    .driver-active-element { pointer-events: none !important; }
+
+    body.tour-mode .wallpaper-card:not(#tour-default-card) .image-container { visibility: hidden; }
+    body.tour-mode header button:not(.driver-highlighted-element) { opacity: 0.3; transition: opacity 0.3s; }
+</style>
     <style>
-                input,
+        input,
         textarea {
             -webkit-user-select: text;
             user-select: text;
@@ -31,11 +130,8 @@
             --secondary-color: #6c757d;
             --secondary-hover: #5a6268;
             --video-color: #e63946;
-
             --app-color: #0d6efd;
-
             --3d-color: #2a9d8f;
-
         }
 
         body {
@@ -127,7 +223,6 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 1.5rem;
-
             contain: content;
         }
 
@@ -141,7 +236,6 @@
             position: relative;
             display: flex;
             flex-direction: column;
-
             aspect-ratio: 16 / 9;
         }
 
@@ -184,7 +278,6 @@
             height: 100%;
             position: relative;
             background-color: #2a2a2a;
-
             background: linear-gradient(90deg, #2b2b2b 25%, #3a3a3a 50%, #2b2b2b 75%);
             background-size: 200% 100%;
             animation: loadingSkeleton 1.5s infinite;
@@ -201,7 +294,6 @@
             object-fit: cover;
             display: block;
             opacity: 0;
-
             transition: opacity 0.3s ease-in-out;
             position: absolute;
             top: 0;
@@ -556,6 +648,16 @@
         <a href="settings.html" class="header-btn" id="settings-btn">Settings</a>
         <button class="header-btn btn-engine-toggle" id="engine-toggle-btn" disabled>Checking...</button>
     </header>
+    <div id="welcome-modal" class="welcome-modal">
+    <div class="welcome-box">
+        <h2>Welcome to Librewall!</h2>
+        <p>It looks like this is your first time here.<br>Would you like a quick tour of the features?</p>
+        <div class="welcome-buttons">
+            <button class="btn btn-secondary" id="welcome-skip">Skip</button>
+            <button class="btn btn-primary" id="welcome-start">Take Tour</button>
+        </div>
+    </div>
+</div>
 
     <input type="file" id="import-file-input" accept=".zip" style="display: none;">
     <div id="engine-off-warning" class="engine-warning">The active wallpaper is not running because the Engine is
@@ -579,7 +681,6 @@
 
                 <div class="lightbox-settings">
                     <h3>Settings</h3>
-
                     <div class="setting-row" id="setting-row-global">
                         <label for="select-global-widgets">Enable Global Widgets</label>
                         <select id="select-global-widgets">
@@ -587,7 +688,6 @@
                             <option value="true">Enabled</option>
                         </select>
                     </div>
-
                     <div id="setting-row-video" style="display: none;">
                         <div class="setting-row">
                             <label for="video-fps-limit">Target FPS</label>
@@ -665,8 +765,7 @@
         </div>
     </div>
 
-    <script>
-               const lightboxOverlay = document.getElementById('lightbox-overlay');
+    <script>        const lightboxOverlay = document.getElementById('lightbox-overlay');
         const validGrid = document.getElementById('wallpaper-grid-valid');
         const invalidGrid = document.getElementById('wallpaper-grid-invalid');
         const invalidHeader = document.getElementById('invalid-header');
@@ -748,6 +847,9 @@
         function createWallpaperCard(wallpaper, isInvalid = false) {
             const card = document.createElement('div');
             card.className = 'wallpaper-card';
+            if (wallpaper.themeName === "Default Theme") {
+        card.id = "tour-default-card";
+    }
             if (isInvalid) card.classList.add('invalid-card');
             card.onclick = () => showLightbox(wallpaper, isInvalid);
 
@@ -1100,6 +1202,117 @@
         document.getElementById('unsaved-close').onclick = () => document.getElementById('unsaved-overlay').style.display = 'none';
         document.getElementById('unsaved-confirm').onclick = () => hideLightbox(true);
 
+document.addEventListener('DOMContentLoaded', async () => {
+
+    const loader = document.getElementById('loader');
+    await loadWallpapers();
+
+    if (loader) {
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 500);
+    }
+
+    checkTourStatus();
+});
+
+async function checkTourStatus() {
+    try {
+        const r = await fetch('/get_app_settings');
+        const config = await r.json();
+
+        if (!config.tour) {
+            document.getElementById('welcome-modal').style.display = 'flex';
+        }
+    } catch (e) {
+        console.error("Failed to check tour status:", e);
+    }
+}
+
+async function markTourComplete() {
+    try {
+
+        await fetch('/save_app_settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tour: true })
+        });
+        document.getElementById('welcome-modal').style.display = 'none';
+    } catch (e) {
+        console.error("Failed to save tour status:", e);
+    }
+}
+
+document.getElementById('welcome-skip').onclick = () => {
+    markTourComplete(); 
+
+};
+
+document.getElementById('welcome-start').onclick = () => {
+    markTourComplete(); 
+
+    startLibrewallTour(); 
+
+};
+
+document.getElementById('start-tour-btn').addEventListener('click', startLibrewallTour);
+
+function startLibrewallTour() {
+    const driver = window.driver.js.driver;
+    document.body.classList.add('tour-mode');
+
+    const driverObj = driver({
+        showProgress: true,
+        animate: true,
+        allowClose: false,
+        popoverClass: 'driverjs-theme',
+        onDestroyed: () => {
+             document.body.classList.remove('tour-mode');
+        },
+        steps: [
+            { element: '#refresh-btn', popover: { title: 'Refresh Library', description: 'Reload your list to see changes.' } },
+            { element: '#discover-btn', popover: { title: 'Discover Online', description: 'Browse community themes.' } },
+            { element: '#import-btn', popover: { title: 'Import Theme', description: 'Load .zip files manually.' } },
+            { element: '#settings-btn', popover: { title: 'Global Settings', description: 'Configure app preferences.' } },
+            { element: '#engine-toggle-btn', popover: { title: 'Engine Status', description: 'Start/Stop the engine.' } },
+            { 
+                element: '#tour-default-card', 
+                popover: { 
+                    title: 'Your Library', 
+                    description: 'Click <b>"Open"</b> to inspect the Default Theme.',
+                    nextBtnText: 'Open & Continue',
+                    onNextClick: () => {
+                        const card = document.getElementById('tour-default-card');
+                        if (!card) return;
+                        card.click();
+                        setTimeout(() => { driverObj.moveNext(); }, 500); 
+                    }
+                } 
+            },
+            { element: '.lightbox-content', popover: { title: 'Theme Details', description: 'View theme info here.' } },
+            { element: '.lightbox-settings', popover: { title: 'Configuration', description: 'Adjust Wallpaper settings.' } },
+            {
+                element: '.lightbox-actions',
+                popover: { title: 'Manage Theme', description: 'Activate or Delete wallpaper.' },
+                onHighlightStarted: () => {
+                   const delBtn = document.getElementById('lightbox-delete');
+                   const actBtn = document.getElementById('lightbox-activate');
+                   if(delBtn) delBtn.style.display = 'block'; 
+                   if(actBtn) actBtn.style.display = 'block';
+                },
+                onDeselected: () => {
+                   if(currentWallpaper && currentWallpaper.themeName === "Default Theme") {
+                       const delBtn = document.getElementById('lightbox-delete');
+                       if(delBtn) delBtn.style.display = 'none';
+                   }
+                   hideLightbox(true);
+                   document.body.classList.remove('tour-mode');
+                }
+            }
+        ]
+    });
+
+    driverObj.drive();
+}
     </script>
 </body>
 

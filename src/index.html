@@ -28,7 +28,6 @@
             z-index: 1;
             object-fit: cover;
             display: none;
-
         }
 
         #wallpaper-background {
@@ -39,7 +38,6 @@
             height: 100%;
             z-index: 2;
             pointer-events: none;
-
         }
 
         #scene-container {
@@ -149,22 +147,18 @@
 
             setupBackgroundMedia(config);
             setupBackground(config);
-            // --- NEW FEATURE: DISABLE 3D MODEL ---
-            // If enable3DModel is explicitly set to false, we stop here.
+
             if (config.enable3DModel === false) {
                 console.log("3D Model/Engine totally disabled by config. Running in 2D/Video mode.");
 
-                // Hide the canvas so it doesn't block clicks to background
                 const canvasEl = document.querySelector('#scene-container');
                 if (canvasEl) canvasEl.style.display = 'none';
 
-                // We still need to load HTML widgets (Clock, Weather, etc.)
                 await loadExternalFiles(config);
 
-                // STOP: Do not initialize Three.js, Lights, or Animation Loop
                 return;
             }
-            // -------------------------------------
+
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
             camera.position.z = 2;
@@ -297,29 +291,27 @@
             }
         }
 
-        // --- THIS FUNCTION IS NOW UPDATED ---
         async function loadExternalFiles(config) {
 
-            // Check for either the new OR old flag
             const loadGlobalWidgets = (config.Enable_Global_Widget === true || config.Enable_Network_Widget === true);
 
             if (loadGlobalWidgets) {
-                // --- A: LOAD GLOBAL WIDGETS ---
+
                 console.log("Global Widgets enabled. Loading global files and skipping theme files.");
 
-                // Inject global.css
                 try {
                     const link = document.createElement('link');
                     link.rel = 'stylesheet';
                     link.type = 'text/css';
-                    link.href = '/library/global.css'; // Path from root
+                    link.href = '/library/global.css'; 
+
                     document.head.appendChild(link);
                     console.log(`Injected Global CSS: /library/global.css`);
                 } catch (e) { console.error(`Failed to inject Global CSS: ${e}`); }
 
-                // Inject global.html
                 try {
-                    const response = await fetch('/library/global.html', { cache: 'no-store' }); // Path from root
+                    const response = await fetch('/library/global.html', { cache: 'no-store' }); 
+
                     if (!response.ok) throw new Error(`File not found: /library/global.html`);
                     const html = await response.text();
                     const container = document.getElementById('global-widget-root');
@@ -329,17 +321,17 @@
                     } else { console.error('#global-widget-root not found.'); }
                 } catch (e) { console.error(`Failed to load Global HTML: ${e}`); }
 
-                // Inject global.js
                 try {
                     const script = document.createElement('script');
                     script.type = 'module';
-                    script.src = '/library/global.js'; // Path from root
+                    script.src = '/library/global.js'; 
+
                     document.body.appendChild(script);
                     console.log(`Injected Global JS: /library/global.js`);
                 } catch (e) { console.error(`Failed to inject Global JS: ${e}`); }
 
             } else {
-                // --- B: LOAD THEME-SPECIFIC FILES ---
+
                 console.log("Global Widgets disabled. Loading theme-specific external files.");
 
                 if (config.cssFile) {
@@ -618,6 +610,7 @@
         }
 
         init();
+
 
     </script>
 </body>

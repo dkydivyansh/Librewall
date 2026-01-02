@@ -28,32 +28,22 @@ import string
 from port_map import PORT_PROTOCOL_MAP
 from video_widget import NativeVideoWidget
 import subprocess
-import zlib  
-
-import base64 
-
+import zlib 
+import base64
 try:
     from frontend import engine_assets
     HAS_EMBEDDED_ASSETS = True
-    print("✅ Loaded high-performance embedded engine assets.")
+    print("> Loaded high-performance embedded engine assets.")
 except ImportError:
     HAS_EMBEDDED_ASSETS = False
-    print("⚠️ No embedded engine assets found. Running in dev (file-system) mode.")
-
+    print("> No embedded engine assets found. Running in dev (file-system) mode.")
 def get_real_screen_scale():
-    """
-    Detects the actual screen scaling (e.g., 1.0, 1.25, 1.5) using Modern Windows API.
-    This prevents the '1.0' fallback that causes low-res rendering.
-    """
     try:
-
         try:
-            ctypes.windll.shcore.SetProcessDpiAwareness(2) 
-
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
         except: 
             try: ctypes.windll.user32.SetProcessDPIAware()
             except: pass
-
         shcore = ctypes.windll.shcore
         user32 = ctypes.windll.user32
 
@@ -187,7 +177,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         file_path = ""
         mime_type = ""
 
-        try: # <--- THIS TRY WAS MISSING
+        try: 
 
             if clean_path == '/':
 
