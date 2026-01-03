@@ -55,6 +55,9 @@ This is an open-source project, and contributions are highly encouraged. We welc
 * Enhancing the user interface for the configuration dashboard.
 * Implementing new features or format support.
 
+## Build
+
+For detailed instructions on setting up the environment, installing dependencies, and compiling the application from source, please refer to the **[Build Guide](./BUILD.md)** (BUILD.md).
 
 ## License
 
