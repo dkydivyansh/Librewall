@@ -102,6 +102,12 @@ os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
     "--disable-backgrounding-occluded-windows "
     "--disable-features=CalculateNativeWinOcclusion"
     "--autoplay-policy=no-user-gesture-required"
+    "--autoplay-policy=no-user-gesture-required "
+    "--gpu-preference=high-performance " 
+    "--enable-gpu-rasterization "       
+    "--ignore-gpu-blocklist "          
+    "--disable-gpu-driver-bug-workarounds " 
+    "--use-angle=default "
 )
 
 os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
@@ -482,9 +488,11 @@ class WallpaperWindow(QMainWindow):
             self.browser.setPage(self.auth_page)
             self.browser.loadFinished.connect(self.on_load_finished)
             self.browser.setUrl(QUrl(url))
+            self.browser.setStyleSheet("background-color: black;") 
+            self.setStyleSheet("background-color: black;")
             self.setCentralWidget(self.browser)
 
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnBottomHint)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.window_handle = int(self.winId())
 
         screen = self.app.primaryScreen()
@@ -576,6 +584,7 @@ class WallpaperWindow(QMainWindow):
             ex_style = win32gui.GetWindowLong(self.window_handle, win32con.GWL_EXSTYLE)
             ex_style |= win32con.WS_EX_TOOLWINDOW   
             ex_style &= ~win32con.WS_EX_APPWINDOW   
+            ex_style |= 0x02000000
             win32gui.SetWindowLong(self.window_handle, win32con.GWL_EXSTYLE, ex_style)
 
             progman = win32gui.FindWindow("Progman", None)

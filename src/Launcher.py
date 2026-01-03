@@ -31,6 +31,15 @@ import zlib
 import base64 
 import ctypes
 from ctypes import wintypes
+os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
+    "--gpu-preference=high-performance "
+    "--enable-gpu-rasterization "
+    "--ignore-gpu-blocklist "
+    "--disable-gpu-driver-bug-workarounds "
+    "--use-angle=default "
+    "--disable-renderer-backgrounding "
+    "--enable-accelerated-video-decode"
+)
 try:
     import win32com.client
     HAS_WIN32COM = True
@@ -49,7 +58,7 @@ except ImportError:
 
 API_BASE_URL = "https://dkydivyansh.com/Project/api/wallpapers/index.php"
 CURRENT_APP_VERSION = 1
-CURRENT_APP_VERSION_NAME = "1.4.1"
+CURRENT_APP_VERSION_NAME = "1.0 Stable"
 WALLPAPERS_DIR = 'wallpapers'
 EDITOR_PORT = 5001
 EDITOR_SERVER_URL = f"http://localhost:{EDITOR_PORT}"
@@ -166,7 +175,8 @@ LOADING_HTML_CONTENT = """
                 await fetch(targetUrl, { mode: 'no-cors', cache: 'no-store' });
                 window.location.replace(targetUrl);
             } catch (e) {
-                setTimeout(checkServer, 100); 
+                // Retrying every 1000ms (1 second)
+                setTimeout(checkServer, 1000); 
             }
         }
         checkServer();
@@ -813,6 +823,7 @@ class EditorWindow(QMainWindow):
         QWebEngineProfile.defaultProfile().clearHttpCache()
         self.webEngineView.settings().setAttribute(self.webEngineView.settings().WebAttribute.WebGLEnabled, True)
         self.webEngineView.settings().setAttribute(self.webEngineView.settings().WebAttribute.LocalContentCanAccessFileUrls, True)
+        self.webEngineView.settings().setAttribute(self.webEngineView.settings().WebAttribute.Accelerated2dCanvasEnabled, True)
         self.webEngineView.setHtml(LOADING_HTML_CONTENT, QUrl("about:blank"))
         self.show()
 
