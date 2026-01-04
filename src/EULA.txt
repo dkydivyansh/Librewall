@@ -1,0 +1,61 @@
+LIBREWALL - END USER LICENSE AGREEMENT
+==================================================
+Version: Beta / Early Access
+Copyright (C) 2026 Dkydivyansh.com
+
+PLEASE READ THIS AGREEMENT CAREFULLY BEFORE INSTALLING OR USING THIS SOFTWARE.
+
+--------------------------------------------------
+1. BETA / EARLY DEVELOPMENT NOTICE
+--------------------------------------------------
+This application ("Librewall") is currently in an EARLY DEVELOPMENT stage. 
+By installing this software, you acknowledge that:
+
+  1. The software may contain bugs, errors, or incomplete features.
+  2. The software is provided for testing and development purposes.
+  3. You are encouraged to report bugs to: https://github.com/dkydivyansh/Librewall
+
+--------------------------------------------------
+2. LICENSE GRANT (GNU GPL v3.0)
+--------------------------------------------------
+Librewall is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+--------------------------------------------------
+3. YOUR RIGHTS AND OBLIGATIONS
+--------------------------------------------------
+Under the GNU GPL v3.0, you have the right to:
+- Use this software for any purpose.
+- Change the software to suit your needs.
+- Share the software with your friends and neighbors.
+- Share the changes you make.
+
+If you redistribute this software (modified or unmodified), you MUST:
+- Include the source code or a written offer to provide it.
+- License your modifications under the same GPL v3.0 license.
+- Keep all copyright notices and disclaimers intact.
+
+--------------------------------------------------
+4. NO WARRANTY
+--------------------------------------------------
+BECAUSE THE PROGRAM IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY
+FOR THE PROGRAM, TO THE EXTENT PERMITTED BY APPLICABLE LAW. EXCEPT WHEN
+OTHERWISE STATED IN WRITING THE COPYRIGHT HOLDERS AND/OR OTHER PARTIES
+PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED
+OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE ENTIRE RISK AS
+TO THE QUALITY AND PERFORMANCE OF THE PROGRAM IS WITH YOU. SHOULD THE
+PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF ALL NECESSARY SERVICING,
+REPAIR OR CORRECTION.
+
+==================================================
