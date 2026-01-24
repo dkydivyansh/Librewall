@@ -183,8 +183,8 @@ LOADING_HTML_CONTENT = """
                 await fetch(targetUrl, { mode: 'no-cors', cache: 'no-store' });
                 window.location.replace(targetUrl);
             } catch (e) {
-                // Retrying every 1000ms (1 second)
-                setTimeout(checkServer, 1000); 
+                // Retrying every 500ms (0.5 second)
+                setTimeout(checkServer, 500); 
             }
         }
         checkServer();

@@ -20,13 +20,7 @@ import json
 import time
 import collections
 import datetime
-import asyncio
-import websockets
-import psutil
-import secrets 
-import string  
 from port_map import PORT_PROTOCOL_MAP
-from video_widget import NativeVideoWidget
 import subprocess
 import zlib 
 import base64
@@ -65,6 +59,25 @@ def get_real_screen_scale():
         return 1.0
 def get_reliable_windows_id():
     try:
+        app_data = os.getenv('LOCALAPPDATA')
+        if not app_data:
+            app_data = os.path.join(os.path.expanduser("~"), "AppData", "Local")
+
+        storage_dir = os.path.join(app_data, "Librewall")
+        if not os.path.exists(storage_dir):
+            try:
+                os.makedirs(storage_dir)
+            except: pass
+
+        cache_path = os.path.join(storage_dir, '.device_id')
+
+        if os.path.exists(cache_path):
+            try:
+                with open(cache_path, 'r') as f:
+                    cached_id = f.read().strip()
+                if cached_id:
+                    return cached_id
+            except Exception: pass
 
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
@@ -85,6 +98,12 @@ def get_reliable_windows_id():
         if not uuid:
             print("Warning: UUID empty, returning fallback ID.")
             return "unknown-device-id"
+
+        try:
+            with open(cache_path, 'w') as f:
+                f.write(uuid)
+            ctypes.windll.kernel32.SetFileAttributesW(cache_path, 2)
+        except: pass
 
         return uuid
 
@@ -459,6 +478,8 @@ class WallpaperWindow(QMainWindow):
             self.is_video_mode = True
             full_video_path = os.path.join(active_theme_path, video_file)
 
+            from video_widget import NativeVideoWidget
+
             self.video_widget = NativeVideoWidget(
                 full_video_path, 
                 self, 
@@ -651,6 +672,7 @@ class WallpaperWindow(QMainWindow):
         super().closeEvent(event)
 
 def network_stats_updater():
+    import psutil
     print("Network Monitor: Starting stats updater thread...")
     last_io = psutil.net_io_counters()
     while True:
@@ -670,6 +692,7 @@ def network_stats_updater():
             time.sleep(5)
 
 def get_process_name(pid):
+    import psutil
     try:
         if pid is None or pid == 0: return "System"
         return psutil.Process(pid).name()
@@ -677,6 +700,7 @@ def get_process_name(pid):
     except Exception: return "N/A"
 
 def live_traffic_updater(current_process_name):
+    import psutil
     print("Network Monitor: Starting live traffic updater thread...")
     loopback_ips = ('127.0.0.1', '::1')
     while True:
@@ -816,11 +840,15 @@ async def main_websocket_server(current_process_name):
 
 def start_websocket_thread(current_process_name):
     try:
+        import asyncio
+        import websockets
         asyncio.run(main_websocket_server(current_process_name)) 
     except Exception as e:
         print(f"Network Monitor: WebSocket thread failed: {e}")
 
 if __name__ == "__main__":
+    import secrets
+    import string
     app = QApplication(sys.argv)
 
     icon_path = os.path.join(SCRIPT_DIR, 'icon.ico') 
@@ -835,7 +863,12 @@ if __name__ == "__main__":
     AUTH_TOKEN = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(50))
     os.environ["QTWEBENGINE_REMOTE_DEBUGGING"] = "9222"
 
-    try: current_proc_name = psutil.Process(os.getpid()).name()
+    import secrets
+    import string
+
+    try: 
+        import psutil
+        current_proc_name = psutil.Process(os.getpid()).name()
     except: sys.exit(1)
 
     current_wallpaper_path = MyHandler.get_current_wallpaper_path(None)
