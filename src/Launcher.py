@@ -20,7 +20,7 @@ import time
 import zipfile
 import io
 import urllib.parse
-import cgi 
+import email
 from PyQt6.QtCore import QUrl, Qt, QTimer
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenu
 from PyQt6.QtGui import QAction, QIcon
@@ -580,28 +580,41 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
 
         elif self.path == '/import_theme':
             try:
-                form = cgi.FieldStorage(
-                    fp=self.rfile,
-                    headers=self.headers,
-                    environ={'REQUEST_METHOD': 'POST',
-                             'CONTENT_TYPE': self.headers['Content-Type']}
+                content_type = self.headers.get('Content-Type')
+                if not content_type:
+                    self.send_json_response(400, {'error': "Missing Content-Type"})
+                    return
+
+                content_len = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(content_len)
+
+                msg = email.message_from_bytes(
+                    f'Content-Type: {content_type}\r\n\r\n'.encode() + body
                 )
 
-                if 'themeFile' not in form:
-                    self.send_json_response(400, {'error': "Missing 'themeFile' in form data"})
+                file_item_name = None
+                file_item_data = None
+                
+                if msg.is_multipart():
+                    for part in msg.get_payload():
+                         if part.get_param('name', header='Content-Disposition') == 'themeFile':
+                             file_item_name = part.get_filename()
+                             file_item_data = part.get_payload(decode=True)
+                             break
+                
+                if not file_item_data:
+                     self.send_json_response(400, {'error': "Missing 'themeFile' in form data or empty file"})
+                     return
+
+                if not file_item_name:
+                    self.send_json_response(400, {'error': 'No filename provided.'})
                     return
-
-                file_item = form['themeFile']
-
-                if not file_item.filename:
-                    self.send_json_response(400, {'error': 'No file was uploaded.'})
-                    return
-
-                if not file_item.filename.endswith('.zip'):
+                
+                if not file_item_name.endswith('.zip'):
                      self.send_json_response(400, {'error': 'File must be a .zip archive.'})
                      return
 
-                safe_basename = os.path.basename(file_item.filename)
+                safe_basename = os.path.basename(file_item_name)
                 theme_id = os.path.splitext(safe_basename)[0]
 
                 if not theme_id:
@@ -615,7 +628,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
 
                 print(f"Importing theme from '{safe_basename}' to '{theme_id}'...")
 
-                zip_data = file_item.file.read()
+                zip_data = file_item_data
 
                 with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
                     root_folder = ""
