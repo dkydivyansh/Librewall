@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Discover Wallpapers</title>
     <style>
-                :root {
+        :root {
             --bg-color: #1a1a1a;
             --card-bg: #2b2b2b;
             --text-color: #eaeaea;
@@ -23,9 +23,9 @@
             --primary-hover: #0b5ed7;
             --secondary-color: #6c757d;
             --secondary-hover: #5a6268;
-            --video-color: #e63946; 
-    --app-color: #0d6efd;
-    --3d-color: #2a9d8f; 
+            --video-color: #e63946;
+            --app-color: #0d6efd;
+            --3d-color: #2a9d8f;
         }
 
         #retry-btn {
@@ -76,7 +76,7 @@
             border-bottom: 1px solid var(--border-color);
             position: sticky;
             top: 0;
-            z-index: 10;
+            z-index: 999;
             display: flex;
             align-items: center;
         }
@@ -446,6 +446,7 @@
                 transform: rotate(360deg);
             }
         }
+
         ::-webkit-scrollbar {
             width: 12px;
             height: 12px;
@@ -458,7 +459,7 @@
         ::-webkit-scrollbar-thumb {
             background-color: var(--primary-color);
             border-radius: 6px;
-            border: 3px solid var(--bg-color); 
+            border: 3px solid var(--bg-color);
         }
 
         ::-webkit-scrollbar-thumb:hover {
@@ -471,53 +472,53 @@
         }
 
         .filter-select {
-    background: #1a1a1a;
-    border: 1px solid var(--border-color);
-    color: var(--text-color);
-    padding: 0.5rem;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    margin-right: 10px;
-    outline: none;
-    cursor: pointer;
-}
+            background: #1a1a1a;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            margin-right: 10px;
+            outline: none;
+            cursor: pointer;
+        }
 
-.filter-select:hover {
-    border-color: var(--hover-border);
-}
+        .filter-select:hover {
+            border-color: var(--hover-border);
+        }
 
-.filter-select option {
-    background: var(--modal-bg);
-    color: var(--text-color);
-}
+        .filter-select option {
+            background: var(--modal-bg);
+            color: var(--text-color);
+        }
 
-.type-label {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background-color: rgba(0, 0, 0, 0.75);
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    font-weight: bold;
-    z-index: 10;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
+        .type-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.75);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-.type-label.video {
-    background-color: var(--video-color);
-}
+        .type-label.video {
+            background-color: var(--video-color);
+        }
 
-.type-label.app {
-    background-color: var(--app-color);
-}
+        .type-label.app {
+            background-color: var(--app-color);
+        }
 
-.type-label.model3d {
-    background-color: var(--3d-color);
-}
+        .type-label.model3d {
+            background-color: var(--3d-color);
+        }
     </style>
 </head>
 
@@ -527,19 +528,20 @@
     </div>
 
     <header class="header">
-    <a href="/" class="header-btn">&larr; Back</a>
-    <h1 class="header-title">Discover</h1>
-    <form class="search-form" id="search-form">
-        <select id="filter-select" class="filter-select" style="background: #1a1a1a; border: 1px solid var(--border-color); color: var(--text-color); padding: 0.5rem; border-radius: 6px; margin-right: 10px;">
-            <option value="all">All Types</option>
-            <option value="3d">3D Models</option>
-            <option value="video">Videos</option>
-            <option value="app">Apps</option>
-        </select>
-        <input type="search" id="search-input" placeholder="Search themes...">
-        <button type="submit">🔍</button>
-    </form>
-</header>
+        <a href="/" class="header-btn">&larr; Back</a>
+        <h1 class="header-title">Discover</h1>
+        <form class="search-form" id="search-form">
+            <select id="filter-select" class="filter-select"
+                style="background: #1a1a1a; border: 1px solid var(--border-color); color: var(--text-color); padding: 0.5rem; border-radius: 6px; margin-right: 10px;">
+                <option value="all">All Types</option>
+                <option value="3d">3D Models</option>
+                <option value="video">Videos</option>
+                <option value="app">Apps</option>
+            </select>
+            <input type="search" id="search-input" placeholder="Search themes...">
+            <button type="submit">🔍</button>
+        </form>
+    </header>
 
     <main class="content-wrapper">
         <h2 id="page-title">New Releases</h2>
@@ -580,40 +582,40 @@
 
     <script>
 
-function showEndpointError() {
-    grid.innerHTML = '';
-    grid.style.display = 'none';
-    paginationControls.style.display = 'none';
-    
-    errorView.style.display = 'flex';
-    errorView.querySelector('.error-icon').textContent = '🛠️';
-    errorView.querySelector('.error-title').textContent = 'Endpoint Not Initialized';
-    errorView.querySelector('.error-desc').textContent = 
-        "The application could not retrieve the API configuration.";
-}
-        let API_BASE_URL = '#'; 
-async function initializeSettings() {
-    try {
-        const response = await fetch('/get_app_settings');
-        const settings = await response.json();
-        if (settings.apiBaseUrl) {
-            API_BASE_URL = settings.apiBaseUrl;
-            console.log("API URL synced from backend:", API_BASE_URL);
-            return true;
+        function showEndpointError() {
+            grid.innerHTML = '';
+            grid.style.display = 'none';
+            paginationControls.style.display = 'none';
+
+            errorView.style.display = 'flex';
+            errorView.querySelector('.error-icon').textContent = '🛠️';
+            errorView.querySelector('.error-title').textContent = 'Endpoint Not Initialized';
+            errorView.querySelector('.error-desc').textContent =
+                "The application could not retrieve the API configuration.";
         }
-    } catch (err) {
-        console.error("Failed to sync settings from backend:", err);
-    }
-    return false;
-}
-document.addEventListener('DOMContentLoaded', async () => {
-    const isInitialized = await initializeSettings(); 
-    if (!isInitialized || API_BASE_URL === '#') {
-        showEndpointError();
-    } else {
-        fetchWallpapers();
-    }
-});
+        let API_BASE_URL = '#';
+        async function initializeSettings() {
+            try {
+                const response = await fetch('/get_app_settings');
+                const settings = await response.json();
+                if (settings.apiBaseUrl) {
+                    API_BASE_URL = settings.apiBaseUrl;
+                    console.log("API URL synced from backend:", API_BASE_URL);
+                    return true;
+                }
+            } catch (err) {
+                console.error("Failed to sync settings from backend:", err);
+            }
+            return false;
+        }
+        document.addEventListener('DOMContentLoaded', async () => {
+            const isInitialized = await initializeSettings();
+            if (!isInitialized || API_BASE_URL === '#') {
+                showEndpointError();
+            } else {
+                fetchWallpapers();
+            }
+        });
         const API_PAGE_LIMIT = 50;
 
         let CURRENT_APP_VERSION = 1;
@@ -653,24 +655,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         let currentFilter = 'all';
         async function fetchWallpapers() {
-    if (!API_BASE_URL || API_BASE_URL === '#') {
-        console.warn("fetchWallpapers called before API_BASE_URL was ready.");
-        return;
-    }
+            if (!API_BASE_URL || API_BASE_URL === '#') {
+                console.warn("fetchWallpapers called before API_BASE_URL was ready.");
+                return;
+            }
 
-    let url = '';
+            let url = '';
 
-    if (currentSearchQuery) {
-        url = `${API_BASE_URL}?action=search&query=${currentSearchQuery}&page=${currentPage}`;
-        pageTitle.textContent = `Searching for "${currentSearchQuery}"`;
-    } else if (currentFilter !== 'all') {
+            if (currentSearchQuery) {
+                url = `${API_BASE_URL}?action=search&query=${currentSearchQuery}&page=${currentPage}`;
+                pageTitle.textContent = `Searching for "${currentSearchQuery}"`;
+            } else if (currentFilter !== 'all') {
 
-        url = `${API_BASE_URL}?action=filter&type=${currentFilter}&page=${currentPage}`;
-        pageTitle.textContent = `${currentFilter.toUpperCase()} Wallpapers`;
-    } else {
-        url = `${API_BASE_URL}?action=discover&page=${currentPage}`;
-        pageTitle.textContent = 'New Releases';
-    }
+                url = `${API_BASE_URL}?action=filter&type=${currentFilter}&page=${currentPage}`;
+                pageTitle.textContent = `${currentFilter.toUpperCase()} Wallpapers`;
+            } else {
+                url = `${API_BASE_URL}?action=discover&page=${currentPage}`;
+                pageTitle.textContent = 'New Releases';
+            }
 
             grid.style.display = 'grid';
             errorView.style.display = 'none';
@@ -686,18 +688,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const updateData = await updateResp.json();
                     const apiData = updateData.data;
                     if (apiData && apiData.discover_enabled === false) {
-    grid.style.display = 'none';
-    paginationControls.style.display = 'none';
+                        grid.style.display = 'none';
+                        paginationControls.style.display = 'none';
 
-    errorView.style.display = 'flex';
-    errorView.querySelector('.error-icon').textContent = '📢';
-    errorView.querySelector('.error-title').textContent = 'Notice';
-    errorView.querySelector('.error-desc').textContent = apiData.discover_message || "Discover is currently disabled.";
+                        errorView.style.display = 'flex';
+                        errorView.querySelector('.error-icon').textContent = '📢';
+                        errorView.querySelector('.error-title').textContent = 'Notice';
+                        errorView.querySelector('.error-desc').textContent = apiData.discover_message || "Discover is currently disabled.";
 
-    document.getElementById('retry-btn').style.display = 'none';
-    return; 
+                        document.getElementById('retry-btn').style.display = 'none';
+                        return;
 
-}
+                    }
 
                     const minDiscoverVer = updateData.data ? parseInt(updateData.data.min_discover_version || 0) : 0;
 
@@ -710,12 +712,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         errorView.style.display = 'flex';
                         errorView.querySelector('.error-icon').textContent = '⚠️';
                         errorView.querySelector('.error-title').textContent = 'Update Required';
-                        errorView.querySelector('.error-desc').textContent = 
+                        errorView.querySelector('.error-desc').textContent =
                             `To access the Discover store, you need to update Librewall.\n\nRequired: v${minDiscoverVer}+ \nCurrent: v${CURRENT_APP_VERSION}\n\nPlease restart the application to update.`;
 
-                        document.getElementById('retry-btn').style.display = 'none'; 
+                        document.getElementById('retry-btn').style.display = 'none';
 
-                        return; 
+                        return;
 
                     }
                 }
@@ -789,30 +791,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                 card.appendChild(label);
             }
 
-            const type = theme.type || '3d'; 
+            const type = theme.type || '3d';
 
-    let typeLabelText = '';
-    let typeClass = '';
+            let typeLabelText = '';
+            let typeClass = '';
 
-    if (type === 'video') {
-        typeLabelText = 'VIDEO';
-        typeClass = 'video';
-    } else if (type === 'app') {
-        typeLabelText = 'APP';
-        typeClass = 'app';
-    } else {
-        typeLabelText = '3D';
-        typeClass = 'model3d';
-    }
+            if (type === 'video') {
+                typeLabelText = 'VIDEO';
+                typeClass = 'video';
+            } else if (type === 'app') {
+                typeLabelText = 'APP';
+                typeClass = 'app';
+            } else {
+                typeLabelText = '3D';
+                typeClass = 'model3d';
+            }
 
-    const typeBadge = document.createElement('div');
-    typeBadge.className = `type-label ${typeClass}`; 
+            const typeBadge = document.createElement('div');
+            typeBadge.className = `type-label ${typeClass}`;
 
-    typeBadge.textContent = typeLabelText;
-    card.appendChild(typeBadge);
+            typeBadge.textContent = typeLabelText;
+            card.appendChild(typeBadge);
 
             const img = document.createElement('img');
-            img.src = theme.thumbnailUrl || '';
+            img.src = theme.thumbnailUrl ? `/proxy_thumbnail?url=${encodeURIComponent(theme.thumbnailUrl)}` : '';
             img.alt = theme.themeName;
 
             const info = document.createElement('div');
@@ -953,14 +955,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         document.getElementById('filter-select').addEventListener('change', (e) => {
-    currentPage = 1;
-    currentFilter = e.target.value;
+            currentPage = 1;
+            currentFilter = e.target.value;
 
-    searchInput.value = '';
-    currentSearchQuery = '';
+            searchInput.value = '';
+            currentSearchQuery = '';
 
-    fetchWallpapers();
-});
+            fetchWallpapers();
+        });
 
     </script>
 </body>

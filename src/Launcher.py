@@ -31,6 +31,8 @@ import zlib
 import base64 
 import ctypes
 from ctypes import wintypes
+import hashlib
+from PIL import Image
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
     "--gpu-preference=high-performance "
     "--enable-gpu-rasterization "
@@ -56,7 +58,7 @@ except ImportError:
 
 
 
-API_BASE_URL = "https://dkydivyansh.com/Project/api/wallpapers/index.php"
+API_BASE_URL = "https://example.com/api/v1"
 CURRENT_APP_VERSION = 1
 CURRENT_APP_VERSION_NAME = "1.0 Stable"
 WALLPAPERS_DIR = 'wallpapers'
@@ -71,6 +73,7 @@ else:
     SERVER_ROOT = os.path.abspath(os.path.dirname(__file__))
 print(f"Server Root detected as: {SERVER_ROOT}")
 APP_CONFIG_FILE = 'app_config.json'
+THUMBNAIL_CACHE_DIR = 'thumbnail_cache'
 user32   = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
 
@@ -479,6 +482,70 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_json_response(500, {'error': f"Error reading config: {e}"})
             return
 
+        elif self.path.startswith('/proxy_thumbnail'):
+            try:
+                query = urllib.parse.urlparse(self.path).query
+                params = urllib.parse.parse_qs(query)
+                target_url = params.get('url', [None])[0]
+
+                if not target_url:
+                    self.send_json_response(400, {'error': 'Missing url parameter'})
+                    return
+
+                cache_dir = os.path.join(SERVER_ROOT, THUMBNAIL_CACHE_DIR)
+                os.makedirs(cache_dir, exist_ok=True)
+
+                filename_hash = hashlib.md5(target_url.encode('utf-8')).hexdigest()
+                cached_file_path = os.path.join(cache_dir, filename_hash + ".jpg")
+
+                if os.path.exists(cached_file_path):
+                    with open(cached_file_path, 'rb') as f:
+                        data = f.read()
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'image/jpeg')
+                    self.send_header('Content-Length', str(len(data)))
+                    self.end_headers()
+                    self.wfile.write(data)
+                    return
+
+                req = urllib.request.Request(target_url, headers={'User-Agent': 'Mozilla/5.0'})
+                try:
+                    with urllib.request.urlopen(req, timeout=10) as response:
+                        image_data = response.read()
+                except Exception as dl_err:
+                     print(f"Failed to download thumbnail: {dl_err}")
+                     self.send_json_response(404, {'error': 'Image download failed'})
+                     return
+
+                try:
+                    img = Image.open(io.BytesIO(image_data))
+                    img = img.convert('RGB')
+                    
+                    temp_path = cached_file_path + ".tmp"
+                    img.save(temp_path, 'JPEG', quality=85)
+                    os.replace(temp_path, cached_file_path)
+                    
+                except Exception as img_err:
+                     print(f"Failed to process image: {img_err}")
+                     if os.path.exists(cached_file_path + ".tmp"):
+                         try: os.remove(cached_file_path + ".tmp")
+                         except: pass
+                     self.send_json_response(500, {'error': 'Image processing failed'})
+                     return
+
+                with open(cached_file_path, 'rb') as f:
+                    data = f.read()
+                self.send_response(200)
+                self.send_header('Content-Type', 'image/jpeg')
+                self.send_header('Content-Length', str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            except Exception as e:
+                print(f"Error in proxy_thumbnail: {e}")
+                self.send_json_response(500, {'error': str(e)})
+            return
+
         return super().do_GET()
 
     def do_POST(self):
@@ -797,13 +864,18 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_json_response(500, {'error': error_message})
             return
 
+
+
         self.send_json_response(404, {'error': "Not Found"})
+
+class ThreadingHTTPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    daemon_threads = True
 
 def start_editor_server(port):
     Handler = EditorHTTPHandler
-    httpd = socketserver.TCPServer(("", port), Handler)
+    httpd = ThreadingHTTPServer(("", port), Handler)
 
-    print(f"Editor server started at http://localhost:{port}")
+    print(f"Editor server (Multi-threaded) started at http://localhost:{port}")
     print(f"Serving files from: {SERVER_ROOT}")
 
     httpd.serve_forever()
