@@ -76,14 +76,14 @@ except ImportError:
 
 
 API_BASE_URL = api_config.base_url
-CURRENT_APP_VERSION = 1
-CURRENT_APP_VERSION_NAME = "1.0 Stable"
-WALLPAPERS_DIR = 'wallpapers'
-EDITOR_PORT = 5001
+CURRENT_APP_VERSION = api_config.CURRENT_APP_VERSION
+CURRENT_APP_VERSION_NAME = api_config.CURRENT_APP_VERSION_NAME
+WALLPAPERS_DIR = api_config.WALLPAPERS_DIR
+EDITOR_PORT = api_config.EDITOR_PORT
 EDITOR_SERVER_URL = f"http://localhost:{EDITOR_PORT}"
-EDITOR_HTML = 'home.html'
-DISCOVER_HTML = 'discover.html'
-SETTINGS_HTML = 'settings.html'
+EDITOR_HTML = api_config.EDITOR_HTML
+DISCOVER_HTML = api_config.DISCOVER_HTML
+SETTINGS_HTML = api_config.SETTINGS_HTML
 
 APP_SECURITY_TOKEN = ''.join(random.choices(string.digits, k=12))
 print(f"Authentication Token (User-Agent): {APP_SECURITY_TOKEN}")
@@ -92,7 +92,7 @@ if getattr(sys, 'frozen', False):
 else:
     SERVER_ROOT = os.path.abspath(os.path.dirname(__file__))
 print(f"Server Root detected as: {SERVER_ROOT}")
-APP_CONFIG_FILE = 'app_config.json'
+APP_CONFIG_FILE = api_config.APP_CONFIG_FILE
 THUMBNAIL_CACHE_DIR = 'thumbnail_cache'
 user32   = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
@@ -405,11 +405,10 @@ def start_engine_process():
         raise FileNotFoundError("Engine executable or script not found.")
 
     print(f"Starting engine with command: {' '.join(ENGINE_RUN_COMMAND)}")
-    flags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+    flags = subprocess.CREATE_NEW_PROCESS_GROUP 
     subprocess.Popen(
         ENGINE_RUN_COMMAND,
         cwd=SERVER_ROOT,
-        close_fds=True, 
         creationflags=flags
     )
 
@@ -931,9 +930,10 @@ class EditorWindow(QMainWindow):
     def __init__(self, url):
         super().__init__()
         self.setWindowTitle("librewall")
-        self.resize(1400, 900) 
+        self.resize(1400, 900)
+        self.setMinimumSize(800, 700)
         self.webEngineView = QWebEngineView(self)
-        
+        self.webEngineView.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.dev_tools_view = None
         self.dev_tools_window = None
         
@@ -999,7 +999,7 @@ if __name__ == "__main__":
         app.setWindowIcon(QIcon(icon_path))
 
     try:
-        myappid = 'dkydivyansh.librewall.launcher' 
+        myappid = api_config.APP_USER_MODEL_ID
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except: pass
 

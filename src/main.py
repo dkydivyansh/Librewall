@@ -8,6 +8,7 @@ if sys.stdout is None or sys.stderr is None:
 
     sys.stdout = NullWriter()
     sys.stderr = NullWriter()
+import api_config
 import ctypes
 import win32gui
 import win32con
@@ -133,7 +134,7 @@ os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
 os.environ["QT_SCALE_FACTOR"] = "1"
 
 from PyQt6.QtCore import QUrl, Qt, QTimer
-from PyQt6.QtWidgets import QApplication, QMainWindow, QMenu
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMenu, QSystemTrayIcon
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 
@@ -164,11 +165,11 @@ else:
 
 print(f"Engine Server Root detected as: {SCRIPT_DIR}")
 
-HTTP_PORT = 60600
-WS_PORT = 60601
+HTTP_PORT = api_config.ENGINE_HTTP_PORT
+WS_PORT = api_config.ENGINE_WS_PORT
 
-WALLPAPERS_ROOT_DIR = "wallpapers"
-APP_CONFIG_PATH = os.path.join(SCRIPT_DIR, 'app_config.json')
+WALLPAPERS_ROOT_DIR = api_config.WALLPAPERS_DIR
+APP_CONFIG_PATH = os.path.join(SCRIPT_DIR, api_config.APP_CONFIG_FILE)
 
 STATS_LOCK = threading.Lock()
 CURRENT_STATS = {
@@ -855,7 +856,7 @@ if __name__ == "__main__":
         app.setWindowIcon(QIcon(icon_path))
 
     try:
-        myappid = 'dkydivyansh.librewall.engine'
+        myappid = api_config.APP_USER_MODEL_ID
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except: pass
     check_single_instance()
@@ -908,6 +909,65 @@ if __name__ == "__main__":
         threading.Thread(target=network_stats_updater, daemon=True).start()
         threading.Thread(target=live_traffic_updater, args=(current_proc_name,), daemon=True).start()
         threading.Thread(target=start_websocket_thread, args=(current_proc_name,), daemon=True).start()
+
+    tray_icon = QSystemTrayIcon(app)
+    tray_icon_path = os.path.join(SCRIPT_DIR, '1.ico')
+    if os.path.exists(tray_icon_path):
+        tray_icon.setIcon(QIcon(tray_icon_path))
+    else:
+        tray_icon.setIcon(app.windowIcon())
+    
+    tray_menu = QMenu()
+    
+    def open_launcher():
+        launcher_exe = os.path.join(SCRIPT_DIR, 'librewall.exe')
+        launcher_py = os.path.join(SCRIPT_DIR, 'Launcher.py')
+        detach_flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        try:
+            if os.path.exists(launcher_exe):
+                subprocess.Popen([launcher_exe], cwd=SCRIPT_DIR, creationflags=detach_flags, close_fds=True)
+                print("Launched librewall.exe")
+            elif os.path.exists(launcher_py):
+                subprocess.Popen([sys.executable, launcher_py], cwd=SCRIPT_DIR, creationflags=detach_flags, close_fds=True)
+                print("Launched Launcher.py")
+            else:
+                print("Launcher not found!")
+        except Exception as e:
+            print(f"Error launching GUI: {e}")
+    
+    open_action = QAction("Open Librewall", app)
+    open_action.triggered.connect(open_launcher)
+    tray_menu.addAction(open_action)
+    
+    tray_menu.addSeparator()
+    
+    pause_action = QAction("Pause Wallpaper", app)
+    def toggle_pause():
+        if window.is_paused:
+            window.resume_wallpaper()
+            pause_action.setText("Pause Wallpaper")
+        else:
+            window.pause_wallpaper()
+            pause_action.setText("Resume Wallpaper")
+    pause_action.triggered.connect(toggle_pause)
+    tray_menu.addAction(pause_action)
+    
+    reload_action = QAction("Reload Wallpaper", app)
+    def reload_wallpaper():
+        app.is_restarting = True
+        app.quit()
+    reload_action.triggered.connect(reload_wallpaper)
+    tray_menu.addAction(reload_action)
+    
+    tray_menu.addSeparator()
+    
+    quit_action = QAction("Quit Engine", app)
+    quit_action.triggered.connect(app.quit)
+    tray_menu.addAction(quit_action)
+    
+    tray_icon.setContextMenu(tray_menu)
+    tray_icon.setToolTip("Librewall Engine")
+    tray_icon.show()
 
     print(f"Engine Running on {server_url}")
     exit_code = app.exec()
