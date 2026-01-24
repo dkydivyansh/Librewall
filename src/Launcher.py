@@ -21,6 +21,8 @@ import zipfile
 import io
 import urllib.parse
 import email
+import random
+import string
 from PyQt6.QtCore import QUrl, Qt, QTimer
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenu
 from PyQt6.QtGui import QAction, QIcon
@@ -67,6 +69,9 @@ EDITOR_SERVER_URL = f"http://localhost:{EDITOR_PORT}"
 EDITOR_HTML = 'home.html'
 DISCOVER_HTML = 'discover.html'
 SETTINGS_HTML = 'settings.html'
+
+APP_SECURITY_TOKEN = ''.join(random.choices(string.digits, k=12))
+print(f"Authentication Token (User-Agent): {APP_SECURITY_TOKEN}")
 if getattr(sys, 'frozen', False):
     SERVER_ROOT = os.path.dirname(sys.executable)
 else:
@@ -280,7 +285,6 @@ def validate_wallpaper(theme_dir_name, theme_path):
     missing_assets = []
 
     def check_asset(filename_key, is_required=False):
-        """Helper to check for a file specified in the config."""
         filepath = config_data.get(filename_key)
 
         if filepath:
@@ -419,7 +423,15 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
 
+    def validate_request(self):
+        user_agent = self.headers.get('User-Agent', '')
+        return user_agent == APP_SECURITY_TOKEN
+
     def do_GET(self):
+        if not self.validate_request():
+            self.send_error(403, "Forbidden: Access Denied")
+            return
+
         routes = {
             '/': ('DATA_HOME', EDITOR_HTML),
             f'/{EDITOR_HTML}': ('DATA_HOME', EDITOR_HTML),
@@ -549,6 +561,9 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
+        if not self.validate_request():
+            self.send_error(403, "Forbidden: Access Denied")
+            return
 
         if self.path == '/save_app_settings':
             try:
@@ -903,7 +918,11 @@ class EditorWindow(QMainWindow):
         no_select_script.setInjectionPoint(QWebEngineScript.InjectionPoint.DocumentReady)
         no_select_script.setWorldId(QWebEngineScript.ScriptWorldId.MainWorld)
         no_select_script.setRunsOnSubFrames(True)
+        no_select_script.setRunsOnSubFrames(True)
         self.webEngineView.page().profile().scripts().insert(no_select_script)
+        
+        self.webEngineView.page().profile().setHttpUserAgent(APP_SECURITY_TOKEN)
+        
         self.setCentralWidget(self.webEngineView)
         QWebEngineProfile.defaultProfile().clearHttpCache()
         self.webEngineView.settings().setAttribute(self.webEngineView.settings().WebAttribute.WebGLEnabled, True)
