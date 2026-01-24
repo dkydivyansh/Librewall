@@ -126,7 +126,7 @@ os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
     "--enable-gpu-rasterization "       
     "--ignore-gpu-blocklist "          
     "--disable-gpu-driver-bug-workarounds " 
-    "--use-angle=default "
+    "--use-angle=d3d11 "
 )
 
 os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
@@ -178,7 +178,7 @@ TRAFFIC_LOCK = threading.Lock()
 LIVE_TRAFFIC_LOG = collections.deque(maxlen=50) 
 SEEN_CONNECTIONS = set()
 PROCESS_HIDE_LIST = [
-    'chrome', 'firefox', 'msedge', 'brave', 'safari', 'opera'
+    'librewall.exe', 'engine.exe'
 ]
 APP_CONFIG_LOCK = threading.Lock()
 
@@ -605,7 +605,6 @@ class WallpaperWindow(QMainWindow):
             ex_style = win32gui.GetWindowLong(self.window_handle, win32con.GWL_EXSTYLE)
             ex_style |= win32con.WS_EX_TOOLWINDOW   
             ex_style &= ~win32con.WS_EX_APPWINDOW   
-            ex_style |= 0x02000000
             win32gui.SetWindowLong(self.window_handle, win32con.GWL_EXSTYLE, ex_style)
 
             progman = win32gui.FindWindow("Progman", None)

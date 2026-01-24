@@ -7,6 +7,20 @@ if sys.stdout is None or sys.stderr is None:
         def isatty(self): return False
     sys.stdout = NullWriter()
     sys.stderr = NullWriter()
+
+import api_config
+import builtins
+
+if not api_config.developer_enabled:
+   class NullWriter:
+       def write(self, text): pass
+       def flush(self): pass
+       def isatty(self): return False
+   
+   def print(*args, **kwargs): pass
+   builtins.print = print
+   sys.stdout = NullWriter()
+   sys.stderr = NullWriter()
 import http.server
 import socketserver
 import threading
@@ -14,6 +28,7 @@ import socket
 import json
 import mimetypes
 import urllib.request
+import webbrowser
 import subprocess
 import shutil
 import time
@@ -60,7 +75,7 @@ except ImportError:
 
 
 
-API_BASE_URL = "https://example.com/api/v1"
+API_BASE_URL = api_config.base_url
 CURRENT_APP_VERSION = 1
 CURRENT_APP_VERSION_NAME = "1.0 Stable"
 WALLPAPERS_DIR = 'wallpapers'
@@ -879,6 +894,23 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_json_response(500, {'error': error_message})
             return
 
+        elif self.path == '/open_external_link':
+            try:
+                content_len = int(self.headers.get('Content-Length'))
+                post_body = self.rfile.read(content_len)
+                data = json.loads(post_body)
+                url = data.get('url')
+                
+                if url:
+                    webbrowser.open(url)
+                    self.send_json_response(200, {'status': 'success'})
+                else:
+                    self.send_json_response(400, {'error': 'Missing URL'})
+            except Exception as e:
+                print(f"Error opening link: {e}")
+                self.send_json_response(500, {'error': str(e)})
+            return
+
 
 
         self.send_json_response(404, {'error': "Not Found"})
@@ -898,10 +930,19 @@ def start_editor_server(port):
 class EditorWindow(QMainWindow):
     def __init__(self, url):
         super().__init__()
-        self.setWindowTitle("librewall") 
+        self.setWindowTitle("librewall")
         self.resize(1400, 900) 
         self.webEngineView = QWebEngineView(self)
-        self.webEngineView.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        
+        self.dev_tools_view = None
+        self.dev_tools_window = None
+        
+        if api_config.developer_enabled:
+            dev_action = QAction("DevTools", self)
+            dev_action.setShortcut("F12")
+            dev_action.triggered.connect(self.toggle_devtools)
+            self.addAction(dev_action)
+        
         no_select_script = QWebEngineScript()
         no_select_script.setName("DisableSelection")
         no_select_script.setSourceCode("""
@@ -931,7 +972,24 @@ class EditorWindow(QMainWindow):
         self.webEngineView.setHtml(LOADING_HTML_CONTENT, QUrl("about:blank"))
         self.show()
 
+    def toggle_devtools(self):
+        if not self.dev_tools_window:
+            self.dev_tools_window = QMainWindow()
+            self.dev_tools_view = QWebEngineView()
+            self.dev_tools_window.setCentralWidget(self.dev_tools_view)
+            self.dev_tools_window.setWindowTitle("Developer Tools")
+            self.dev_tools_window.resize(800, 600)
+            self.webEngineView.page().setDevToolsPage(self.dev_tools_view.page())
+            
+        if self.dev_tools_window.isVisible():
+            self.dev_tools_window.hide()
+        else:
+            self.dev_tools_window.show()
+            self.dev_tools_window.activateWindow()
+
 if __name__ == "__main__":
+    
+    os.environ["QTWEBENGINE_REMOTE_DEBUGGING"] = "9222"
 
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
@@ -992,10 +1050,8 @@ if __name__ == "__main__":
     if not updater_module.run_update_check(CURRENT_APP_VERSION, CURRENT_APP_VERSION_NAME, API_BASE_URL):
         sys.exit(0) 
 
-    os.environ["QTWEBENGINE_REMOTE_DEBUGGING"] = "9222"
     print("DevTools (Inspect) available at http://localhost:9222") 
     print(f"Loading editor UI from: {EDITOR_SERVER_URL}")
 
     window = EditorWindow(EDITOR_SERVER_URL)
-
     sys.exit(app.exec())
