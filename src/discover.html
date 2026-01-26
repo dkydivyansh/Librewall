@@ -241,7 +241,11 @@
             font-weight: 600;
             margin: 0 0 0.25rem 0;
             color: var(--text-color);
-            white-space: nowrap;
+            white-space: normal;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
             overflow: hidden;
             text-overflow: ellipsis;
         }
@@ -1126,11 +1130,7 @@
             info.className = 'wallpaper-info';
             const title = document.createElement('h3');
             title.textContent = theme.themeName;
-            const author = document.createElement('p');
-            author.textContent = `by ${theme.author || 'Unknown'}`;
             info.prepend(title);
-            info.append(author);
-
             if (isDisabled) {
                 const warning = document.createElement('p');
                 warning.style.color = '#ff9a9a';
