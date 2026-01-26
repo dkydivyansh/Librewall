@@ -83,6 +83,7 @@ EDITOR_SERVER_URL = f"http://localhost:{EDITOR_PORT}"
 EDITOR_HTML = api_config.EDITOR_HTML
 DISCOVER_HTML = api_config.DISCOVER_HTML
 SETTINGS_HTML = api_config.SETTINGS_HTML
+FEATURED_HTML = api_config.FEATURED_HTML
 
 APP_SECURITY_TOKEN = ''.join(random.choices(string.digits, k=12))
 print(f"Authentication Token (User-Agent): {APP_SECURITY_TOKEN}")
@@ -450,6 +451,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
             f'/{EDITOR_HTML}': ('DATA_HOME', EDITOR_HTML),
             f'/{DISCOVER_HTML}': ('DATA_DISCOVER', DISCOVER_HTML),
             f'/{SETTINGS_HTML}': ('DATA_SETTINGS', SETTINGS_HTML),
+            f'/{FEATURED_HTML}': ('DATA_FEATURED', FEATURED_HTML),
         }
 
         if self.path in routes:
@@ -822,7 +824,13 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 if 'muteAudio' in data:
 
                     val = data.get('muteAudio')
-                    config_data['muteAudio'] = bool(val) if val is not None else False
+                    config_data['muteAudio'] = bool(val) if val is not None else True
+
+                if 'volume' in data:
+                    try:
+                        config_data['volume'] = int(data.get('volume'))
+                    except (ValueError, TypeError):
+                        config_data['volume'] = 70
 
                 with open(config_path, 'w', encoding='utf-8') as f:
                     json.dump(config_data, f, indent=2)
@@ -837,6 +845,20 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
 
         elif self.path == '/start_engine':
             try:
+                app_config = read_app_config()
+                port = app_config.get('port', 8080)
+                
+                if is_engine_running(port):
+                    print(f"Engine already running on port {port}. Reloading...")
+                    try:
+                        with urllib.request.urlopen(f"http://localhost:{port}/reload", timeout=2) as r:
+                            pass
+                    except Exception as e:
+                        print(f"Reload request failed: {e}")
+                    
+                    self.send_json_response(200, {'status': 'success', 'message': 'Engine reloaded.'})
+                    return
+
                 start_engine_process()
                 self.send_json_response(200, {'status': 'success', 'message': 'Engine start command issued.'})
             except Exception as e:
@@ -981,9 +1003,9 @@ def start_editor_server(port):
 class EditorWindow(QMainWindow):
     def __init__(self, url):
         super().__init__()
-        self.setWindowTitle("librewall")
+        self.setWindowTitle(f"librewall {api_config.CURRENT_APP_VERSION_NAME}")
         self.resize(1400, 900)
-        self.setMinimumSize(800, 700)
+        self.setMinimumSize(900, 700)
         self.webEngineView = QWebEngineView(self)
         self.webEngineView.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.dev_tools_view = None

@@ -22,7 +22,7 @@ except OSError as e:
     print(f"CRITICAL: Could not load libmpv.\nError: {e}")
     mpv = None
 class NativeVideoWidget(QWidget):
-    def __init__(self, video_path, parent=None, fps_limit=0, mute_audio=False):
+    def __init__(self, video_path, parent=None, fps_limit=0, mute_audio=False, volume=70):
         super().__init__(parent)
         self.is_paused = False
         if not mpv:
@@ -60,6 +60,7 @@ class NativeVideoWidget(QWidget):
                 self.player.mute = True
             else:
                 self.player.mute = False
+            self.player.volume = volume
             self.player['loop-file'] = 'inf'
             self.player['cache'] = 'yes'
             self.player['demuxer-max-bytes'] = '500M'  

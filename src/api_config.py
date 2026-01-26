@@ -3,8 +3,8 @@ base_url = "#"
 developer_enabled = True
 
 # App Version
-CURRENT_APP_VERSION = 1
-CURRENT_APP_VERSION_NAME = "1.0 Stable"
+CURRENT_APP_VERSION = 2
+CURRENT_APP_VERSION_NAME = "2.0 Beta"
 
 # Directory and File Names
 WALLPAPERS_DIR = 'wallpapers'
@@ -15,6 +15,7 @@ EDITOR_PORT = 5001
 EDITOR_HTML = 'home.html'
 DISCOVER_HTML = 'discover.html'
 SETTINGS_HTML = 'settings.html'
+FEATURED_HTML = 'featured.html'
 
 # Engine Settings
 ENGINE_HTTP_PORT = 60600

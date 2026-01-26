@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discover Wallpapers</title>
+    <title>Featured Wallpapers</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -50,13 +50,6 @@
 
         #retry-btn:active {
             transform: translateY(0);
-        }
-
-        input,
-        textarea {
-            -webkit-user-select: text;
-            user-select: text;
-            cursor: auto;
         }
 
         body {
@@ -108,58 +101,10 @@
             margin-right: auto;
         }
 
+        /* Adjusted for filter only */
         .search-form {
             display: flex;
             align-items: center;
-        }
-
-        .search-container {
-            display: flex;
-            align-items: center;
-            background: #1a1a1a;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 4px 12px;
-            transition: border-color 0.2s;
-            margin-left: 10px;
-        }
-
-        .search-container:focus-within {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.2);
-        }
-
-        .search-container input {
-            background: transparent;
-            border: none;
-            color: var(--text-color);
-            padding: 0.5rem;
-            font-size: 0.9rem;
-            outline: none;
-            width: 200px;
-        }
-
-        .search-container button {
-            background: transparent;
-            border: none;
-            color: var(--secondary-color);
-            padding: 0.4rem;
-            cursor: pointer;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: color 0.2s;
-        }
-
-        .search-container button:hover {
-            color: var(--text-color);
-        }
-
-        .search-container button svg {
-            width: 18px;
-            height: 18px;
-            fill: currentColor;
         }
 
         .content-wrapper {
@@ -522,7 +467,8 @@
             padding: 0.5rem;
             border-radius: 6px;
             font-size: 0.9rem;
-            margin-right: 10px;
+            margin-right: 0;
+            /* Removed right margin since no input follows */
             outline: none;
             cursor: pointer;
         }
@@ -584,77 +530,10 @@
             width: 100%;
         }
 
-        .featured-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .featured-see-more {
-            color: var(--bg-color);
-            background: var(--text-color);
-            text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: 700;
-            padding: 8px 20px;
-            border-radius: 6px;
-            border: 2px solid var(--text-color);
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        .featured-see-more:hover {
-            background: transparent;
-            color: var(--text-color);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.15);
-        }
-
-        .featured-glow {
-            position: relative;
-            z-index: 1;
-            border-color: rgba(255, 255, 255, 0.4) !important;
-            animation: organic-glow 3s ease-in-out infinite;
-        }
-
-        .featured-glow:hover {
-            animation: none;
-            border-color: #ffffff !important;
-            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.3),
-                0 0 0 1px rgba(255, 255, 255, 0.5) !important;
-            transform: translateY(-6px) scale(1.02);
-            z-index: 10;
-        }
-
-        @keyframes organic-glow {
-            0% {
-                box-shadow: 0 0 15px rgba(255, 255, 255, 0.1),
-                    0 0 5px rgba(255, 255, 255, 0.1) inset;
-                border-color: rgba(255, 255, 255, 0.3);
-            }
-
-            50% {
-                box-shadow: 0 0 25px rgba(255, 255, 255, 0.25),
-                    0 0 10px rgba(255, 255, 255, 0.15) inset;
-                border-color: rgba(255, 255, 255, 0.6);
-            }
-
-            100% {
-                box-shadow: 0 0 15px rgba(255, 255, 255, 0.1),
-                    0 0 5px rgba(255, 255, 255, 0.1) inset;
-                border-color: rgba(255, 255, 255, 0.3);
-            }
-        }
-
         .filter-buttons {
             display: flex;
-            gap: 10px;
+            gap: 12px;
+            margin-right: 20px;
         }
 
         .filter-chip {
@@ -695,9 +574,9 @@
     </div>
 
     <header class="header">
-        <a href="/" class="header-btn">&larr; Back</a>
-        <h1 class="header-title">Discover</h1>
-        <form class="search-form" id="search-form">
+        <a href="/discover.html" class="header-btn">&larr; Back</a>
+        <h1 class="header-title">Featured</h1>
+        <div class="search-form" id="search-form">
             <div class="filter-buttons" id="filter-container">
                 <button class="filter-chip active" type="button" data-value="all" onclick="setFilter('all')">All
                     Types</button>
@@ -706,16 +585,7 @@
                     onclick="setFilter('video')">Videos</button>
                 <button class="filter-chip" type="button" data-value="app" onclick="setFilter('app')">Apps</button>
             </div>
-            <div class="search-container">
-                <input type="search" id="search-input" placeholder="Search themes...">
-                <button type="submit">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path
-                            d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-                    </svg>
-                </button>
-            </div>
-        </form>
+        </div>
     </header>
 
     <div id="external-link-modal"
@@ -734,15 +604,6 @@
     </div>
 
     <main class="content-wrapper">
-        <div id="featured-section" style="display: none; margin-bottom: 2.5rem;">
-            <div class="featured-header">
-                <h2 style="border: none; padding: 0; margin: 0;">Featured</h2>
-                <a href="/featured.html" class="featured-see-more">See More <span>&rarr;</span></a>
-            </div>
-            <div id="featured-grid" class="wallpaper-grid"></div>
-        </div>
-        <h2 id="page-title">New Releases</h2>
-
         <div id="wallpaper-grid-valid" class="wallpaper-grid"></div>
 
         <div id="connection-error" class="error-container">
@@ -810,7 +671,6 @@
             if (!isInitialized || API_BASE_URL === '#') {
                 showEndpointError();
             } else {
-                fetchFeatured();
                 fetchWallpapers();
             }
         });
@@ -818,12 +678,8 @@
 
         let CURRENT_APP_VERSION = 1;
         let currentPage = 1;
-        let currentSearchQuery = '';
         let currentTheme = null;
         let installedThemeIds = [];
-        let featuredData = [];
-        const featuredSection = document.getElementById('featured-section');
-        const featuredGrid = document.getElementById('featured-grid');
 
         const lightboxOverlay = document.getElementById('lightbox-overlay');
         const lightboxClose = document.getElementById('lightbox-close');
@@ -837,50 +693,7 @@
         const errorView = document.getElementById('connection-error');
         const retryBtn = document.getElementById('retry-btn');
 
-        const pageTitle = document.getElementById('page-title');
-        const searchForm = document.getElementById('search-form');
-        const searchInput = document.getElementById('search-input');
-        async function fetchFeatured() {
-            if (!API_BASE_URL || API_BASE_URL === '#') return;
-
-            try {
-                const response = await fetch(`${API_BASE_URL}?action=discover&featured=true`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.data && data.data.length > 0) {
-                        featuredData = data.data;
-                        featuredSection.style.display = 'block';
-                        updateFeaturedLayout();
-                    }
-                }
-            } catch (err) {
-                console.error("Failed to fetch featured:", err);
-            }
-        }
-        function updateFeaturedLayout() {
-            if (!featuredData.length) return;
-
-            const containerWidth = featuredSection.clientWidth;
-            const cardWidth = 240;
-            const gap = 24;
-
-            let columns = Math.floor((containerWidth + gap) / (cardWidth + gap));
-            columns = Math.max(1, Math.min(columns, 9, featuredData.length));
-
-            const itemsToShow = featuredData.slice(0, columns);
-
-            featuredGrid.innerHTML = '';
-            itemsToShow.forEach(theme => {
-                const card = createWallpaperCard(theme);
-                card.classList.add('featured-glow');
-                featuredGrid.appendChild(card);
-            });
-        }
         let resizeTimeout;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(updateFeaturedLayout, 100);
-        });
 
         async function fetchInstalledThemes() {
             try {
@@ -898,6 +711,7 @@
             }
         }
         let currentFilter = 'all';
+
         async function fetchWallpapers(append = false) {
             if (!API_BASE_URL || API_BASE_URL === '#') {
                 console.warn("fetchWallpapers called before API_BASE_URL was ready.");
@@ -908,17 +722,10 @@
             if (append && !hasMore) return;
 
             let url = '';
-
-            if (currentSearchQuery) {
-                url = `${API_BASE_URL}?action=search&query=${currentSearchQuery}&page=${currentPage}`;
-                if (!append) pageTitle.textContent = `Searching for "${currentSearchQuery}"`;
-            } else if (currentFilter !== 'all') {
-
-                url = `${API_BASE_URL}?action=filter&type=${currentFilter}&page=${currentPage}`;
-                if (!append) pageTitle.textContent = `${currentFilter.toUpperCase()} Wallpapers`;
+            if (currentFilter !== 'all') {
+                url = `${API_BASE_URL}?action=filter&type=${currentFilter}&featured=true&page=${currentPage}`;
             } else {
-                url = `${API_BASE_URL}?action=discover&page=${currentPage}`;
-                if (!append) pageTitle.textContent = 'New Releases';
+                url = `${API_BASE_URL}?action=discover&featured=true&page=${currentPage}`;
             }
 
             isLoading = true;
@@ -1015,7 +822,7 @@
 
                 } else {
                     if (!append) {
-                        grid.innerHTML = "<p style='grid-column: 1/-1;'>No themes found.</p>";
+                        grid.innerHTML = "<p style='grid-column: 1/-1;'>No featured themes found.</p>";
                     } else {
                         noMoreMsg.style.display = 'block';
                     }
@@ -1230,32 +1037,6 @@
                 installBtn.disabled = false;
             }
         }
-
-        searchForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            currentPage = 1;
-            currentSearchQuery = searchInput.value;
-            if (currentSearchQuery) {
-                featuredSection.style.display = 'none';
-            } else {
-                if (featuredData.length > 0) {
-                    featuredSection.style.display = 'block';
-                }
-            }
-            fetchWallpapers();
-        });
-
-        searchInput.addEventListener('input', (e) => {
-            if (e.target.value === '') {
-                currentSearchQuery = '';
-                currentPage = 1;
-                if (featuredData.length > 0) {
-                    featuredSection.style.display = 'block';
-                }
-                fetchWallpapers();
-            }
-        });
-
         retryBtn.addEventListener('click', () => {
             currentPage = 1;
             fetchWallpapers(false);
@@ -1290,17 +1071,6 @@
                     btn.classList.remove('active');
                 }
             });
-
-            searchInput.value = '';
-            currentSearchQuery = '';
-
-            if (currentFilter !== 'all') {
-                featuredSection.style.display = 'none';
-            } else {
-                if (featuredData.length > 0) {
-                    featuredSection.style.display = 'block';
-                }
-            }
 
             fetchWallpapers();
         };

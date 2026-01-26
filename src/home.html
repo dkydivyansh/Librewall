@@ -387,6 +387,45 @@
             color: #ff9a9a;
         }
 
+        .add-wallpaper-card {
+            background-color: rgba(43, 43, 43, 0.5);
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: var(--text-color);
+            aspect-ratio: 16 / 9;
+        }
+
+        .add-wallpaper-card:hover {
+            border-color: var(--primary-color);
+            background-color: rgba(43, 43, 43, 0.8);
+            transform: translateY(-4px);
+            box-shadow: 0 0 15px rgba(13, 110, 253, 0.3);
+        }
+
+        .add-wallpaper-card .plus-icon {
+            font-size: 3rem;
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+            transition: color 0.3s ease;
+        }
+
+        .add-wallpaper-card:hover .plus-icon {
+            color: var(--primary-color);
+            text-shadow: 0 0 10px rgba(13, 110, 253, 0.5);
+        }
+
+        .add-wallpaper-card span {
+            font-weight: 500;
+            font-size: 1rem;
+        }
+
         .lightbox-overlay {
             position: fixed;
             top: 0;
@@ -692,7 +731,6 @@
         stopped.</div>
 
     <main class="content-wrapper">
-        <h2>Available Wallpapers</h2>
         <div id="wallpaper-grid-valid" class="wallpaper-grid"></div>
         <h2 id="invalid-header" style="display:none; margin-top: 3rem;">Invalid Wallpapers</h2>
         <div id="wallpaper-grid-invalid" class="wallpaper-grid"></div>
@@ -731,6 +769,10 @@
                                 <option value="false">No</option>
                                 <option value="true">Yes</option>
                             </select>
+                        </div>
+                        <div class="setting-row">
+                            <label for="video-volume">Volume: <span id="video-volume-display">70%</span></label>
+                            <input type="range" id="video-volume" min="0" max="100" value="70" style="width: 120px;">
                         </div>
                     </div>
 
@@ -980,6 +1022,18 @@
 
                     if (data.validWallpapers?.length) {
                         data.validWallpapers.forEach(w => validGrid.appendChild(createWallpaperCard(w)));
+
+                        if (data.validWallpapers.length < 3) {
+                            const addCard = document.createElement('a');
+                            addCard.href = 'discover.html';
+                            addCard.className = 'add-wallpaper-card';
+                            addCard.innerHTML = `
+                                <div class="plus-icon">+</div>
+                                <span>Install New Wallpapers</span>
+                            `;
+                            validGrid.appendChild(addCard);
+                        }
+
                     } else {
                         validGrid.innerHTML = "<p>No wallpapers found.</p>";
                     }
@@ -1087,8 +1141,12 @@
                 const fps = config.fpsLimit !== undefined ? config.fpsLimit : "60";
                 document.getElementById('video-fps-limit').value = fps;
 
-                const mute = config.muteAudio !== undefined ? config.muteAudio : false;
+                const mute = config.muteAudio !== undefined ? config.muteAudio : true;
                 document.getElementById('video-mute').value = mute.toString();
+
+                const vol = config.volume !== undefined ? config.volume : 70;
+                document.getElementById('video-volume').value = vol;
+                document.getElementById('video-volume-display').textContent = vol + "%";
 
             } else {
 
@@ -1100,13 +1158,23 @@
                 globalWidgetsSelect.removeEventListener('change', currentSettingListener);
                 document.getElementById('video-fps-limit').removeEventListener('change', currentSettingListener);
                 document.getElementById('video-mute').removeEventListener('change', currentSettingListener);
+                document.getElementById('video-volume').removeEventListener('input', currentSettingListener);
             }
 
-            currentSettingListener = () => { isConfigDirty = true; updateSaveButtonState(); };
+            const volDisplay = document.getElementById('video-volume-display');
+
+            currentSettingListener = (e) => {
+                if (e && e.target && e.target.id === 'video-volume') {
+                    volDisplay.textContent = e.target.value + "%";
+                }
+                isConfigDirty = true;
+                updateSaveButtonState();
+            };
 
             globalWidgetsSelect.addEventListener('change', currentSettingListener);
             document.getElementById('video-fps-limit').addEventListener('change', currentSettingListener);
             document.getElementById('video-mute').addEventListener('change', currentSettingListener);
+            document.getElementById('video-volume').addEventListener('input', currentSettingListener);
 
             actBtn.disabled = false;
             if (!isInvalid) {
@@ -1207,8 +1275,8 @@
             try {
                 const r = await fetch('/activate_theme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ themeId: currentWallpaper.themeId }) });
                 if (!r.ok) throw new Error("Activation Failed");
-                if (!isEngineRunning) await fetch('/start_engine', { method: 'POST' });
-                else try { await fetch(`http://localhost:${enginePort}/reload`, { mode: 'no-cors' }); } catch (e) { }
+                await fetch('/start_engine', { method: 'POST' });
+
                 setTimeout(() => { hideLightbox(true); loadWallpapers(); }, 1500);
             } catch (e) { showAlert('Error', e.message); btn.disabled = false; btn.textContent = "Activate"; }
         };
@@ -1228,6 +1296,7 @@
                 if (config.videorender === true) {
                     payload.fpsLimit = document.getElementById('video-fps-limit').value;
                     payload.muteAudio = document.getElementById('video-mute').value === "true";
+                    payload.volume = parseInt(document.getElementById('video-volume').value);
                 } else if (!config.htmlrender) {
 
                     payload.enableGlobal = globalWidgetsSelect.value === "true";
@@ -1241,6 +1310,7 @@
                 if (config.videorender === true) {
                     currentWallpaper.config.fpsLimit = payload.fpsLimit;
                     currentWallpaper.config.muteAudio = payload.muteAudio;
+                    currentWallpaper.config.volume = payload.volume;
                 } else if (!config.htmlrender) {
                     currentWallpaper.config.Enable_Global_Widget = payload.enableGlobal;
                 }
@@ -1422,7 +1492,11 @@
         }, true);
     </script>
     <script>
-        const lenis = new Lenis();
+        const lenis = new Lenis({
+            wheelMultiplier: 1.5,
+            lerp: 0.08,
+            smoothWheel: true
+        });
         function raf(time) {
             lenis.raf(time);
             requestAnimationFrame(raf);

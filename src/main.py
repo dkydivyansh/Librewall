@@ -452,7 +452,7 @@ class WallpaperWindow(QMainWindow):
         use_video = False
         video_file = None
         fps_limit = 60
-        mute_audio = False
+        mute_audio = True
 
         if os.path.exists(theme_config_path):
             try:
@@ -463,7 +463,8 @@ class WallpaperWindow(QMainWindow):
                         use_video = True
                         video_file = config.get('media')
                         fps_limit = config.get('fpsLimit', 60)
-                        mute_audio = config.get('muteAudio', False)
+                        mute_audio = config.get('muteAudio', True)
+                        volume = config.get('volume', 70)
 
                     if config.get('htmlrender') is True:
                         self.is_app_mode = True
@@ -484,7 +485,8 @@ class WallpaperWindow(QMainWindow):
                 full_video_path, 
                 self, 
                 fps_limit=fps_limit, 
-                mute_audio=mute_audio
+                mute_audio=mute_audio,
+                volume=volume
             )
             self.setCentralWidget(self.video_widget)
         else:
@@ -802,6 +804,7 @@ async def ws_register(websocket): WEBSOCKET_CLIENTS.add(websocket)
 async def ws_unregister(websocket): WEBSOCKET_CLIENTS.remove(websocket)
 
 async def ws_data_push_loop(current_process_name):
+    import asyncio
     while True:
         if WEBSOCKET_CLIENTS:
             data = get_network_data(current_process_name) 
@@ -829,6 +832,8 @@ async def ws_handler(websocket):
     finally: await ws_unregister(websocket)
 
 async def main_websocket_server(current_process_name):
+    import asyncio
+    import websockets
     print(f"Network Monitor: Starting data push loop...")
     asyncio.create_task(ws_data_push_loop(current_process_name)) 
 
