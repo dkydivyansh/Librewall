@@ -775,6 +775,27 @@
                             <input type="range" id="video-volume" min="0" max="100" value="70" style="width: 120px;">
                         </div>
                     </div>
+                    <div id="setting-row-3d" style="display: none;">
+                        <div class="setting-row">
+                            <label for="3d-quality-preset">Quality Preset</label>
+                            <select id="3d-quality-preset">
+                                <option value="ultra">Ultra (Original)</option>
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <label for="3d-fps-limit">Max FPS</label>
+                            <select id="3d-fps-limit">
+                                <option value="0">Unlimited</option>
+                                <option value="144">144 FPS</option>
+                                <option value="120">120 FPS</option>
+                                <option value="60">60 FPS</option>
+                                <option value="30">30 FPS</option>
+                            </select>
+                        </div>
+                    </div>
 
                     <div style="display:flex; justify-content:flex-end;">
                         <button class="btn btn-primary" id="lightbox-save-settings" style="display: none;">Save
@@ -1130,6 +1151,7 @@
             settingsDiv.style.display = 'block';
             globalWidgetsRow.style.display = 'none';
             videoSettingsRow.style.display = 'none';
+            document.getElementById('setting-row-3d').style.display = 'none';
 
             if (config.htmlrender === true) {
 
@@ -1147,11 +1169,20 @@
                 const vol = config.volume !== undefined ? config.volume : 70;
                 document.getElementById('video-volume').value = vol;
                 document.getElementById('video-volume-display').textContent = vol + "%";
-
             } else {
+                if (currentWallpaper.type === '3d' || (currentWallpaper.config && currentWallpaper.config.enable3DModel !== false)) {
+                    document.getElementById('setting-row-3d').style.display = 'block';
+
+                    const quality = config.qualityPreset || 'high';
+                    document.getElementById('3d-quality-preset').value = quality;
+
+                    const fps3d = config.fpsLimit !== undefined ? config.fpsLimit : 0;
+                    document.getElementById('3d-fps-limit').value = fps3d;
+                }
 
                 globalWidgetsRow.style.display = 'flex';
-                globalWidgetsSelect.value = (config.Enable_Global_Widget || config.Enable_Network_Widget) ? "true" : "false";
+                const enableGlobal = (config.Enable_Global_Widget === true || config.Enable_Network_Widget === true);
+                globalWidgetsSelect.value = enableGlobal ? "true" : "false";
             }
 
             if (currentSettingListener) {
@@ -1159,6 +1190,8 @@
                 document.getElementById('video-fps-limit').removeEventListener('change', currentSettingListener);
                 document.getElementById('video-mute').removeEventListener('change', currentSettingListener);
                 document.getElementById('video-volume').removeEventListener('input', currentSettingListener);
+                document.getElementById('3d-quality-preset').removeEventListener('change', currentSettingListener);
+                document.getElementById('3d-fps-limit').removeEventListener('change', currentSettingListener);
             }
 
             const volDisplay = document.getElementById('video-volume-display');
@@ -1175,6 +1208,8 @@
             document.getElementById('video-fps-limit').addEventListener('change', currentSettingListener);
             document.getElementById('video-mute').addEventListener('change', currentSettingListener);
             document.getElementById('video-volume').addEventListener('input', currentSettingListener);
+            document.getElementById('3d-quality-preset').addEventListener('change', currentSettingListener);
+            document.getElementById('3d-fps-limit').addEventListener('change', currentSettingListener);
 
             actBtn.disabled = false;
             if (!isInvalid) {
@@ -1298,7 +1333,10 @@
                     payload.muteAudio = document.getElementById('video-mute').value === "true";
                     payload.volume = parseInt(document.getElementById('video-volume').value);
                 } else if (!config.htmlrender) {
-
+                    if (currentWallpaper.type === '3d' || (currentWallpaper.config && currentWallpaper.config.enable3DModel !== false)) {
+                        payload.qualityPreset = document.getElementById('3d-quality-preset').value;
+                        payload.fpsLimit = parseInt(document.getElementById('3d-fps-limit').value);
+                    }
                     payload.enableGlobal = globalWidgetsSelect.value === "true";
                 }
 
@@ -1313,6 +1351,8 @@
                     currentWallpaper.config.volume = payload.volume;
                 } else if (!config.htmlrender) {
                     currentWallpaper.config.Enable_Global_Widget = payload.enableGlobal;
+                    if (payload.qualityPreset) currentWallpaper.config.qualityPreset = payload.qualityPreset;
+                    if (payload.fpsLimit !== undefined) currentWallpaper.config.fpsLimit = payload.fpsLimit;
                 }
 
                 if (currentWallpaper.themeId === activeThemeId && isEngineRunning) {

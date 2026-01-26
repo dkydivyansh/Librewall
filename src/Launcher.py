@@ -816,10 +816,12 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
 
                 if 'fpsLimit' in data:
                     try:
-
                         config_data['fpsLimit'] = int(data.get('fpsLimit'))
                     except (ValueError, TypeError):
                         config_data['fpsLimit'] = 60
+                
+                if 'qualityPreset' in data:
+                    config_data['qualityPreset'] = str(data.get('qualityPreset'))
 
                 if 'muteAudio' in data:
 

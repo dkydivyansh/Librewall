@@ -100,6 +100,10 @@
         let isIdle = true;
         const idleTimeout = 10000;
 
+        let fpsInterval, now, then, elapsed;
+        let fpsLimit = 0;
+
+
         let baseRotation = new THREE.Euler(0, 0, 0);
         let isAnimationPaused = false;
         let backgroundMediaElement;
@@ -145,6 +149,50 @@
                 return;
             }
 
+            const quality = config.qualityPreset || 'high';
+            let pixelRatio = 1.0;
+            let enableShadows = true;
+            let enableBloom = true;
+            let toneMapping = 'ACESFilmic';
+
+            switch (quality) {
+                case 'low':
+                    pixelRatio = 0.6;
+                    enableShadows = false;
+                    enableBloom = false;
+                    toneMapping = 'None';
+                    break;
+                case 'medium':
+                    pixelRatio = 0.85;
+                    enableShadows = false;
+                    enableBloom = true;
+                    break;
+                case 'high':
+                    pixelRatio = 1.0;
+                    enableShadows = true;
+                    enableBloom = true;
+                    break;
+                case 'ultra':
+                    pixelRatio = window.devicePixelRatio || 1.0;
+                    break;
+            }
+
+            if (config.enableShadows !== undefined) enableShadows = config.enableShadows;
+            if (config.enableBloom !== undefined) enableBloom = config.enableBloom;
+            if (config.enableShadows !== undefined) enableShadows = config.enableShadows;
+            if (config.enableBloom !== undefined) enableBloom = config.enableBloom;
+
+            if (config.fpsLimit !== undefined) {
+                fpsLimit = parseInt(config.fpsLimit);
+                if (fpsLimit > 0) {
+                    fpsInterval = 1000 / fpsLimit;
+                    then = window.performance.now();
+                }
+            }
+
+            console.log(`Quality: ${quality} (Ratio: ${pixelRatio}) | FPS Limit: ${fpsLimit}`);
+
+
             setupBackgroundMedia(config);
             setupBackground(config);
 
@@ -165,34 +213,34 @@
 
             renderer = new THREE.WebGLRenderer({
                 canvas: canvas,
-                antialias: true,
+                antialias: (quality !== 'low'),
                 alpha: true
             });
             renderer.setClearColor(0x000000, 0);
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(pixelRatio);
 
-            if (config.toneMapping === 'Filmic') {
+            let tmName = config.toneMapping || toneMapping;
+            if (tmName === 'Filmic' || tmName === 'ACESFilmic') {
                 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-                console.log("Using Filmic tone mapping.");
-            } else if (config.toneMapping === 'Reinhard') {
+            } else if (tmName === 'Reinhard') {
                 renderer.toneMapping = THREE.ReinhardToneMapping;
-                console.log("Using Reinhard tone mapping.");
-            } else if (config.toneMapping === 'AgX') {
+            } else if (tmName === 'AgX') {
                 renderer.toneMapping = THREE.AgXToneMapping;
-                console.log("Using AgX tone mapping.");
-            } else if (config.toneMapping === 'None') {
+            } else if (tmName === 'None') {
                 renderer.toneMapping = THREE.NoToneMapping;
-                console.log("Using No tone mapping.");
             } else {
                 renderer.toneMapping = THREE.LinearToneMapping;
-                console.log("Using Linear tone mapping.");
             }
 
             renderer.toneMappingExposure = config.toneMappingExposure ?? 1.0;
             renderer.outputEncoding = THREE.sRGBEncoding;
 
-            if (config.enableShadows === true) {
+            if (enableShadows === true) {
                 renderer.shadowMap.enabled = true;
+                if (quality === 'ultra') {
+                    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                }
                 console.log("Shadows enabled on renderer.");
             }
 
@@ -203,7 +251,7 @@
             const renderPass = new RenderPass(scene, camera);
             composer.addPass(renderPass);
 
-            if (config.enableBloom !== false) {
+            if (enableBloom !== false) {
                 console.log("Bloom enabled. Strength:", config.bloomStrength ?? 0.5);
                 const bloomPass = new UnrealBloomPass(
                     new THREE.Vector2(window.innerWidth, window.innerHeight),
@@ -211,9 +259,16 @@
                     config.bloomRadius ?? 0.5,
                     config.bloomThreshold ?? 0.1
                 );
+
+                if (quality === 'low') {
+                    bloomPass.resolution = new THREE.Vector2(window.innerWidth / 4, window.innerHeight / 4);
+                } else if (quality === 'medium') {
+                    bloomPass.resolution = new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2);
+                }
+
                 composer.addPass(bloomPass);
             } else {
-                console.log("Bloom is disabled by config.");
+                console.log("Bloom is disabled.");
             }
 
             await loadExternalFiles(config);
@@ -303,14 +358,14 @@
                     const link = document.createElement('link');
                     link.rel = 'stylesheet';
                     link.type = 'text/css';
-                    link.href = '/library/global.css'; 
+                    link.href = '/library/global.css';
 
                     document.head.appendChild(link);
                     console.log(`Injected Global CSS: /library/global.css`);
                 } catch (e) { console.error(`Failed to inject Global CSS: ${e}`); }
 
                 try {
-                    const response = await fetch('/library/global.html', { cache: 'no-store' }); 
+                    const response = await fetch('/library/global.html', { cache: 'no-store' });
 
                     if (!response.ok) throw new Error(`File not found: /library/global.html`);
                     const html = await response.text();
@@ -324,7 +379,7 @@
                 try {
                     const script = document.createElement('script');
                     script.type = 'module';
-                    script.src = '/library/global.js'; 
+                    script.src = '/library/global.js';
 
                     document.body.appendChild(script);
                     console.log(`Injected Global JS: /library/global.js`);
@@ -579,7 +634,18 @@
 
         function animate() {
             requestAnimationFrame(animate);
+
             if (isAnimationPaused) return;
+
+            if (fpsLimit > 0) {
+                now = window.performance.now();
+                elapsed = now - then;
+
+                if (elapsed < fpsInterval) return;
+
+                then = now - (elapsed % fpsInterval);
+            }
+
             const delta = clock.getDelta();
 
             if (mixer) {
