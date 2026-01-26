@@ -133,6 +133,13 @@ os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
 os.environ["QT_SCALE_FACTOR"] = "1"
 
 from PyQt6.QtCore import QUrl, Qt, QTimer
+# Fix for flickering issues (Switch from Direct3D11 to OpenGL)
+try:
+    from PyQt6.QtQuick import QQuickWindow, QSGRendererInterface
+    QQuickWindow.setGraphicsApi(QSGRendererInterface.GraphicsApi.OpenGL)
+except ImportError:
+    print("Warning: PyQt6.QtQuick or QSGRendererInterface not found. Skipping graphics API switch.")
+
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenu, QSystemTrayIcon
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWebEngineWidgets import QWebEngineView

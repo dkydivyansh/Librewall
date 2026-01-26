@@ -39,6 +39,12 @@ import email
 import random
 import string
 from PyQt6.QtCore import QUrl, Qt, QTimer
+try:
+    from PyQt6.QtQuick import QQuickWindow, QSGRendererInterface
+    QQuickWindow.setGraphicsApi(QSGRendererInterface.GraphicsApi.OpenGL)
+except ImportError:
+    print("Warning: PyQt6.QtQuick or QSGRendererInterface not found. Skipping graphics API switch.")
+
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMenu
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWebEngineWidgets import QWebEngineView
