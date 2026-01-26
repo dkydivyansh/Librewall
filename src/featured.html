@@ -811,7 +811,7 @@
                     if (data.data.length < API_PAGE_LIMIT) {
                         hasMore = false;
                         sentinel.style.display = 'none';
-                        if (uninstalledThemes.concat(installedThemes).length > 0) {
+                        if (data.data.length > 0) {
                             noMoreMsg.style.display = 'block';
                         }
                     } else {
@@ -868,6 +868,7 @@
         function createWallpaperCard(theme) {
             const card = document.createElement('div');
             card.className = 'wallpaper-card';
+            card.dataset.id = theme.id;
 
             const minVersion = theme.min_version || 1;
             const isDisabled = minVersion > CURRENT_APP_VERSION;
@@ -1027,7 +1028,15 @@
 
                 installedThemeIds.push(currentTheme.id.toString());
 
-                fetchWallpapers();
+                const card = document.querySelector(`.wallpaper-card[data-id="${currentTheme.id}"]`);
+                if (card) {
+                    if (!card.querySelector('.installed-label')) {
+                        const label = document.createElement('div');
+                        label.className = 'card-label installed-label';
+                        label.textContent = 'Installed';
+                        card.appendChild(label);
+                    }
+                }
 
                 setTimeout(hideLightbox, 2000);
 
