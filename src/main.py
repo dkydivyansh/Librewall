@@ -124,8 +124,7 @@ os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
     "--autoplay-policy=no-user-gesture-required"
     "--autoplay-policy=no-user-gesture-required "
     "--gpu-preference=high-performance " 
-    "--enable-gpu-rasterization "       
-    "--ignore-gpu-blocklist "          
+    "--enable-gpu-rasterization "        
     "--disable-gpu-driver-bug-workarounds " 
     "--use-angle=d3d11 "
 )

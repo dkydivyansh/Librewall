@@ -53,7 +53,6 @@ from PIL import Image
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
     "--gpu-preference=high-performance "
     "--enable-gpu-rasterization "
-    "--ignore-gpu-blocklist "
     "--disable-gpu-driver-bug-workarounds "
     "--use-angle=default "
     "--disable-renderer-backgrounding "
@@ -534,7 +533,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     self.wfile.write(data)
                     return
 
-                req = urllib.request.Request(target_url, headers={'User-Agent': 'Mozilla/5.0'})
+                req = urllib.request.Request(target_url, headers={'User-Agent': APP_SECURITY_TOKEN})
                 try:
                     with urllib.request.urlopen(req, timeout=10) as response:
                         image_data = response.read()
@@ -956,7 +955,7 @@ class EditorWindow(QMainWindow):
                 head.appendChild(style);
             })();
         """)
-        no_select_script.setInjectionPoint(QWebEngineScript.InjectionPoint.DocumentReady)
+        no_select_script.setInjectionPoint(QWebEngineScript.InjectionPoint.DocumentCreation)
         no_select_script.setWorldId(QWebEngineScript.ScriptWorldId.MainWorld)
         no_select_script.setRunsOnSubFrames(True)
         no_select_script.setRunsOnSubFrames(True)

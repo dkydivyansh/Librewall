@@ -377,6 +377,16 @@
             margin-bottom: 1.5rem;
         }
 
+        .lightbox-content .author a {
+            color: var(--author-color);
+            text-decoration: none;
+        }
+
+        .lightbox-content .author a:hover {
+            color: var(--text-color);
+            text-decoration: underline;
+        }
+
         .lightbox-content .description {
             font-size: 0.95rem;
             line-height: 1.6;
@@ -520,6 +530,7 @@
             background-color: var(--3d-color);
         }
     </style>
+    <script src="/library/lenis.min.js"></script>
 </head>
 
 <body>
@@ -829,8 +840,21 @@
             card.appendChild(typeBadge);
 
             const img = document.createElement('img');
-            img.src = theme.thumbnailUrl ? `/proxy_thumbnail?url=${encodeURIComponent(theme.thumbnailUrl)}` : '';
+            const staticUrl = theme.thumbnailUrl ? `/proxy_thumbnail?url=${encodeURIComponent(theme.thumbnailUrl)}` : '';
+            img.src = staticUrl;
             img.alt = theme.themeName;
+
+            if (theme.thumbnailUrl) {
+                const preload = new Image();
+                preload.src = theme.thumbnailUrl;
+
+                card.addEventListener('mouseenter', () => {
+                    img.src = theme.thumbnailUrl;
+                });
+                card.addEventListener('mouseleave', () => {
+                    img.src = staticUrl;
+                });
+            }
 
             const info = document.createElement('div');
             info.className = 'wallpaper-info';
@@ -1033,6 +1057,14 @@
                 }
             }
         }, true);
+    </script>
+    <script>
+        const lenis = new Lenis();
+        function raf(time) {
+            lenis.raf(time);
+            requestAnimationFrame(raf);
+        }
+        requestAnimationFrame(raf);
     </script>
 </body>
 

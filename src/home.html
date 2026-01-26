@@ -648,6 +648,7 @@
             scrollbar-color: var(--primary-color) var(--bg-color);
         }
     </style>
+    <script src="/library/lenis.min.js"></script>
 </head>
 
 <body>
@@ -840,8 +841,12 @@
                         img.src = img.dataset.src;
                         img.onload = () => {
                             img.classList.add('visible');
-
                             container.classList.add('loaded');
+
+                            if (img.dataset.animated) {
+                                const preload = new Image();
+                                preload.src = img.dataset.animated;
+                            }
 
                         };
                         img.onerror = () => {
@@ -886,7 +891,27 @@
             imgContainer.className = 'image-container';
 
             const img = document.createElement('img');
-            img.dataset.src = wallpaper.thumbnailUrl || '';
+
+            if (wallpaper.thumbnailUrl) {
+                const fullUrl = new URL(wallpaper.thumbnailUrl, window.location.origin).href;
+                const staticUrl = `/proxy_thumbnail?url=${encodeURIComponent(fullUrl)}`;
+                img.dataset.src = staticUrl;
+                img.dataset.animated = wallpaper.thumbnailUrl;
+
+                card.addEventListener('mouseenter', () => {
+                    if (img.getAttribute('src')) {
+                        img.src = wallpaper.thumbnailUrl;
+                    }
+                });
+
+                card.addEventListener('mouseleave', () => {
+                    if (img.getAttribute('src')) {
+                        img.src = staticUrl;
+                    }
+                });
+            } else {
+                img.dataset.src = '';
+            }
             img.alt = wallpaper.themeName;
 
             imgContainer.appendChild(img);
@@ -1395,6 +1420,14 @@
                 }
             }
         }, true);
+    </script>
+    <script>
+        const lenis = new Lenis();
+        function raf(time) {
+            lenis.raf(time);
+            requestAnimationFrame(raf);
+        }
+        requestAnimationFrame(raf);
     </script>
 </body>
 
