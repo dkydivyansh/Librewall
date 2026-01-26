@@ -870,6 +870,46 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 success = False
                 last_error = None
 
+                try:
+                    thumb_filename = None
+                    config_path = os.path.join(theme_path, 'config.json')
+                    
+                    if os.path.exists(config_path):
+                        with open(config_path, 'r', encoding='utf-8') as f:
+                            c = json.load(f)
+                            thumb_filename = c.get('metadata', {}).get('thumbnailImage')
+
+                    if not thumb_filename or not os.path.isfile(os.path.join(theme_path, thumb_filename)):
+                        for test_name in ['thumbnail.gif', 'thumbnail.png']:
+                            if os.path.isfile(os.path.join(theme_path, test_name)):
+                                thumb_filename = test_name
+                                break
+                    
+                    if thumb_filename:
+                        encoded_theme_id = urllib.parse.quote(theme_id)
+                        encoded_filename = urllib.parse.quote(thumb_filename)
+                        
+                        theme_url_path = f"/{WALLPAPERS_DIR}/{encoded_theme_id}/{encoded_filename}"
+                        
+                        origins = [
+                            f"http://127.0.0.1:{EDITOR_PORT}",
+                            f"http://localhost:{EDITOR_PORT}"
+                        ]
+                        
+                        for origin in origins:
+                            full_url = f"{origin}{theme_url_path}"
+                            filename_hash = hashlib.md5(full_url.encode('utf-8')).hexdigest()
+                            
+                            cached_file = os.path.join(SERVER_ROOT, THUMBNAIL_CACHE_DIR, filename_hash + ".jpg")
+                            if os.path.exists(cached_file):
+                                try:
+                                    os.remove(cached_file)
+                                    print(f"Deleted cached thumbnail: {cached_file} (Origin: {origin})")
+                                except Exception as e:
+                                    print(f"Failed to delete {cached_file}: {e}")
+                except Exception as cache_err:
+                    print(f"Warning: Failed to delete thumbnail cache for theme: {cache_err}")
+
                 while attempts < max_attempts and not success:
                     try:
                         shutil.rmtree(theme_path)
@@ -890,6 +930,19 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 error_message = str(e)
                 print(f"Error deleting theme: {error_message}")
                 self.send_json_response(500, {'error': error_message})
+            return
+
+        elif self.path == '/clear_thumbnail_cache':
+            try:
+                cache_dir = os.path.join(SERVER_ROOT, THUMBNAIL_CACHE_DIR)
+                if os.path.exists(cache_dir):
+                    shutil.rmtree(cache_dir)
+                    os.makedirs(cache_dir, exist_ok=True)
+                
+                self.send_json_response(200, {'status': 'success', 'message': 'Thumbnail cache cleared.'})
+            except Exception as e:
+                print(f"Error clearing cache: {e}")
+                self.send_json_response(500, {'error': str(e)})
             return
 
         elif self.path == '/open_external_link':
@@ -992,6 +1045,37 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
+
+    def cleanup_old_cache():
+        try:
+            cache_dir = os.path.join(SERVER_ROOT, THUMBNAIL_CACHE_DIR)
+            if not os.path.isdir(cache_dir):
+                return
+            
+            max_age = 7 * 24 * 60 * 60
+            now = time.time()
+            
+            print("Running thumbnail cache cleanup...")
+            count = 0
+            for filename in os.listdir(cache_dir):
+                file_path = os.path.join(cache_dir, filename)
+                if os.path.isfile(file_path):
+                    try:
+                        file_age = now - os.path.getmtime(file_path)
+                        if file_age > max_age:
+                            os.remove(file_path)
+                            count += 1
+                    except Exception: pass
+            
+            if count > 0:
+                print(f"Cleanup: Removed {count} old thumbnail(s).")
+            else:
+                print("Cleanup: No old thumbnails found.")
+                
+        except Exception as e:
+            print(f"Cleanup Error: {e}")
+
+    threading.Thread(target=cleanup_old_cache, daemon=True).start()
 
     icon_path = os.path.join(SERVER_ROOT, '1.ico')
     if os.path.exists(icon_path):

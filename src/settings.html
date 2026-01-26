@@ -228,6 +228,17 @@
             </div>
         </div>
 
+        <h2>Storage</h2>
+        <div class="settings-card">
+            <div class="setting-row">
+                <div>
+                    <span class="setting-label">Thumbnail Cache</span>
+                    <p style="font-size: 0.8rem; color: #aaa; margin: 4px 0 0 0;">Clear generated static thumbnails.</p>
+                </div>
+                <button id="clear-cache-btn" class="btn" style="background-color: #555;">Clear Cache</button>
+            </div>
+        </div>
+
         <h2>Developer Info</h2>
         <div class="settings-card dev-info">
             <p><strong>Version:</strong> <span id="app-version">Loading...</span></p>
@@ -352,6 +363,35 @@
                 }, 2000);
             }
         });
+        const clearCacheBtn = document.getElementById('clear-cache-btn');
+        clearCacheBtn.addEventListener('click', async () => {
+            const originalText = clearCacheBtn.textContent;
+            clearCacheBtn.disabled = true;
+            clearCacheBtn.textContent = "Clearing...";
+
+            try {
+                const r = await fetch('/clear_thumbnail_cache', { method: 'POST' });
+                if (!r.ok) throw new Error('Failed');
+
+                clearCacheBtn.textContent = "Cleared!";
+                clearCacheBtn.style.backgroundColor = "var(--success-color)";
+                setTimeout(() => {
+                    clearCacheBtn.disabled = false;
+                    clearCacheBtn.textContent = originalText;
+                    clearCacheBtn.style.backgroundColor = "#555";
+                }, 2000);
+            } catch (e) {
+                console.error(e);
+                clearCacheBtn.textContent = "Error";
+                clearCacheBtn.style.backgroundColor = "var(--danger-color)";
+                setTimeout(() => {
+                    clearCacheBtn.disabled = false;
+                    clearCacheBtn.textContent = originalText;
+                    clearCacheBtn.style.backgroundColor = "#555";
+                }, 2000);
+            }
+        });
+
         loadSettings();
 
         let pendingUrl = '';
