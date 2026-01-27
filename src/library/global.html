@@ -1,9 +1,75 @@
+<div id="edit-mode-menu">
+    <div class="edit-menu-header" id="edit-menu-drag-handle">
+        <h3>
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 15l-2-2m0 0l2-2m-2 2h8M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4m6 16l2-2m0 0l-2-2m2 2H9" />
+            </svg>
+            Edit Widgets
+        </h3>
+        <button id="close-edit-menu" class="edit-menu-close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+    <div class="edit-menu-content">
+        <p class="edit-menu-hint">Toggle widgets on/off:</p>
+        <div class="widget-toggle-list">
+            <label class="widget-toggle">
+                <input type="checkbox" data-widget="live-clock" checked>
+                <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v6l4 2" />
+                </svg>
+                <span>Live Clock</span>
+            </label>
+            <label class="widget-toggle">
+                <input type="checkbox" data-widget="traffic-data" checked>
+                <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3v18h18" />
+                    <path d="M18 9l-5 5-4-4-3 3" />
+                </svg>
+                <span>Traffic Data</span>
+            </label>
+            <label class="widget-toggle">
+                <input type="checkbox" data-widget="listening-ports" checked>
+                <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path
+                        d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-5.07l-2.83 2.83M9.76 14.24l-2.83 2.83m0-10.14l2.83 2.83m4.48 4.48l2.83 2.83" />
+                </svg>
+                <span>Listening Ports</span>
+            </label>
+            <label class="widget-toggle">
+                <input type="checkbox" data-widget="live-traffic-log" checked>
+                <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                    <path d="M14 2v6h6M16 13H8m8 4H8m2-8H8" />
+                </svg>
+                <span>Live Traffic Log</span>
+            </label>
+            <label class="widget-toggle">
+                <input type="checkbox" data-widget="active-connections" checked>
+                <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <path
+                        d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+                </svg>
+                <span>Active Connections</span>
+            </label>
+        </div>
+    </div>
+    <div class="edit-menu-footer">
+        <small>Drag header to move • Double-click to exit</small>
+    </div>
+</div>
+
 <div id="widget-wrapper">
 
     <div id="live-clock" class="widget-container">
-      <div id="clock-time"></div>
-      <div id="clock-day"></div>
-      <div class="resize-handle"></div>
+        <div id="clock-time"></div>
+        <div id="clock-day"></div>
+        <div class="resize-handle"></div>
     </div>
 
     <div id="traffic-data" class="widget-container">
@@ -38,7 +104,7 @@
         <pre id="traffic-log-list">Monitoring...</pre>
         <div class="resize-handle"></div>
     </div>
-    
+
     <div id="active-connections" class="widget-container">
         <h2>Active Connections <span id="active-count" class="widget-count"></span></h2>
         <pre id="active-list">Loading...</pre>

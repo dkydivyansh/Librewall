@@ -1,25 +1,184 @@
+
+
 function updateClock() {
-  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const now = new Date();
-  let hours = now.getHours();
-  let minutes = now.getMinutes();
-  let seconds = now.getSeconds();
-  const day = dayNames[now.getDay()];
-  const ampm = hours >= 12 ? 'PM' : 'AM';
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const now = new Date();
+    let hours = now.getHours();
+    let minutes = now.getMinutes();
+    let seconds = now.getSeconds();
+    const day = dayNames[now.getDay()];
+    const ampm = hours >= 12 ? 'PM' : 'AM';
 
-  hours = hours % 12;
-  hours = hours ? hours : 12;
-  hours = hours < 10 ? '0' + hours : hours;
-  minutes = minutes < 10 ? '0' + minutes : minutes;
-  seconds = seconds < 10 ? '0' + seconds : seconds;
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    hours = hours < 10 ? '0' + hours : hours;
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    seconds = seconds < 10 ? '0' + seconds : seconds;
 
-  const timeString = `${hours}:${minutes}:${seconds} ${ampm}`;
+    const timeString = `${hours}:${minutes}:${seconds} ${ampm}`;
 
-  try {
-    document.getElementById('clock-time').textContent = timeString;
-    document.getElementById('clock-day').textContent = day;
-  } catch (e) {}
+    try {
+        document.getElementById('clock-time').textContent = timeString;
+        document.getElementById('clock-day').textContent = day;
+    } catch (e) { }
 }
+
+const WIDGET_REGISTRY = {
+    'live-clock': { name: 'Live Clock', icon: '🕐' },
+    'traffic-data': { name: 'Traffic Data', icon: '📊' },
+    'listening-ports': { name: 'Listening Ports', icon: '🔌' },
+    'live-traffic-log': { name: 'Live Traffic Log', icon: '📝' },
+    'active-connections': { name: 'Active Connections', icon: '🌐' }
+};
+
+let widgetVisibility = {};
+
+async function saveWidgetVisibility() {
+    try {
+        const response = await fetch('/save_widget_visibility', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(widgetVisibility)
+        });
+        if (response.ok) {
+            console.log("Widget visibility saved to server.");
+        } else {
+            console.error("Failed to save widget visibility.");
+        }
+    } catch (e) {
+        console.error("Error saving widget visibility:", e);
+    }
+}
+
+async function restoreWidgetVisibility() {
+    try {
+        const response = await fetch('/widget_visibility.json');
+        if (!response.ok) {
+            console.log("widget_visibility.json not found, all widgets visible by default.");
+            Object.keys(WIDGET_REGISTRY).forEach(id => {
+                widgetVisibility[id] = true;
+            });
+            return;
+        }
+
+        const visibility = await response.json();
+        if (visibility && Object.keys(visibility).length > 0) {
+            widgetVisibility = visibility;
+            Object.keys(widgetVisibility).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.style.display = widgetVisibility[id] ? '' : 'none';
+                }
+            });
+            console.log("Widget visibility restored from server.");
+        } else {
+            Object.keys(WIDGET_REGISTRY).forEach(id => {
+                widgetVisibility[id] = true;
+            });
+        }
+    } catch (e) {
+        console.error("Error restoring widget visibility:", e);
+        Object.keys(WIDGET_REGISTRY).forEach(id => {
+            widgetVisibility[id] = true;
+        });
+    }
+}
+
+function updateCheckboxStates() {
+    document.querySelectorAll('#edit-mode-menu input[type="checkbox"]').forEach(checkbox => {
+        const widgetId = checkbox.getAttribute('data-widget');
+        if (widgetId && widgetVisibility.hasOwnProperty(widgetId)) {
+            checkbox.checked = widgetVisibility[widgetId];
+        }
+    });
+}
+
+function toggleWidgetVisibility(widgetId, visible) {
+    const el = document.getElementById(widgetId);
+    if (el) {
+        el.style.display = visible ? '' : 'none';
+        widgetVisibility[widgetId] = visible;
+    }
+}
+
+function initEditMenu() {
+    const closeBtn = document.getElementById('close-edit-menu');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            exitEditMode();
+        });
+    }
+
+    document.querySelectorAll('#edit-mode-menu input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const widgetId = e.target.getAttribute('data-widget');
+            if (widgetId) {
+                toggleWidgetVisibility(widgetId, e.target.checked);
+            }
+        });
+    });
+
+    const editMenu = document.getElementById('edit-mode-menu');
+    if (editMenu) {
+        editMenu.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+        });
+    }
+
+    const dragHandle = document.getElementById('edit-menu-drag-handle');
+    if (dragHandle && editMenu) {
+        let isMenuDragging = false;
+        let menuOffsetX = 0, menuOffsetY = 0;
+
+        dragHandle.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.edit-menu-close')) return;
+
+            isMenuDragging = true;
+            const rect = editMenu.getBoundingClientRect();
+            menuOffsetX = e.clientX - rect.left;
+            menuOffsetY = e.clientY - rect.top;
+
+            editMenu.style.transform = 'none';
+            editMenu.style.left = rect.left + 'px';
+            editMenu.style.top = rect.top + 'px';
+
+            e.preventDefault();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isMenuDragging) return;
+            editMenu.style.left = (e.clientX - menuOffsetX) + 'px';
+            editMenu.style.top = (e.clientY - menuOffsetY) + 'px';
+        });
+
+        window.addEventListener('mouseup', () => {
+            isMenuDragging = false;
+        });
+    }
+}
+
+function exitEditMode() {
+    if (isDraggable) {
+        isDraggable = false;
+        document.body.classList.remove('is-dragging');
+        savePositions();
+        saveWidgetVisibility();
+        console.log("Edit Mode DISABLED. Positions and visibility saved.");
+    }
+}
+
+function enterEditMode() {
+    if (!isDraggable) {
+        isDraggable = true;
+        document.body.classList.add('is-dragging');
+        updateCheckboxStates();
+        console.log("Edit Mode ENABLED via external call.");
+    }
+}
+
+window.enterEditMode = enterEditMode;
+window.exitEditMode = exitEditMode;
 
 let wsPort = null;
 let networkWidgetEnabled = false;
@@ -39,15 +198,17 @@ function formatBytes(bytes) {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
+// --- Main UI Update Function ---
 function updateNetworkUI(data) {
     try {
-
+        // 1. Traffic Data
         document.getElementById('upload-speed').textContent = formatBits(data.upload_bps, true);
         document.getElementById('download-speed').textContent = formatBits(data.download_bps, true);
         document.getElementById('total-sent').textContent = formatBytes(data.total_sent);
         document.getElementById('total-recv').textContent = formatBytes(data.total_recv);
 
-        document.getElementById('listening-count').textContent = `(${data.listening_count})`; 
+        // 2. Listening Ports
+        document.getElementById('listening-count').textContent = `(${data.listening_count})`;
         const listeningList = document.getElementById('listening-list');
         let listeningHtml = '';
         if (data.listening_ports.length === 0) {
@@ -61,7 +222,8 @@ function updateNetworkUI(data) {
         }
         listeningList.textContent = listeningHtml;
 
-        document.getElementById('active-count').textContent = `(${data.active_count})`; 
+        // 3. Active Connections
+        document.getElementById('active-count').textContent = `(${data.active_count})`;
         const activeList = document.getElementById('active-list');
         let activeHtml = '';
         if (data.active_connections.length === 0) {
@@ -75,6 +237,7 @@ function updateNetworkUI(data) {
         }
         activeList.textContent = activeHtml;
 
+        // 4. Live Traffic Log (Newest at bottom)
         const trafficLog = document.getElementById('traffic-log-list');
         let trafficHtml = '';
         if (data.live_traffic_log.length === 0) {
@@ -98,9 +261,10 @@ function updateNetworkUI(data) {
     }
 }
 
+// --- WebSocket Connection Logic ---
 function connectWebSocket(port) {
     const wsStatus = document.getElementById('ws-status');
-    if (!wsStatus) return; 
+    if (!wsStatus) return;
 
     wsStatus.textContent = 'Connecting...';
     wsStatus.className = '';
@@ -129,32 +293,34 @@ function connectWebSocket(port) {
     };
 }
 
+// --- Initialization ---
 async function initNetworkWidget() {
     try {
         const configResponse = await fetch('/config');
         const config = await configResponse.json();
 
+        // --- MODIFIED: Check for either the new OR old flag ---
         networkWidgetEnabled = config.Enable_Global_Widget === true || config.Enable_Network_Widget === true;
 
         const networkWidgets = [
-            'traffic-data', 'listening-ports', 
+            'traffic-data', 'listening-ports',
             'live-traffic-log', 'active-connections'
         ];
 
         const clockWidget = document.getElementById('live-clock');
 
         if (!networkWidgetEnabled) {
-
+            // --- MODIFIED: Updated log message ---
             console.log("Network/Global Widgets are disabled by config.json. Hiding UI.");
             networkWidgets.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
             });
-            if (clockWidget) clockWidget.style.display = 'none'; 
-
+            if (clockWidget) clockWidget.style.display = 'none'; // Also hide clock
             return;
         }
 
+        // --- This part now only runs if widgets are enabled ---
         const appConfigResponse = await fetch('/app_config.json');
         const appConfig = await appConfigResponse.json();
         wsPort = appConfig.ws_port;
@@ -164,7 +330,7 @@ async function initNetworkWidget() {
         } else {
             console.error("Could not get 'ws_port' from app_config.json.");
             const wsStatus = document.getElementById('ws-status');
-            if(wsStatus) {
+            if (wsStatus) {
                 wsStatus.textContent = 'No Port';
                 wsStatus.className = 'error';
             }
@@ -173,6 +339,9 @@ async function initNetworkWidget() {
         console.error("Failed to initialize Network Widget:", e);
     }
 }
+
+
+// === DRAGGABLE & RESIZABLE WIDGET LOGIC ===
 
 let isDraggable = false;
 let activeContainer = null;
@@ -184,9 +353,9 @@ let originalMouseX = 0, originalMouseY = 0;
 async function savePositions() {
     const positions = {};
     document.querySelectorAll('.widget-container').forEach(container => {
-        positions[container.id] = { 
-            top: container.style.top, 
-            left: container.style.left, 
+        positions[container.id] = {
+            top: container.style.top,
+            left: container.style.left,
             right: container.style.right,
             width: container.style.width,
             height: container.style.height
@@ -194,7 +363,7 @@ async function savePositions() {
     });
 
     try {
-        const response = await fetch('/save_widget_positions', { 
+        const response = await fetch('/save_widget_positions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(positions)
@@ -209,6 +378,7 @@ async function savePositions() {
     }
 }
 
+// --- NEW: Function to apply default positions ---
 function applyDefaultPositions() {
     console.log("Applying default widget positions.");
     const defaultPositions = {
@@ -232,14 +402,14 @@ function applyDefaultPositions() {
     });
 }
 
+// --- MODIFIED: restorePositions now uses defaults as a fallback ---
 async function restorePositions() {
     try {
         const response = await fetch('/widget.json');
         if (!response.ok) {
             console.log("widget.json not found, using default CSS positions.");
-            applyDefaultPositions(); 
-
-            return; 
+            applyDefaultPositions(); // <-- Use defaults
+            return;
         }
 
         const positions = await response.json();
@@ -249,11 +419,11 @@ async function restorePositions() {
                 const el = document.getElementById(id);
                 if (el) {
                     const pos = positions[id];
-                    if(pos.top) el.style.top = pos.top;
-
-                    if(pos.left) el.style.left = pos.left; 
-
-                    if(pos.right) el.style.right = pos.right;
+                    if (pos.top) el.style.top = pos.top;
+                    // --- THIS IS THE FIX ---
+                    if (pos.left) el.style.left = pos.left;
+                    // --- END FIX ---
+                    if (pos.right) el.style.right = pos.right;
 
                     if (pos.right && pos.left === 'auto') {
                         el.style.left = 'auto';
@@ -267,20 +437,23 @@ async function restorePositions() {
             });
             console.log("Draggable widget positions and sizes restored from server (widget.json).");
         } else {
-
+            // File was found but was empty, use defaults
             console.log("widget.json was empty, using default positions.");
             applyDefaultPositions();
         }
     } catch (e) {
-
+        // File was corrupt or another error, use defaults
         console.error("Failed to restore widget positions:", e);
         applyDefaultPositions();
     }
 }
 
+// --- (Drag/Resize functions are unchanged) ---
+
+// --- DRAG (Move) Functions ---
 function onContainerMouseDown(e) {
     if (!isDraggable || e.target.classList.contains('resize-handle')) return;
-    e.preventDefault(); 
+    e.preventDefault();
     activeContainer = e.target.closest('.widget-container');
     const rect = activeContainer.getBoundingClientRect();
     offsetX = e.clientX - rect.left;
@@ -294,7 +467,7 @@ function onDragMove(e) {
     let newY = e.clientY - offsetY;
     activeContainer.style.left = `${newX}px`;
     activeContainer.style.top = `${newY}px`;
-    activeContainer.style.right = 'auto'; 
+    activeContainer.style.right = 'auto';
 }
 function onDragEnd() {
     activeContainer = null;
@@ -302,6 +475,7 @@ function onDragEnd() {
     window.removeEventListener('mouseup', onDragEnd);
 }
 
+// --- RESIZE Functions ---
 function onResizeMouseDown(e) {
     if (!isDraggable) return;
     e.preventDefault();
@@ -330,25 +504,26 @@ function onResizeEnd() {
     window.removeEventListener('mouseup', onResizeEnd);
 }
 
+// --- Event Handlers ---
 function onContainerDoubleClick(e) {
     const container = e.target.closest('.widget-container');
     if (container && !isDraggable) {
         isDraggable = true;
         document.body.classList.add('is-dragging');
-        console.log("Edit Mode ENABLED. Click background to save.");
+        updateCheckboxStates(); // Sync checkboxes with current widget visibility
+        console.log("Edit Mode ENABLED. Click background or ✕ to save.");
+    } else if (isDraggable) {
+        // Double-click while in edit mode exits it
+        exitEditMode();
     }
 }
 function onBackgroundClick() {
-    if (isDraggable) {
-        isDraggable = false;
-        document.body.classList.remove('is-dragging');
-        savePositions();
-        console.log("Edit Mode DISABLED. Positions saved.");
-    }
+    exitEditMode();
 }
 
 async function initDraggableSystem() {
-    await restorePositions(); 
+    await restorePositions();
+    await restoreWidgetVisibility();
 
     document.querySelectorAll('.widget-container').forEach(container => {
         container.addEventListener('dblclick', onContainerDoubleClick);
@@ -361,6 +536,8 @@ async function initDraggableSystem() {
     if (bgCatcher) {
         bgCatcher.addEventListener('click', onBackgroundClick);
     }
+
+    initEditMenu();
 }
 
 updateClock();

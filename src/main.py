@@ -283,6 +283,19 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 except Exception as e: self.send_error(500, f"Error reading widget.json: {e}")
                 return
 
+            elif clean_path == '/widget_visibility.json':
+                file_path = os.path.join(current_wallpaper_path, 'widget_visibility.json')
+                try:
+                    with open(file_path, 'rb') as f:
+                        self.send_response(200)
+                        self.send_header('Content-type', 'application/json')
+                        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                        self.end_headers()
+                        self.wfile.write(f.read())
+                except FileNotFoundError: self.send_error(404, f"widget_visibility.json not found.")
+                except Exception as e: self.send_error(500, f"Error reading widget_visibility.json: {e}")
+                return
+
             elif clean_path == '/app_config.json':
                 file_path = APP_CONFIG_PATH
                 try:
@@ -402,6 +415,18 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
                 except Exception as e:
                     self.send_error(500, f"Error saving positions: {e}")
                 return
+            elif self.path == '/save_widget_visibility':
+                try:
+                    content_length = int(self.headers['Content-Length'])
+                    post_data = self.rfile.read(content_length)
+                    current_wallpaper_path = self.get_current_wallpaper_path()
+                    visibility_config_path = os.path.join(current_wallpaper_path, 'widget_visibility.json')
+                    with open(visibility_config_path, 'wb') as f: f.write(post_data)
+                    self.send_response(200); self.send_header('Content-type', 'application/json'); self.end_headers()
+                    self.wfile.write(json.dumps({'status': 'success'}).encode('utf-8'))
+                except Exception as e:
+                    self.send_error(500, f"Error saving widget visibility: {e}")
+                return
             self.send_error(404, "Not Found")
     return CustomHandler
 
@@ -421,15 +446,21 @@ class CustomWebEngineView(QWebEngineView):
         self.context_menu.addSeparator()
         self.pause_action = self.context_menu.addAction("Pause Wallpaper")
         self.resume_action = self.context_menu.addAction("Resume Wallpaper")
+        self.context_menu.addSeparator()
+        edit_widgets_action = self.context_menu.addAction("Edit Widgets")
         reload_action.triggered.connect(self.reload_page)
         self.pause_action.triggered.connect(self.window.pause_wallpaper)
         self.resume_action.triggered.connect(self.window.resume_wallpaper)
+        edit_widgets_action.triggered.connect(self.toggle_edit_mode)
     def contextMenuEvent(self, event):
         if self.window.is_paused:
             self.pause_action.setEnabled(False); self.resume_action.setEnabled(True)
         else:
             self.pause_action.setEnabled(True); self.resume_action.setEnabled(False)
         self.context_menu.exec(event.globalPos())
+    def toggle_edit_mode(self):
+        print("Context menu: Triggering Edit Mode")
+        self.page().runJavaScript("if (typeof window.enterEditMode === 'function') { window.enterEditMode(); }")
     def reload_page(self): 
         print("Context menu reload: Triggering app restart.")
         self.window.app.is_restarting = True
