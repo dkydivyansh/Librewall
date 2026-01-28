@@ -1,6 +1,6 @@
 # Widget Development Guide
 
-This guide explains how to create custom widgets for Cyberwall.
+This guide explains how to create custom widgets for Librewall.
 
 ## Widget Structure
 
