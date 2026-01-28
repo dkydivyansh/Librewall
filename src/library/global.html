@@ -13,50 +13,15 @@
         </button>
     </div>
     <div class="edit-menu-content">
-        <p class="edit-menu-hint">Toggle widgets on/off:</p>
-        <div class="widget-toggle-list">
-            <label class="widget-toggle">
-                <input type="checkbox" data-widget="live-clock" checked>
-                <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 6v6l4 2" />
-                </svg>
-                <span>Live Clock</span>
-            </label>
-            <label class="widget-toggle">
-                <input type="checkbox" data-widget="traffic-data" checked>
-                <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 3v18h18" />
-                    <path d="M18 9l-5 5-4-4-3 3" />
-                </svg>
-                <span>Traffic Data</span>
-            </label>
-            <label class="widget-toggle">
-                <input type="checkbox" data-widget="listening-ports" checked>
-                <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3" />
-                    <path
-                        d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-5.07l-2.83 2.83M9.76 14.24l-2.83 2.83m0-10.14l2.83 2.83m4.48 4.48l2.83 2.83" />
-                </svg>
-                <span>Listening Ports</span>
-            </label>
-            <label class="widget-toggle">
-                <input type="checkbox" data-widget="live-traffic-log" checked>
-                <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                    <path d="M14 2v6h6M16 13H8m8 4H8m2-8H8" />
-                </svg>
-                <span>Live Traffic Log</span>
-            </label>
-            <label class="widget-toggle">
-                <input type="checkbox" data-widget="active-connections" checked>
-                <svg class="widget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <path
-                        d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
-                </svg>
-                <span>Active Connections</span>
-            </label>
+        <div class="widget-search-container">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"
+                height="16">
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input type="text" id="widget-search" class="widget-search" placeholder="Search widgets...">
+        </div>
+        <div class="widget-toggle-list" id="widget-toggle-list">
         </div>
     </div>
     <div class="edit-menu-footer">
@@ -65,52 +30,45 @@
 </div>
 
 <div id="widget-wrapper">
-
-    <div id="live-clock" class="widget-container">
-        <div id="clock-time"></div>
-        <div id="clock-day"></div>
-        <div class="resize-handle"></div>
-    </div>
-
-    <div id="traffic-data" class="widget-container">
-        <h2>Traffic Data<span id="ws-status"></span></h2>
-        <div class="stat-item">
-            <span class="stat-label">Upload:</span>
-            <span class="stat-value" id="upload-speed">...</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">Download:</span>
-            <span class="stat-value" id="download-speed">...</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">Total Sent:</span>
-            <span class="stat-value" id="total-sent">...</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-label">Total Recv:</span>
-            <span class="stat-value" id="total-recv">...</span>
-        </div>
-        <div class="resize-handle"></div>
-    </div>
-
-    <div id="listening-ports" class="widget-container">
-        <h2>Listening Ports <span id="listening-count" class="widget-count"></span></h2>
-        <pre id="listening-list">Loading...</pre>
-        <div class="resize-handle"></div>
-    </div>
-
-    <div id="live-traffic-log" class="widget-container">
-        <h2>Live Traffic Log</h2>
-        <pre id="traffic-log-list">Monitoring...</pre>
-        <div class="resize-handle"></div>
-    </div>
-
-    <div id="active-connections" class="widget-container">
-        <h2>Active Connections <span id="active-count" class="widget-count"></span></h2>
-        <pre id="active-list">Loading...</pre>
-        <div class="resize-handle"></div>
-    </div>
-
 </div>
 
 <div id="background-click-catcher"></div>
+
+<div id="loading-overlay">
+    <div class="loading-spinner"></div>
+</div>
+
+<div id="widget-context-menu" class="widget-context-menu">
+    <button id="ctx-edit-widget" class="ctx-menu-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+        </svg>
+        Edit Settings
+    </button>
+    <button id="ctx-remove-widget" class="ctx-menu-item ctx-menu-danger">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+        </svg>
+        Hide Widget
+    </button>
+</div>
+
+<div id="widget-settings-editor" class="widget-settings-editor">
+    <div class="settings-editor-header" id="settings-editor-drag-handle">
+        <h3 id="settings-editor-title">Widget Settings</h3>
+        <button id="close-settings-editor" class="settings-editor-close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+    <div class="settings-editor-content" id="settings-editor-content">
+
+    </div>
+    <div class="settings-editor-footer">
+        <button id="settings-apply-btn" class="settings-btn settings-btn-secondary">Apply</button>
+        <button id="settings-ok-btn" class="settings-btn settings-btn-primary">OK</button>
+    </div>
+</div>

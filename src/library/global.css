@@ -149,7 +149,6 @@ body.is-dragging .widget-container:not(#live-clock) .resize-handle {
     font-weight: 400;
 }
 
-
 #ws-status {
     float: right;
     font-size: 0.9rem;
@@ -381,6 +380,41 @@ body.is-dragging #edit-mode-menu {
     padding: 0.875rem 1rem;
 }
 
+.widget-search-container {
+    position: relative;
+    margin-bottom: 0.75rem;
+}
+
+.search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    stroke: #888;
+    pointer-events: none;
+}
+
+.widget-search {
+    width: 100%;
+    padding: 8px 10px 8px 36px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.85rem;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
+
+.widget-search:focus {
+    outline: none;
+    border-color: #4a90e2;
+}
+
+.widget-search::placeholder {
+    color: #888;
+}
+
 .edit-menu-hint {
     color: #bbb;
     font-size: 0.8rem;
@@ -394,6 +428,27 @@ body.is-dragging #edit-mode-menu {
     display: flex;
     flex-direction: column;
     gap: 0.375rem;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.widget-toggle-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.widget-toggle-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+.widget-toggle-list::-webkit-scrollbar-thumb {
+    background: rgba(74, 144, 226, 0.5);
+    border-radius: 3px;
+}
+
+.widget-toggle-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(74, 144, 226, 0.7);
 }
 
 .widget-toggle {
@@ -439,4 +494,293 @@ body.is-dragging #edit-mode-menu {
 .edit-menu-footer small {
     color: #999;
     font-size: 0.75rem;
+}
+
+.widget-context-menu {
+    position: fixed;
+    z-index: 10000;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 6px;
+    min-width: 160px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    display: none;
+}
+
+.ctx-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.ctx-menu-item:hover {
+    background: rgba(74, 144, 226, 0.2);
+}
+
+.ctx-menu-item svg {
+    stroke: #4a90e2;
+}
+
+.ctx-menu-danger:hover {
+    background: rgba(226, 74, 74, 0.2);
+}
+
+.ctx-menu-danger svg {
+    stroke: #e24a4a;
+}
+
+.widget-settings-editor {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10001;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    min-width: 340px;
+    max-width: 450px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    display: none;
+    animation: menuSlideIn 0.3s ease-out;
+}
+
+.settings-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: grab;
+}
+
+.settings-editor-header:active {
+    cursor: grabbing;
+}
+
+.settings-editor-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.settings-editor-close {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 6px;
+    padding: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.settings-editor-close:hover {
+    background: rgba(226, 74, 74, 0.3);
+}
+
+.settings-editor-close svg {
+    width: 16px;
+    height: 16px;
+    stroke: #fff;
+}
+
+.settings-editor-content {
+    padding: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.settings-field {
+    margin-bottom: 16px;
+}
+
+.settings-field:last-child {
+    margin-bottom: 0;
+}
+
+.settings-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #aaa;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.settings-input {
+    width: 100%;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
+
+.settings-input:focus {
+    outline: none;
+    border-color: #4a90e2;
+}
+
+.settings-input[type="color"] {
+    padding: 4px;
+    height: 40px;
+    cursor: pointer;
+}
+
+.settings-input[type="range"] {
+    padding: 0;
+    background: transparent;
+    border: none;
+}
+
+.settings-select {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+}
+
+.settings-select option {
+    background: #1a1a1a;
+    color: #fff;
+    padding: 8px;
+}
+
+.settings-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.settings-slider-container input[type="range"] {
+    flex: 1;
+    accent-color: #4a90e2;
+}
+
+.settings-slider-value {
+    min-width: 40px;
+    text-align: right;
+    color: #4a90e2;
+    font-weight: 600;
+}
+
+.settings-editor-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.settings-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.settings-btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.settings-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.settings-btn-primary {
+    background: #4a90e2;
+    color: #fff;
+}
+
+.settings-btn-primary:hover {
+    background: #5a9ff2;
+}
+
+.settings-no-options {
+    color: #888;
+    text-align: center;
+    padding: 20px;
+    font-size: 0.9rem;
+}
+
+.widget-edit-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 4px;
+    padding: 4px;
+    margin-left: auto;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.widget-edit-btn:hover {
+    background: rgba(74, 144, 226, 0.3);
+}
+
+.widget-edit-btn svg {
+    width: 14px;
+    height: 14px;
+    stroke: #4a90e2;
+}
+
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: transparent;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    z-index: 20000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.5s ease-out;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top: 4px solid #4a90e2;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
