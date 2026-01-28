@@ -1,0 +1,44 @@
+#ws-status {
+    float: right;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #000;
+    background-color: #f4a261;
+    margin-left: 10px;
+}
+
+#ws-status.connected {
+    background-color: #50e3c2;
+}
+
+#ws-status.error {
+    background-color: #e63946;
+    color: #fff;
+}
+
+.stat-item {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+}
+
+.stat-label {
+    font-weight: 600;
+    color: #aaa;
+    width: 110px;
+}
+
+.stat-value {
+    font-weight: bold;
+    color: #4a90e2;
+}
+
+#upload-speed {
+    color: #e94c4c;
+}
+
+#download-speed {
+    color: #50e3c2;
+}

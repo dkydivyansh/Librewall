@@ -1,0 +1,118 @@
+#weather {
+    min-width: 320px;
+    min-height: 200px;
+}
+
+#weather h2 {
+    display: none;
+}
+
+.weather-content {
+    position: relative;
+    padding: 20px;
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden;
+}
+
+.weather-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.weather-location {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    border-radius: 16px;
+    color: #fff;
+}
+
+.weather-date {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    color: #ccc;
+}
+
+.weather-main {
+    text-align: center;
+    margin: 15px 0 25px 0;
+}
+
+.weather-temp {
+    font-size: 4rem;
+    font-weight: 700;
+    line-height: 1;
+    margin: 0;
+    background: linear-gradient(to bottom, #fff, #a2d2ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: #ffffff;
+    background-clip: text;
+}
+
+.weather-condition {
+    font-size: 1rem;
+    font-weight: 300;
+    margin-top: 8px;
+    color: #a2d2ff;
+}
+
+.weather-details {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    padding-top: 18px;
+}
+
+.weather-detail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.weather-label {
+    font-size: 0.7rem;
+    opacity: 0.6;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #aaa;
+}
+
+.weather-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+#weather-snow-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.weather-snowflake {
+    position: absolute;
+    top: -10px;
+    background-color: white;
+    border-radius: 50%;
+    opacity: 0.8;
+    pointer-events: none;
+    animation: weather-fall linear forwards;
+}
+
+@keyframes weather-fall {
+    to {
+        transform: translateY(250px);
+        opacity: 0;
+    }
+}

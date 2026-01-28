@@ -296,6 +296,22 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 except Exception as e: self.send_error(500, f"Error reading widget_visibility.json: {e}")
                 return
 
+            elif clean_path == '/widget_styles.json':
+                file_path = os.path.join(current_wallpaper_path, 'widget_styles.json')
+                try:
+                    with open(file_path, 'rb') as f:
+                        self.send_response(200)
+                        self.send_header('Content-type', 'application/json')
+                        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                        self.end_headers()
+                        self.wfile.write(f.read())
+                except FileNotFoundError: 
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(b'{}')
+                except Exception as e: self.send_error(500, f"Error reading widget_styles.json: {e}")
+                return
             elif clean_path == '/app_config.json':
                 file_path = APP_CONFIG_PATH
                 try:
@@ -329,7 +345,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                     self.send_error(404, "No 'modelFile' specified in config.json.")
                     return
 
-            elif clean_path.startswith('/build/') or clean_path.startswith('/library/') or clean_path.startswith('/hdr/'):
+            elif clean_path.startswith('/build/') or clean_path.startswith('/library/') or clean_path.startswith('/hdr/') or clean_path.startswith('/widgets/'):
                 relative_path = clean_path.lstrip('/')
                 file_path = os.path.join(SCRIPT_DIR, relative_path)
             else:
@@ -427,6 +443,18 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
                 except Exception as e:
                     self.send_error(500, f"Error saving widget visibility: {e}")
                 return
+            elif self.path == '/save_widget_styles':
+                try:
+                    content_length = int(self.headers['Content-Length'])
+                    post_data = self.rfile.read(content_length)
+                    current_wallpaper_path = self.get_current_wallpaper_path()
+                    styles_config_path = os.path.join(current_wallpaper_path, 'widget_styles.json')
+                    with open(styles_config_path, 'wb') as f: f.write(post_data)
+                    self.send_response(200); self.send_header('Content-type', 'application/json'); self.end_headers()
+                    self.wfile.write(json.dumps({'status': 'success'}).encode('utf-8'))
+                except Exception as e:
+                    self.send_error(500, f"Error saving widget styles: {e}")
+                return
             self.send_error(404, "Not Found")
     return CustomHandler
 
@@ -447,11 +475,16 @@ class CustomWebEngineView(QWebEngineView):
         self.pause_action = self.context_menu.addAction("Pause Wallpaper")
         self.resume_action = self.context_menu.addAction("Resume Wallpaper")
         self.context_menu.addSeparator()
-        edit_widgets_action = self.context_menu.addAction("Edit Widgets")
+        
+        # Only show Edit Widgets if Global Widgets are enabled and not in Video Mode (implied by this class usage)
+        if self.window.enable_global_widget:
+            edit_widgets_action = self.context_menu.addAction("Edit Widgets")
+            edit_widgets_action.triggered.connect(self.toggle_edit_mode)
+            
         reload_action.triggered.connect(self.reload_page)
         self.pause_action.triggered.connect(self.window.pause_wallpaper)
         self.resume_action.triggered.connect(self.window.resume_wallpaper)
-        edit_widgets_action.triggered.connect(self.toggle_edit_mode)
+
     def contextMenuEvent(self, event):
         if self.window.is_paused:
             self.pause_action.setEnabled(False); self.resume_action.setEnabled(True)
@@ -475,14 +508,16 @@ class AuthWebEnginePage(QWebEnginePage):
         self.profile().setHttpUserAgent(user_agent)
 
 class WallpaperWindow(QMainWindow):
-    def __init__(self, app_ref, url, auth_token): 
+    def __init__(self, app_ref, url, auth_token, enable_global_widget=False): 
         super().__init__()
         self.app = app_ref 
         self.is_paused = False
         self.is_video_mode = False 
         self.is_app_mode = False 
+        self.enable_global_widget = enable_global_widget
 
         self.device_id = None
+
 
         active_theme_path = MyHandler.get_current_wallpaper_path(None)
         theme_config_path = os.path.join(active_theme_path, 'config.json')
@@ -943,7 +978,7 @@ if __name__ == "__main__":
 
     server_url = f"http://localhost:{http_port}"
     app.is_restarting = False
-    window = WallpaperWindow(app_ref=app, url=server_url, auth_token=AUTH_TOKEN)
+    window = WallpaperWindow(app_ref=app, url=server_url, auth_token=AUTH_TOKEN, enable_global_widget=enable_global_widget)
     start_server(http_port, create_handler_class(window, app, http_port, AUTH_TOKEN))
 
     if enable_global_widget:
@@ -1014,7 +1049,17 @@ if __name__ == "__main__":
     print(f"Engine Running on {server_url}")
     exit_code = app.exec()
 
+    if mutex_handle:
+        try:
+            kernel32.CloseHandle(mutex_handle)
+            print("Mutex released.")
+        except: pass
+
     if app.is_restarting:
-        os.execv(sys.executable, [sys.executable] + [os.path.abspath(sys.argv[0])])
+        print("Restarting...")
+        import time
+        time.sleep(1.0)
+        subprocess.Popen([sys.executable] + [os.path.abspath(sys.argv[0])], cwd=SCRIPT_DIR)
+        os._exit(0)
     else:
         os._exit(exit_code)

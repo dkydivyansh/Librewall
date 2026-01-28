@@ -1,0 +1,23 @@
+#live-clock {
+    background-color: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: transparent;
+    box-shadow: none;
+    min-width: 200px;
+    min-height: 100px;
+}
+
+#clock-time {
+    font-weight: 700;
+    font-size: clamp(3.5rem, 10vw, 5rem);
+    line-height: 1.1;
+}
+
+#clock-day {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-size: clamp(1.25rem, 4vw, 2.5rem);
+    opacity: 0.8;
+}

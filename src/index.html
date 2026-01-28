@@ -665,7 +665,13 @@
                     let targetRotationZ = baseRotation.z + (mouseX * -0.2);
 
                     myModel.rotation.x += (targetRotationX - myModel.rotation.x) * 0.05;
-                    myModel.rotation.y += (targetRotationY - myModel.rotation.y) * 0.05;
+                    let diffY = targetRotationY - myModel.rotation.y;
+                    diffY = diffY % (Math.PI * 2);
+                    if (diffY > Math.PI) diffY -= Math.PI * 2;
+                    if (diffY < -Math.PI) diffY += Math.PI * 2;
+
+                    myModel.rotation.y += diffY * 0.05;
+
                     myModel.rotation.z += (targetRotationZ - myModel.rotation.z) * 0.05;
                 }
             }
