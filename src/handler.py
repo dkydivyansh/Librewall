@@ -49,6 +49,57 @@ def init_appdata(install_dir):
     for name in _SEED_DIRS:
         dst = os.path.join(base, name)
         src = os.path.join(install_dir, name)
+
+        if name == api_config.WIDGETS_DIR:
+            os.makedirs(dst, exist_ok=True)
+            if os.path.isdir(src):
+                for item in os.listdir(src):
+                    src_item = os.path.join(src, item)
+                    dst_item = os.path.join(dst, item)
+                    if os.path.isdir(src_item) and item != "__pycache__":
+                        if not os.path.exists(dst_item) or (os.path.isdir(dst_item) and not os.listdir(dst_item)):
+                            try:
+                                if os.path.exists(dst_item):
+                                    shutil.rmtree(dst_item)
+                                shutil.copytree(src_item, dst_item)
+                                print(f"[handler] Restored/Copied missing system widget: {item}")
+                            except Exception as e:
+                                print(f"[handler] Failed to copy widget {item}: {e}")
+                src_idx = os.path.join(src, "index.json")
+                dst_idx = os.path.join(dst, "index.json")
+                if os.path.isfile(src_idx):
+                    if not os.path.isfile(dst_idx):
+                        shutil.copy2(src_idx, dst_idx)
+                        print(f"[handler] Created initial widgets/index.json")
+                    else:
+                        try:
+                            with open(src_idx, 'r', encoding='utf-8') as f:
+                                s_data = json.load(f)
+                            with open(dst_idx, 'r', encoding='utf-8') as f:
+                                d_data = json.load(f)
+
+                            s_widgets = s_data.get("widgets", [])
+                            d_widgets = d_data.get("widgets", [])
+                            d_ids = {str(w.get("id")) for w in d_widgets}
+
+                            added = 0
+                            for sw in s_widgets:
+                                sw_id = str(sw.get("id"))
+                                if sw_id not in d_ids:
+                                    d_widgets.append(sw)
+                                    added += 1
+                                else:
+                                    pass
+
+                            if added > 0:
+                                d_data["widgets"] = d_widgets
+                                with open(dst_idx, 'w', encoding='utf-8') as f:
+                                    json.dump(d_data, f, indent=4)
+                                print(f"[handler] Added {added} system widgets to local registry")
+                        except Exception as e:
+                            print(f"[handler] Error merging widget registry: {e}")
+            continue
+
         if os.path.isdir(dst) and os.listdir(dst):
             continue
         if os.path.isdir(src):
