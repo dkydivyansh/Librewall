@@ -1,3 +1,9 @@
+/*
+@name: Traffic Data
+@author: Dkydivyansh
+@description: Displays real-time network traffic data and usage statistics.
+@min_version: 1
+*/
 
 (function () {
     const script = document.currentScript;
@@ -7,7 +13,7 @@
         return {
             id: WIDGET_ID,
             html: `
-                <h2>Traffic Data<span id="ws-status"></span></h2>
+                <h2>Traffic Data</h2>
                 <div class="stat-item">
                     <span class="stat-label">Upload:</span>
                     <span class="stat-value" id="upload-speed">...</span>

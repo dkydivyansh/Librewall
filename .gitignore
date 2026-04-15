@@ -1,2 +1,3 @@
 src/ffmpeg.exe
 src/app_config.json
+*.pyc

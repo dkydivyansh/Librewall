@@ -170,25 +170,26 @@
             font-weight: 600;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             cursor: pointer;
-            transform: translateY(100px);
             opacity: 0;
             transition: all 0.3s ease;
+            will-change: transform, opacity;
+            transform: translateY(100px) translateZ(0);
         }
 
         #save-btn.visible {
-            transform: translateY(0);
+            transform: translateY(0) translateZ(0);
             opacity: 1;
         }
 
         #save-btn:hover {
             background-color: var(--success-hover);
-            transform: translateY(-2px);
+            transform: translateY(-2px) translateZ(0);
         }
 
         #save-btn:disabled {
             background-color: #555;
             cursor: not-allowed;
-            transform: translateY(0);
+            transform: translateY(0) translateZ(0);
         }
 
         .contributors-grid {
@@ -210,12 +211,14 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            will-change: transform, box-shadow, border-color;
+            transform: translateZ(0);
         }
 
         .contributor-card:hover {
-            transform: translateY(-4px);
             border-color: var(--primary-color);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transform: translateY(-4px) translateZ(0);
         }
 
         .contributor-avatar {
@@ -275,6 +278,32 @@
             </div>
         </div>
 
+        <h2>Graphics</h2>
+        <div class="settings-card">
+            <div class="setting-row">
+                <div>
+                    <span class="setting-label">Wallpaper Engine GPU</span>
+                    <p style="font-size: 0.8rem; color: var(--author-color); margin: 4px 0 0 0;">Select which GPU renders the 3D wallpaper. Requires a restart.</p>
+                </div>
+                <select id="gpu-preference" class="setting-select">
+                    <option value="0">Let Windows Decide</option>
+                    <option value="1">Power Saving (iGPU)</option>
+                    <option value="2">High Performance (dGPU)</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="restart-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100000; align-items:center; justify-content:center;">
+            <div style="background:var(--card-bg); padding:20px; border-radius:8px; max-width:400px; text-align:center; border:1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                <h3 style="margin-top:0; color:var(--text-color);">Restart Required</h3>
+                <p style="color:var(--author-color); margin: 15px 0;">Applying a new GPU preference requires LibreWall to restart. Would you like to restart now?</p>
+                <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
+                    <button onclick="document.getElementById('restart-modal').style.display='none'" class="btn" style="background:#555;">Later</button>
+                    <button id="confirm-restart-btn" class="btn btn-primary">Restart Now</button>
+                </div>
+            </div>
+        </div>
+
         <h2>Storage</h2>
         <div class="settings-card">
             <div class="setting-row">
@@ -283,6 +312,14 @@
                     <p style="font-size: 0.8rem; color: #aaa; margin: 4px 0 0 0;">Clear generated static thumbnails.</p>
                 </div>
                 <button id="clear-cache-btn" class="btn" style="background-color: #555;">Clear Cache</button>
+            </div>
+            <div class="setting-row">
+                <div>
+                    <span class="setting-label">App Data Folder</span>
+                    <p style="font-size: 0.8rem; color: var(--author-color); margin: 4px 0 0 0;">Open the directory where wallpapers and widgets are saved.</p>
+                    <p id="app-data-path" style="font-size: 0.75rem; color: #888; font-family: monospace; margin: 4px 0 0 0; word-break: break-all; user-select: all; cursor: text;"></p>
+                </div>
+                <button id="open-appdata-btn" class="btn btn-primary">Open Folder</button>
             </div>
         </div>
 
@@ -306,10 +343,53 @@
     <button id="save-btn">Save Changes</button>
 
     <script>
+        const gpuPreferenceSelect = document.getElementById('gpu-preference');
+        const restartModal = document.getElementById('restart-modal');
+        const confirmRestartBtn = document.getElementById('confirm-restart-btn');
+
+        gpuPreferenceSelect.addEventListener('change', async () => {
+            const selectedLevel = parseInt(gpuPreferenceSelect.value);
+            gpuPreferenceSelect.disabled = true;
+
+            try {
+                const response = await fetch('/set_gpu_preference', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ level: selectedLevel })
+                });
+
+                if (!response.ok) throw new Error('Failed to set GPU preference');
+                
+                restartModal.style.display = 'flex';
+                
+            } catch (error) {
+                console.error('Error setting GPU:', error);
+                alert("Failed to apply GPU settings.");
+            } finally {
+                gpuPreferenceSelect.disabled = false;
+            }
+        });
+
+        confirmRestartBtn.addEventListener('click', async () => {
+            confirmRestartBtn.disabled = true;
+            confirmRestartBtn.textContent = "Restarting... Please wait";
+            
+            try {
+                await fetch('/restart_app', { method: 'POST' });
+            } catch (error) {
+                console.log("Server disconnected for restart.");
+            }
+            
+            setTimeout(() => {
+                document.getElementById('restart-modal').style.display = 'none';
+                window.location.reload(); 
+            }, 3000);
+        });
+
         const autoStartSelect = document.getElementById('auto-start');
         const saveBtn = document.getElementById('save-btn');
         const appVersionSpan = document.getElementById('app-version');
-        const retakeTourBtn = document.getElementById('retake-tour-btn'); // NEW
+        const retakeTourBtn = document.getElementById('retake-tour-btn');
 
         let initialState = {
             auto_start: "true"
@@ -327,12 +407,42 @@
 
                 autoStartSelect.value = initialState.auto_start;
 
-                if (data.appVersionName) {
-                    appVersionSpan.textContent = data.appVersionName;
+                if (data.appVersionName) appVersionSpan.textContent = data.appVersionName;
+                if (data.enginePort) enginePort = data.enginePort;
+
+                const appDataPathEl = document.getElementById('app-data-path');
+                if (appDataPathEl && data.appDataPath) {
+                    appDataPathEl.textContent = data.appDataPath;
                 }
 
-                if (data.enginePort) {
-                    enginePort = data.enginePort;
+                const gpuSelect = document.getElementById('gpu-preference');
+                if (data.gpu_names && data.gpu_names.length > 0) {
+                    const names = data.gpu_names;
+                    const optDefault = gpuSelect.querySelector('option[value="0"]');
+                    const optPower = gpuSelect.querySelector('option[value="1"]');
+                    const optPerf = gpuSelect.querySelector('option[value="2"]');
+
+                    if (names.length === 1) {
+                        optDefault.textContent = `Let Windows Decide (${names[0]})`;
+                        optPower.textContent = `Power Saving (${names[0]})`;
+                        optPerf.textContent = `High Performance (${names[0]})`;
+                        
+                        gpuSelect.disabled = true;
+                        gpuSelect.style.cursor = "not-allowed";
+                        gpuSelect.style.opacity = "0.6";
+                        const helper = gpuSelect.previousElementSibling.querySelector('p');
+                        if (helper) {
+                            helper.textContent = "Multiple GPUs not detected. This feature requires a dual-GPU system.";
+                            helper.style.color = "var(--danger-color)";
+                        }
+                    } else {
+                        optPower.textContent = `Power Saving (${names[0]})`;
+                        optPerf.textContent = `High Performance (${names[1]})`;
+                    }
+                }
+
+                if (data.gpu_preference !== undefined) {
+                    gpuSelect.value = data.gpu_preference.toString();
                 }
 
             } catch (error) {
@@ -353,7 +463,6 @@
         }
 
         autoStartSelect.addEventListener('change', checkChanges);
-
 
         retakeTourBtn.addEventListener('click', async () => {
             retakeTourBtn.disabled = true;
@@ -444,7 +553,34 @@
             }
         });
 
+        const openAppdataBtn = document.getElementById('open-appdata-btn');
+        openAppdataBtn.addEventListener('click', async () => {
+            const originalText = openAppdataBtn.textContent;
+            openAppdataBtn.disabled = true;
+            openAppdataBtn.textContent = "Opening...";
 
+            try {
+                const r = await fetch('/open_app_data_folder', { method: 'POST' });
+                if (!r.ok) throw new Error('Failed');
+
+                openAppdataBtn.textContent = "Opened!";
+                openAppdataBtn.style.backgroundColor = "var(--success-color)";
+                setTimeout(() => {
+                    openAppdataBtn.disabled = false;
+                    openAppdataBtn.textContent = originalText;
+                    openAppdataBtn.style.backgroundColor = "var(--primary-color)";
+                }, 2000);
+            } catch (e) {
+                console.error(e);
+                openAppdataBtn.textContent = "Error";
+                openAppdataBtn.style.backgroundColor = "var(--danger-color)";
+                setTimeout(() => {
+                    openAppdataBtn.disabled = false;
+                    openAppdataBtn.textContent = originalText;
+                    openAppdataBtn.style.backgroundColor = "var(--primary-color)";
+                }, 2000);
+            }
+        });
 
         async function loadContributors() {
             const container = document.getElementById('contributors-list');

@@ -1,5 +1,12 @@
 import os
 import sys
+import ctypes
+import gpu_utils
+try:
+    ctypes.windll.user32.SetProcessDpiAwarenessContext(-4) 
+except AttributeError:
+    pass
+
 if sys.stdout is None or sys.stderr is None:
     class NullWriter:
         def write(self, text): pass
@@ -127,7 +134,7 @@ def get_reliable_windows_id():
                 text=True, 
                 startupinfo=startupinfo,
                 creationflags=subprocess.CREATE_NO_WINDOW,
-                timeout=3  # Added to prevent WMI infinite hangs
+                timeout=3
             ).stdout.strip()
         except subprocess.TimeoutExpired:
             print("Warning: WMI UUID lookup timed out, returning fallback ID.")
@@ -151,18 +158,27 @@ def get_reliable_windows_id():
 
 current_scale = get_real_screen_scale()
 
+import gpu_utils
+gpu_pref = gpu_utils.get_gpu_preference()
+
+if gpu_pref == 2:
+    chromium_gpu_flag = "--gpu-preference=high-performance "
+elif gpu_pref == 1:
+    chromium_gpu_flag = "--gpu-preference=low-power "
+else:
+    chromium_gpu_flag = ""
+
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
     f"--force-device-scale-factor={current_scale} "
     "--high-dpi-support=1 "
     "--enable-use-zoom-for-dsf=true "
     "--disable-renderer-backgrounding "
     "--disable-backgrounding-occluded-windows "
-    "--disable-features=CalculateNativeWinOcclusion"
-    "--autoplay-policy=no-user-gesture-required"
+    "--disable-features=CalculateNativeWinOcclusion "
     "--autoplay-policy=no-user-gesture-required "
-    "--gpu-preference=high-performance " 
+    f"{chromium_gpu_flag}"
     "--enable-gpu-rasterization "        
-    "--disable-gpu-driver-bug-workarounds " 
+    "--disable-gpu-driver-bug-workarounds "
     "--use-angle=d3d11 "
 )
 
@@ -170,7 +186,6 @@ os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
 os.environ["QT_SCALE_FACTOR"] = "1"
 
 from PyQt6.QtCore import QUrl, Qt, QTimer
-# Fix for flickering issues (Switch from Direct3D11 to OpenGL)
 try:
     from PyQt6.QtQuick import QQuickWindow, QSGRendererInterface
     QQuickWindow.setGraphicsApi(QSGRendererInterface.GraphicsApi.OpenGL)
@@ -231,6 +246,7 @@ mutex_handle = None
 def check_single_instance(mutex_name=r"Local\librewall_engine"):
     global mutex_handle
     mutex_handle = kernel32.CreateMutexW(None, False, mutex_name)
+    gpu_utils.mutex_handle = mutex_handle
     if kernel32.GetLastError() == 183:
         try:
              user32.MessageBoxW(None, "Another instance of librewall engine is already running.", "librewall_engine", 0x10)
@@ -286,9 +302,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         mime_type = ""
 
         try: 
-
             if clean_path == '/':
-
                 config_path = os.path.join(current_wallpaper_path, 'config.json')
                 is_html_render = False
                 target_html_file = 'index.html' 
@@ -304,20 +318,15 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                     print(f"Error checking theme config for htmlrender: {e}")
 
                 if is_html_render:
-
                     print(f"HTML Render Mode: Serving {target_html_file} from theme folder.")
                     file_path = os.path.join(current_wallpaper_path, target_html_file)
                     mime_type = 'text/html'
                 else:
-
                     disk_index = os.path.join(SCRIPT_DIR, 'index.html')
-
                     if os.path.exists(disk_index):
-
                         file_path = disk_index
                         mime_type = 'text/html'
                     elif HAS_EMBEDDED_ASSETS:
-
                         html_bytes = engine_assets.get_asset('DATA_INDEX')
                         if html_bytes:
                             self.send_response(200)
@@ -434,7 +443,10 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                     if asset_data:
                         self.send_response(200)
                         self.send_header('Content-type', mime_type)
-                        self.send_header('Cache-Control', 'max-age=31536000')
+                        if mime_type.startswith('image/') or mime_type.startswith('video/'):
+                            self.send_header('Cache-Control', 'public, max-age=604800')
+                        else:
+                            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                         self.end_headers()
                         self.wfile.write(asset_data)
                         return
@@ -473,7 +485,10 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                     if asset_data:
                         self.send_response(200)
                         self.send_header('Content-type', mime_type)
-                        self.send_header('Cache-Control', 'max-age=31536000')
+                        if mime_type.startswith('image/') or mime_type.startswith('video/'):
+                            self.send_header('Cache-Control', 'public, max-age=604800')
+                        else:
+                            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                         self.end_headers()
                         self.wfile.write(asset_data)
                         return
@@ -523,10 +538,10 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             with open(file_path, 'rb') as f:
                 self.send_response(200)
                 self.send_header('Content-type', mime_type)
-                if clean_path in ['/', '/config', '/app_config.json', '/widget.json']: 
-                    self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-                else:
+                if mime_type.startswith('image/') or mime_type.startswith('video/'):
                     self.send_header('Cache-Control', 'public, max-age=604800')
+                else:
+                    self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                 
                 f.seek(0, os.SEEK_END)
                 file_size = f.tell()
@@ -772,7 +787,6 @@ class AuthWebEnginePage(QWebEnginePage):
 
     def __init__(self, profile, parent, user_agent):
         super().__init__(profile, parent) 
-
         print("Setting custom User-Agent for browser...")
         self.profile().setHttpUserAgent(user_agent)
 
@@ -786,7 +800,6 @@ class WallpaperWindow(QMainWindow):
         self.enable_global_widget = enable_global_widget
 
         self.device_id = None
-
 
         active_theme_path = MyHandler.get_current_wallpaper_path(None)
         theme_config_path = os.path.join(active_theme_path, 'config.json')
@@ -863,10 +876,8 @@ class WallpaperWindow(QMainWindow):
         screen = self.app.primaryScreen()
 
         if self.is_app_mode:
-
             self.rect = screen.availableGeometry()
         else:
-
             self.rect = screen.geometry()
 
         self.screen_width = self.rect.width()
@@ -893,7 +904,6 @@ class WallpaperWindow(QMainWindow):
         self.check_timer.start(200)
 
     def on_load_finished(self, ok):
-
         if self.is_app_mode and ok and self.device_id:
             js_code = f'window.deviceid = "{self.device_id}";'
             self.browser.page().runJavaScript(js_code)
@@ -903,7 +913,6 @@ class WallpaperWindow(QMainWindow):
             (function() {
                 var canvases = document.querySelectorAll("canvas");
                 canvases.forEach(function(canvas) {
-                    // Use 100% to fill the window (which is already sized to taskbar)
                     canvas.style.width = "100%";
                     canvas.style.height = "100%";
                     canvas.style.position = "absolute";
@@ -1105,7 +1114,7 @@ def live_traffic_updater(current_process_name):
                 current_conns = psutil.net_connections(kind='inet')
                 for c in current_conns:
                      if c.raddr and c.status in ('ESTABLISHED', 'SYN_SENT'):
-                         SEEN_CONNECTIONS.add((c.laddr, c.raddr, c.pid, c.status))
+                          SEEN_CONNECTIONS.add((c.laddr, c.raddr, c.pid, c.status))
             time.sleep(0.2)
         except Exception as e:
             print(f"Error in traffic updater thread: {e}", file=sys.stderr)

@@ -34,11 +34,6 @@ body {
 }
 
 #live-clock {
-    background-color: transparent;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    border-color: transparent;
-    box-shadow: none;
     min-width: 200px;
     min-height: 100px;
 }
@@ -53,11 +48,7 @@ body.is-dragging .widget-container {
     box-shadow: 0 0 20px rgba(74, 144, 226, 0.7);
 }
 
-body.is-dragging #live-clock {
-    background-color: rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-}
+
 
 .resize-handle {
     position: absolute;
@@ -75,9 +66,6 @@ body.is-dragging .resize-handle {
     border-bottom: 2px solid #4a90e2;
     border-right: 2px solid #4a90e2;
     border-bottom-right-radius: 4px;
-}
-
-body.is-dragging .widget-container:not(#live-clock) .resize-handle {
     border-color: #4a90e2;
 }
 
@@ -149,25 +137,6 @@ body.is-dragging .widget-container:not(#live-clock) .resize-handle {
     font-weight: 400;
 }
 
-#ws-status {
-    float: right;
-    font-size: 0.9rem;
-    font-weight: 500;
-    padding: 4px 8px;
-    border-radius: 4px;
-    color: #000;
-    background-color: #f4a261;
-    margin-left: 10px;
-}
-
-#ws-status.connected {
-    background-color: #50e3c2;
-}
-
-#ws-status.error {
-    background-color: #e63946;
-    color: #fff;
-}
 
 .stat-item {
     font-size: 1.1rem;
@@ -284,9 +253,6 @@ body.is-dragging .widget-container:not(#live-clock) .resize-handle {
 
 #edit-mode-menu {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
     z-index: 9999;
     background-color: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(16px);
@@ -308,12 +274,11 @@ body.is-dragging .widget-container:not(#live-clock) .resize-handle {
 @keyframes menuSlideIn {
     from {
         opacity: 0;
-        transform: translate(-50%, -50%) scale(0.95);
+        scale: 0.95;
     }
-
     to {
         opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
+        scale: 1;
     }
 }
 
@@ -498,7 +463,7 @@ body.is-dragging #edit-mode-menu {
 
 .widget-context-menu {
     position: fixed;
-    z-index: 10000;
+    z-index: 20000;
     background-color: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -543,10 +508,7 @@ body.is-dragging #edit-mode-menu {
 
 .widget-settings-editor {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 10001;
+    z-index: 20000;
     background-color: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
