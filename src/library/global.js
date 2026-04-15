@@ -341,6 +341,7 @@ const WidgetLoader = {
     document.querySelectorAll(".widget-container").forEach((container) => {
       container.addEventListener("click", (e) => {
         if (this.isDraggable && e.button === 0) {
+          if (this.hasMovedDuringDrag) return;
           if (e.target.closest("button, input, a, canvas, .resize-handle"))
             return;
 
@@ -665,6 +666,9 @@ const WidgetLoader = {
   activeContainer: null,
   offsetX: 0,
   offsetY: 0,
+  hasMovedDuringDrag: false,
+  dragStartX: 0,
+  dragStartY: 0,
   isResizing: false,
   originalWidth: 0,
   originalHeight: 0,
@@ -712,9 +716,21 @@ const WidgetLoader = {
     const rect = this.activeContainer.getBoundingClientRect();
     this.offsetX = e.clientX - rect.left;
     this.offsetY = e.clientY - rect.top;
+    this.dragStartX = e.clientX;
+    this.dragStartY = e.clientY;
+    this.hasMovedDuringDrag = false;
 
     const onDragMove = (e) => {
       if (!this.activeContainer) return;
+
+      const dist = Math.sqrt(
+        Math.pow(e.clientX - this.dragStartX, 2) +
+          Math.pow(e.clientY - this.dragStartY, 2),
+      );
+      if (dist > 3) {
+        this.hasMovedDuringDrag = true;
+      }
+
       this.activeContainer.style.left = `${e.clientX - this.offsetX}px`;
       this.activeContainer.style.top = `${e.clientY - this.offsetY}px`;
       this.activeContainer.style.right = "auto";

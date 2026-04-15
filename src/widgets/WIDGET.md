@@ -26,7 +26,16 @@ widgets/my-widget/
 
 ### 2. Create main.js
 
+You must include a metadata comment block at the top of `main.js`. This is parsed by the launcher during import to display information to the user.
+
 ```javascript
+/*
+@name: My Widget
+@author: Your Name
+@description: A cool widget that does things.
+@min_version: 1
+*/
+
 (function () {
     const script = document.currentScript;
     const WIDGET_ID = script.dataset.widgetId;

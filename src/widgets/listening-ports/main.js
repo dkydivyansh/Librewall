@@ -1,3 +1,9 @@
+/*
+@name: Listening Ports
+@author: Dkydivyansh
+@description: Monitors and displays active listening ports on your system.
+@min_version: 1
+*/
 
 (function () {
     const script = document.currentScript;

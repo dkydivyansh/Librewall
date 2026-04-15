@@ -1,3 +1,9 @@
+/*
+@name: Live Traffic Log
+@author: Dkydivyansh
+@description: Shows a live log of outgoing and incoming network connections.
+@min_version: 1
+*/
 
 (function () {
     const script = document.currentScript;

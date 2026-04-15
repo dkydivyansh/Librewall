@@ -1226,17 +1226,20 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     self.send_json_response(400, {'error': "Missing 'widgetId'"})
                     return
 
-                api_url = f"{API_BASE_URL}?action=get_widgets&query={widget_id}"
+                api_url = f"{API_BASE_URL}?action=get_widget_by_id&id={widget_id}"
                 print(f"Fetching widget info from: {api_url}")
                 
                 widget_data = None
                 with urllib.request.urlopen(api_url, timeout=10) as response:
                     api_resp = json.load(response)
-                    if api_resp.get('data'):
+                    if isinstance(api_resp.get('data'), list):
                         for w in api_resp['data']:
                             if str(w.get('id')) == widget_id:
                                 widget_data = w
                                 break
+                    elif isinstance(api_resp.get('data'), dict):
+                        if str(api_resp['data'].get('id')) == widget_id:
+                            widget_data = api_resp['data']
                 
                 if not widget_data:
                      self.send_json_response(404, {'error': 'Widget not found or ID mismatch in marketplace.'})
@@ -1291,6 +1294,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     "id": str(widget_id),
                     "name": widget_data.get('widgetName', f"Widget {widget_id}"),
                     "author": widget_data.get('author', 'Unknown'),
+                    "ver": widget_data.get('ver', 1),
                 }
                 
                 if existing_entry:

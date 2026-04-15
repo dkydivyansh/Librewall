@@ -143,6 +143,8 @@
             transition: all 0.2s ease-in-out;
             cursor: pointer;
             position: relative;
+            will-change: transform, box-shadow;
+            transform: translateZ(0);
         }
 
         .wallpaper-card:hover {
@@ -272,6 +274,7 @@
             max-height: 90vh;
             position: relative;
             animation: fadeIn 0.3s ease;
+            will-change: transform, opacity;
         }
 
         @keyframes fadeIn {
@@ -412,6 +415,7 @@
             border-top: 5px solid var(--primary-color);
             border-radius: 50%;
             animation: spin 1s linear infinite;
+            will-change: transform;
         }
 
         @keyframes spin {
@@ -554,10 +558,10 @@
         let currentPage = 1;
         let currentSearchQuery = '';
         let installedWidgetIds = [];
+        let installedWidgetsMap = {};
         let isLoading = false;
         let hasMore = true;
-        let currentTheme = null; // reused name, actually currentWidget
-
+        let currentTheme = null;
         const grid = document.getElementById('widget-grid');
         const sentinel = document.getElementById('infinite-scroll-sentinel');
         const noMoreMsg = document.getElementById('no-more-msg');
@@ -565,11 +569,10 @@
         const retryBtn = document.getElementById('retry-btn');
         const searchForm = document.getElementById('search-form');
         const searchInput = document.getElementById('search-input');
-
-        // Lightbox
         const lightboxOverlay = document.getElementById('lightbox-overlay');
         const lightboxClose = document.getElementById('lightbox-close');
 
+        let systemIds = [];
         async function initializeSettings() {
             try {
                 const response = await fetch('/get_app_settings');
@@ -585,7 +588,17 @@
                 if (!response.ok) return;
                 const data = await response.json();
                 if (data.widgets) {
+                    installedWidgetsMap = {};
+                    data.widgets.forEach(w => {
+                        installedWidgetsMap[w.id.toString()] = w;
+                    });
                     installedWidgetIds = data.widgets.map(w => w.id.toString());
+                }
+    
+                const updResp = await fetch('/get_widget_updates', { method: 'POST' });
+                const updData = await updResp.json();
+                if (updData.status === 'success') {
+                    systemIds = updData.systemIds || [];
                 }
             } catch (err) { }
         }
@@ -624,19 +637,20 @@
                     data.data.forEach(widget => {
                         const cardData = {
                             id: widget.id,
-                            themeName: widget.widgetName || widget.name,
+                            themeName: widget.widgetName || widget.name || widget.themeName,
                             author: widget.author,
                             thumbnailUrl: widget.thumbnailUrl,
                             description: widget.description,
                             min_version: widget.min_version,
                             zipUrl: widget.zipUrl,
+                            ver: widget.ver,
                             type: 'widget',
                             isWidget: true
                         };
                         grid.appendChild(createWidgetCard(cardData));
                     });
 
-                    if (data.data.length < 20) { // Assume 20 is page limit
+                    if (data.data.length < 20) { 
                         hasMore = false;
                         sentinel.style.display = 'none';
                         noMoreMsg.style.display = 'block';
@@ -661,6 +675,7 @@
         function createWidgetCard(widget) {
             const card = document.createElement('div');
             card.className = 'wallpaper-card';
+            card.dataset.id = widget.id;
 
             const minVersion = widget.min_version || 1;
             const isDisabled = minVersion > CURRENT_APP_VERSION;
@@ -668,10 +683,20 @@
             if (isDisabled) card.classList.add('is-disabled');
             else card.onclick = () => showLightbox(widget, false);
 
-            if (installedWidgetIds.includes(widget.id.toString())) {
+            const installedWidget = installedWidgetsMap[widget.id.toString()];
+            if (installedWidget) {
                 const label = document.createElement('div');
                 label.className = 'card-label installed-label';
-                label.textContent = 'Installed';
+                const localVer = parseFloat(installedWidget.ver || 1);
+                const remoteVer = parseFloat(widget.ver || 1);
+                const isSystem = systemIds.includes(widget.id.toString()) || isNaN(widget.id);
+                
+                if (remoteVer > localVer && !isSystem) {
+                    label.textContent = 'Update Available';
+                    label.style.backgroundColor = 'var(--primary-color)';
+                } else {
+                    label.textContent = 'Installed';
+                }
                 card.appendChild(label);
             }
 
@@ -682,8 +707,17 @@
 
             const info = document.createElement('div');
             info.className = 'wallpaper-info';
-            const title = document.createElement('h3');
-            title.textContent = widget.themeName;
+            const isProtected = systemIds.includes(widget.id.toString());
+            const title = document.createElement('div');
+            title.className = 'widget-card-info';
+            title.innerHTML = `
+                <h3>
+                    ${widget.themeName} 
+                    ${isProtected ? '<span style="background:rgba(255,255,255,0.1); color:#888; font-size:9px; padding:1px 5px; border-radius:4px; vertical-align:middle; margin-left:5px;">SYSTEM</span>' : ''}
+                    <span style="opacity:0.4; font-size: 0.75em; font-weight: 400; margin-left: 5px;">v${widget.ver || '1'}</span>
+                </h3>
+                <p>by ${widget.author || 'Unknown'}</p>
+            `;
             info.appendChild(title);
 
             if (isDisabled) {
@@ -700,14 +734,26 @@
         function showLightbox(widget, isDisabled) {
             currentTheme = widget;
             document.getElementById('lightbox-img').src = widget.thumbnailUrl || '';
-            document.getElementById('lightbox-title').textContent = widget.themeName;
+            const versionStr = widget.ver ? ` <span style="opacity:0.5; font-size:0.7em; font-weight:400; margin-left:8px;">v${widget.ver}</span>` : '';
+            document.getElementById('lightbox-title').innerHTML = `${widget.themeName}${versionStr}`;
             document.getElementById('lightbox-author').textContent = `by ${widget.author || 'Unknown'}`;
             document.getElementById('lightbox-description').textContent = widget.description;
 
             const btn = document.getElementById('lightbox-install');
-            if (installedWidgetIds.includes(widget.id.toString())) {
-                btn.disabled = true;
-                btn.textContent = 'Installed';
+            const installedWidget = installedWidgetsMap[widget.id.toString()];
+            
+            if (installedWidget) {
+                const localVer = parseFloat(installedWidget.ver || 1);
+                const remoteVer = parseFloat(widget.ver || 1);
+                
+                if (remoteVer > localVer) {
+                    btn.disabled = false;
+                    btn.textContent = 'Update';
+                    btn.classList.add('update-mode'); 
+                } else {
+                    btn.disabled = true;
+                    btn.textContent = 'Installed';
+                }
             } else {
                 btn.disabled = false;
                 btn.textContent = 'Install';
@@ -745,18 +791,34 @@
 
                 btn.textContent = 'Installed!';
                 showNotification("Widget installed! Please restart the engine.", "success");
-                setTimeout(hideLightbox, 2000);
+                
+                const idStr = currentTheme.id.toString();
+                if (!installedWidgetIds.includes(idStr)) {
+                    installedWidgetIds.push(idStr);
+                }
+                installedWidgetsMap[idStr] = { 
+                    ...currentTheme, 
+                    ver: currentTheme.ver 
+                };
+                const card = document.querySelector(`.wallpaper-card[data-id="${idStr}"]`);
+                if (card) {
+                    let label = card.querySelector('.installed-label');
+                    if (!label) {
+                        label = document.createElement('div');
+                        label.className = 'card-label installed-label';
+                        card.appendChild(label);
+                    }
+                    label.textContent = 'Installed';
+                    label.style.backgroundColor = 'var(--success-color)';
+                }
 
-                installedWidgetIds.push(currentTheme.id.toString());
-                // Update UI without reload?
+                setTimeout(hideLightbox, 1500);
             } catch (e) {
                 btn.textContent = 'Error';
                 btn.disabled = false;
                 showNotification("Installation failed: " + e, "error");
             }
         }
-
-        // Init
         document.addEventListener('DOMContentLoaded', async () => {
             await initializeSettings();
             fetchWidgets();
@@ -779,7 +841,6 @@
         lightboxOverlay.onclick = (e) => { if (e.target === lightboxOverlay) hideLightbox(); };
         retryBtn.onclick = () => { currentPage = 1; fetchWidgets(); };
 
-        // Observer
         const observer = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting && !isLoading && hasMore) {
                 currentPage++;
@@ -788,12 +849,10 @@
         });
         observer.observe(sentinel);
 
-        // External link mocks
-        window.openExternalLinkModal = function (url) { window.open(url, '_blank'); } // simplified for widgets page
+        window.openExternalLinkModal = function (url) { window.open(url, '_blank'); }
         window.closeExternalLinkModal = function () { }
         window.confirmExternalLink = function () { }
 
-        // Lenis
         const lenis = new Lenis({ wheelMultiplier: 1.5, lerp: 0.08, smoothWheel: true });
         function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
         requestAnimationFrame(raf);

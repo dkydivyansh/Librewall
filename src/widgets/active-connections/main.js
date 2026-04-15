@@ -1,3 +1,9 @@
+/*
+@name: Active Connections
+@author: Dkydivyansh
+@description: Provides a comprehensive view of all active network connections.
+@min_version: 1
+*/
 
 (function () {
     const script = document.currentScript;
