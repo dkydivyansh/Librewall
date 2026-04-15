@@ -1,3 +1,5 @@
 src/ffmpeg.exe
 src/app_config.json
+/.venv
+/src/__pycache__
 *.pyc

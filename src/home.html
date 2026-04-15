@@ -130,212 +130,6 @@
             opacity: 0.3;
             transition: opacity 0.3s;
         }
-        .update-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(15px) saturate(180%);
-            -webkit-backdrop-filter: blur(15px) saturate(180%);
-            z-index: 30000;
-            justify-content: center;
-            align-items: center;
-            animation: modalFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        @keyframes modalFadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        .update-box {
-            background: rgba(25, 25, 25, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 2rem;
-            border-radius: 16px;
-            text-align: center;
-            max-width: 380px;
-            width: 90%;
-            color: #fff;
-        }
-
-        .marketplace-update-warning {
-            display: none;
-            background-color: #ffc107;
-            color: #000;
-            padding: 0.75rem 1.5rem;
-            text-align: center;
-            font-weight: 600;
-            border-bottom: 1px solid rgba(0,0,0,0.1);
-            animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative;
-            z-index: 100;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .marketplace-update-warning:hover {
-            background-color: #e0a800;
-        }
-
-        .marketplace-update-warning span {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .marketplace-update-warning .update-now-btn {
-            background: rgba(0,0,0,0.8);
-            color: white;
-            border: none;
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            margin-left: 15px;
-            font-weight: bold;
-        }
-
-        @keyframes slideDown {
-            from { transform: translateY(-100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        .update-box .update-icon {
-            width: 56px;
-            height: 56px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1.25rem;
-            color: var(--primary-color);
-        }
-
-        .update-box h2 {
-            font-size: 1.4rem;
-            margin: 0 0 0.75rem;
-            border-bottom: none;
-            color: #fff;
-            letter-spacing: -0.02em;
-        }
-
-        .update-box p {
-            color: #aaa;
-            line-height: 1.5;
-            margin-bottom: 1.25rem;
-            font-size: 0.9rem;
-        }
-
-        .update-items-list {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 10px;
-            padding: 0.75rem;
-            margin-bottom: 1.5rem;
-            text-align: left;
-            max-height: 120px;
-            overflow-y: auto;
-            border: 1px solid rgba(255, 255, 255, 0.03);
-            pointer-events: auto; /* Ensure events are caught */
-            scrollbar-width: thin;
-            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-        }
-
-        .update-items-list::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .update-items-list::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .update-items-list::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-        }
-
-        .update-items-list::-webkit-scrollbar-thumb:hover {
-            background: var(--primary-color);
-        }
-
-        .update-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            font-size: 0.9rem;
-            color: #eaeaea;
-        }
-
-        .update-item:last-child { border-bottom: none; }
-
-        .update-item-icon {
-            color: var(--primary-color);
-            display: flex;
-            align-items: center;
-        }
-
-        .update-progress-container {
-            display: none;
-            margin-top: 1.5rem;
-            animation: slideUp 0.3s ease-out;
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .progress-track {
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 6px;
-            overflow: hidden;
-            margin-bottom: 0.6rem;
-            position: relative;
-        }
-
-        .progress-bar {
-            width: 0%;
-            height: 100%;
-            background: var(--primary-color);
-            transition: width 0.4s cubic-bezier(0.1, 0.7, 0.1, 1);
-            position: relative;
-        }
-
-        .progress-status {
-            font-size: 0.8rem;
-            color: #888;
-        }
-
-        .update-button {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            width: 100%;
-        }
-
-        .update-button:hover:not(:disabled) {
-            background: var(--primary-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(13, 110, 253, 0.3);
-        }
-
-        .update-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            background: #444;
-        }
     </style>
     <link rel="stylesheet" href="/threejs/driver.css" />
     <script src="/threejs/driver.js.iife.js"></script>
@@ -1214,13 +1008,6 @@
     <input type="file" id="import-file-input" accept=".zip" style="display: none;">
     <div id="engine-off-warning" class="engine-warning">The active wallpaper is not running because the Engine is
         stopped.</div>
-    <div id="marketplace-update-warning" class="marketplace-update-warning">
-        <span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            <span id="marketplace-update-text">Updates found for widgets</span>
-            <button class="update-now-btn">Check Update</button>
-        </span>
-    </div>
 
     <main class="content-wrapper">
         <div id="wallpaper-grid-valid" class="wallpaper-grid"></div>
@@ -1407,27 +1194,6 @@
                 <button class="btn btn-secondary" id="import-preview-cancel">Cancel</button>
                 <button class="btn btn-primary" id="import-preview-confirm">Install</button>
             </div>
-        </div>
-    </div>
-
-    <div id="market-update-overlay" class="update-modal" style="display:none; z-index:30005;">
-        <div class="update-box" style="max-width: 450px;">
-            <div class="update-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            </div>
-            <h2>Marketplace Updates</h2>
-            <p id="market-update-desc" style="margin-bottom:1.5rem; opacity:0.7;">New versions are available for your installed widgets.</p>
-            <div id="market-update-items" class="update-items-list" data-lenis-prevent style="margin-bottom:1.5rem;">
-            </div>
-            <div id="market-progress-area" class="update-progress-container">
-                <div class="progress-track"><div id="market-progress-bar" class="progress-bar"></div></div>
-                <div id="market-status-text" class="progress-status">Preparing updates...</div>
-            </div>
-            <div class="confirm-actions" style="margin-top: 1.5rem; gap: 1rem; display: flex;">
-                <button class="update-button" id="run-market-update" style="flex:1;">Update All</button>
-                <button class="update-button" id="finish-market-update" style="flex:1; display:none;">Finish & Restart</button>
-            </div>
-            <button class="btn btn-secondary" id="close-market-update" style="width:100%; margin-top:10px; background:transparent; border:1px solid #444;">Close</button>
         </div>
     </div>
 
@@ -1646,6 +1412,17 @@
                 });
         }
 
+        document.addEventListener('DOMContentLoaded', () => {
+            const loader = document.getElementById('loader');
+            loadWallpapers().finally(() => {
+                if (loader) {
+                    setTimeout(() => {
+                        loader.style.opacity = '0';
+                        setTimeout(() => loader.style.display = 'none', 500);
+                    }, 500);
+                }
+            });
+        });
 
         async function checkEngineStatus() {
             try {
@@ -1806,6 +1583,11 @@
             currentWallpaper = null; isConfigDirty = false;
         }
 
+        document.getElementById('refresh-btn').onclick = () => {
+            const l = document.getElementById('loader');
+            l.style.display = 'flex'; requestAnimationFrame(() => l.style.opacity = '1');
+            loadWallpapers().finally(() => { l.style.opacity = '0'; setTimeout(() => l.style.display = 'none', 500); });
+        };
 
         document.getElementById('refresh-btn').onclick = () => {
             const l = document.getElementById('loader');
@@ -1981,6 +1763,18 @@
         document.getElementById('unsaved-close').onclick = () => document.getElementById('unsaved-overlay').style.display = 'none';
         document.getElementById('unsaved-confirm').onclick = () => hideLightbox(true);
 
+        document.addEventListener('DOMContentLoaded', async () => {
+
+            const loader = document.getElementById('loader');
+            await loadWallpapers();
+
+            if (loader) {
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 500);
+            }
+
+            checkTourStatus();
+        });
 
         async function checkTourStatus() {
             try {
@@ -2209,7 +2003,7 @@
                         }
                         </div>
                         <div class="widget-card-info">
-                            <h3>${widget.name} <span style="opacity:0.4; font-size: 0.75em; font-weight: 400; margin-left: 5px;">v${widget.ver || '1'}</span></h3>
+                            <h3>${widget.name}</h3>
                             <p>by ${widget.author}</p>
                         </div>
                         <div class="widget-card-meta">
@@ -2271,280 +2065,6 @@
             requestAnimationFrame(raf);
         }
         requestAnimationFrame(raf);
-    </script>
-
-    <div id="update-modal" class="update-modal">
-        <div class="update-box">
-            <div class="update-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.29 7 12 12 20.71 7"></polyline><line x1="12" y1="22" x2="12" y2="12"></line></svg>
-            </div>
-            <h2 id="update-title">Essential Updates</h2>
-            <p id="update-desc">Optimizations and new features are ready for your widget library.</p>
-            
-            <div id="update-widgets-list-content" class="update-widgets-list-content">
-                <div id="update-items-list" class="update-items-list" data-lenis-prevent>
-                </div>
-            </div>
-
-            <button id="start-update-btn" class="update-button">Install Updates Now</button>
-            <button id="finish-update-btn" class="update-button" style="display: none;">Complete & Restart</button>
-
-            <div id="update-progress-area" class="update-progress-container">
-                <div class="progress-track">
-                    <div id="update-progress-bar" class="progress-bar"></div>
-                </div>
-                <div id="update-status-text" class="progress-status">Initializing core components...</div>
-            </div>
-        </div>
-    </div>
-    <script>
-        const UpdateManager = {
-            updates: [],
-            modal: document.getElementById('update-modal'),
-            startBtn: document.getElementById('start-update-btn'),
-            finishBtn: document.getElementById('finish-update-btn'),
-            progressArea: document.getElementById('update-progress-area'),
-            progressBar: document.getElementById('update-progress-bar'),
-            statusText: document.getElementById('update-status-text'),
-
-            async init() {
-                try {
-                    const r = await fetch('/get_widget_updates', { method: 'POST' });
-                    const d = await r.json();
-                    if (d.status === 'success' && d.updates && d.updates.length > 0) {
-                        this.updates = d.updates;
-                        this.show();
-                    }
-                } catch (e) {
-                    console.error("Local update check failed", e);
-                }
-            },
-
-            show() {
-                this.modal.style.display = 'flex';
-                this.startBtn.onclick = () => this.run();
-
-                const listContainer = document.getElementById('update-items-list');
-                listContainer.innerHTML = this.updates.map(u => `
-                    <div class="update-item" id="upd-item-${u.id}">
-                        <div class="update-item-icon" style="color: var(--primary-color);">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
-                                <path d="m3.3 7 8.7 5 8.7-5"></path>
-                                <path d="M12 22V12"></path>
-                            </svg>
-                        </div>
-                        <div class="update-item-name" id="upd-name-${u.id}">
-                            ${u.name} 
-                            <span style="opacity:0.4; font-size: 0.8em; margin-left: 6px;">
-                                v${u.old_ver} &rarr; v${u.new_ver}
-                            </span>
-                        </div>
-                    </div>
-                `).join("");
-            },
-
-            async run() {
-                this.startBtn.style.display = 'none';
-                document.getElementById('update-items-list').style.opacity = '0.5';
-                this.progressArea.style.display = 'block';
-
-                let completed = 0;
-                for (const widget of this.updates) {
-                    this.statusText.textContent = `Deploying ${widget.name}...`;
-                    try {
-                        const r = await fetch('/update_widget', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ widgetId: widget.id })
-                        });
-                        if (!r.ok) throw new Error();
-                        const nameEl = document.getElementById(`upd-name-${widget.id}`);
-                        if (nameEl) {
-                            nameEl.innerHTML += ' <span style="background:var(--success-color); color:white; font-size:10px; padding:2px 6px; border-radius:10px; margin-left:10px; font-weight:bold;">INSTALLED</span>';
-                        }
-                    } catch (e) {
-                        console.error(`Failed to update ${widget.id}`);
-                    }
-                    completed++;
-                    const percent = (completed / this.updates.length) * 100;
-                    this.progressBar.style.width = `${percent}%`;
-                }
-
-                this.statusText.textContent = "Updates successfully applied!";
-                this.statusText.style.color = "var(--success-color)";
-                this.finishBtn.style.display = 'block';
-                this.finishBtn.onclick = () => this.finish();
-            },
-            async finish() {
-                this.finishBtn.disabled = true;
-                this.finishBtn.textContent = "Reloading...";
-                try {
-                    await fetch('/finish_update', { method: 'POST' });
-                } catch (e) { }
-
-                setTimeout(() => location.reload(), 500);
-            }
-        };
-
-        const MarketplaceUpdateManager = {
-            updates: [],
-            bar: document.getElementById('marketplace-update-warning'),
-            overlay: document.getElementById('market-update-overlay'),
-            listEl: document.getElementById('market-update-items'),
-            runBtn: document.getElementById('run-market-update'),
-            finishBtn: document.getElementById('finish-market-update'),
-            closeBtn: document.getElementById('close-market-update'),
-            progressArea: document.getElementById('market-progress-area'),
-            progressBar: document.getElementById('market-progress-bar'),
-            statusText: document.getElementById('market-status-text'),
-
-            async init() {
-                try {
-                    const sResp = await fetch('/get_app_settings');
-                    const settings = await sResp.json();
-                    let apiBaseUrl = settings.apiBaseUrl;
-                    if (!apiBaseUrl || apiBaseUrl === '#') return;
-                    if (apiBaseUrl.includes('?')) {
-                        apiBaseUrl += '&';
-                    } else {
-                        if (!apiBaseUrl.endsWith('/')) {
-                        }
-                        apiBaseUrl += '?';
-                    }
-
-                    const rResp = await fetch(`/widgets/index.json?t=${Date.now()}`);
-                    const rData = await rResp.json();
-                    const installedWidgets = rData.widgets || [];
-
-                    console.log(`[MarketUpdate] Checking ${installedWidgets.length} widgets...`);
-
-                    const foundUpdates = [];
-                    for (const w of installedWidgets) {
-                        if (isNaN(w.id)) continue; 
-                        
-                        try {
-                            const checkUrl = `${apiBaseUrl}action=get_widget_by_id&id=${w.id}`;
-                            console.log(`[MarketUpdate] Fetching ${checkUrl}`);
-                            const mResp = await fetch(checkUrl);
-                            if (!mResp.ok) throw new Error(`HTTP ${mResp.status}`);
-                            
-                            const mData = await mResp.json();
-                            if (mData && mData.data) {
-                                const rv = parseFloat(mData.data.ver || 1);
-                                const lv = parseFloat(w.ver || 1);
-                                console.log(`[MarketUpdate] Widget ${w.id}: local v${lv}, remote v${rv}`);
-                                
-                                if (rv > lv) {
-                                    console.log(`[MarketUpdate] Update found for ${w.name}!`);
-                                    foundUpdates.push({
-                                        id: w.id,
-                                        name: w.name,
-                                        old_ver: lv,
-                                        new_ver: rv
-                                    });
-                                }
-                            } else {
-                                console.warn(`[MarketUpdate] Invalid response for ${w.id}:`, mData);
-                            }
-                        } catch (e) { console.warn(`[MarketUpdate] Scan fail for ${w.id}:`, e); }
-                    }
-
-                    if (foundUpdates.length > 0) {
-                        console.log(`[MarketUpdate] Found ${foundUpdates.length} updates!`);
-                        this.updates = foundUpdates;
-                        this.showBar();
-                    }
-                } catch (e) { console.error("[MarketUpdate] init fail", e); }
-            },
-
-            showBar() {
-                if (!this.bar) return;
-                this.bar.style.display = 'block';
-                const countMsg = this.updates.length === 1 ? "1 update found for widget" : `${this.updates.length} updates found for widgets`;
-                document.getElementById('marketplace-update-text').textContent = countMsg;
-                this.bar.onclick = () => this.showModal();
-                this.closeBtn.onclick = () => this.overlay.style.display = 'none';
-            },
-
-            showModal() {
-                this.overlay.style.display = 'flex';
-                this.overlay.style.alignItems = 'center';
-                this.overlay.style.justifyContent = 'center';
-                
-                this.listEl.innerHTML = this.updates.map(u => `
-                    <div class="update-item">
-                        <div class="update-item-icon" style="color:#ffc107;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
-                                <path d="m3.3 7 8.7 5 8.7-5"></path>
-                                <path d="M12 22V12"></path>
-                            </svg>
-                        </div>
-                        <div class="update-item-name" id="mark-upd-name-${u.id}">
-                            ${u.name} <span style="opacity:0.5; margin-left:8px;">v${u.old_ver} → v${u.new_ver}</span>
-                        </div>
-                    </div>
-                `).join('');
-                
-                this.runBtn.onclick = () => this.runUpdates();
-            },
-
-            async runUpdates() {
-                this.runBtn.style.display = 'none';
-                this.closeBtn.style.display = 'none';
-                this.progressArea.style.display = 'block';
-                this.listEl.style.opacity = '0.5';
-
-                let completed = 0;
-                for (const widget of this.updates) {
-                    this.statusText.textContent = `Updating ${widget.name}...`;
-                    try {
-                        const r = await fetch('/install_widget', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ widgetId: widget.id })
-                        });
-                        if (!r.ok) throw new Error();
-                        
-                        const nameEl = document.getElementById(`mark-upd-name-${widget.id}`);
-                        if (nameEl) {
-                            nameEl.innerHTML += ' <span style="color:#2a9d8f; font-weight:bold; font-size:10px; margin-left:10px;">DONE</span>';
-                        }
-                    } catch (e) { console.error(`Failed ${widget.id}`, e); }
-                    
-                    completed++;
-                    const pct = (completed / this.updates.length) * 100;
-                    this.progressBar.style.width = `${pct}%`;
-                }
-
-                this.statusText.textContent = "All updates applied successfully!";
-                this.statusText.style.color = "#2a9d8f";
-                this.finishBtn.style.display = 'block';
-                this.finishBtn.onclick = () => this.finish();
-            },
-
-            async finish() {
-                this.finishBtn.disabled = true;
-                this.finishBtn.textContent = "Restarting...";
-                try {
-                    await fetch('/finish_update', { method: 'POST' });
-                } catch (e) {}
-                setTimeout(() => location.reload(), 500);
-            }
-        };
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            const loader = document.getElementById('loader');
-            await loadWallpapers();
-            checkTourStatus();
-            UpdateManager.init();
-            MarketplaceUpdateManager.init();
-            if (loader) {
-                loader.style.opacity = '0';
-                setTimeout(() => loader.style.display = 'none', 500);
-            }
-        });
     </script>
 </body>
 
