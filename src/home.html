@@ -130,6 +130,171 @@
             opacity: 0.3;
             transition: opacity 0.3s;
         }
+        .update-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(15px) saturate(180%);
+            -webkit-backdrop-filter: blur(15px) saturate(180%);
+            z-index: 30000;
+            justify-content: center;
+            align-items: center;
+            animation: modalFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .update-box {
+            background: rgba(25, 25, 25, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 2rem;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 380px;
+            width: 90%;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+            color: #fff;
+        }
+
+        .update-box .update-icon {
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.25rem;
+            color: var(--primary-color);
+        }
+
+        .update-box h2 {
+            font-size: 1.4rem;
+            margin: 0 0 0.75rem;
+            border-bottom: none;
+            color: #fff;
+            letter-spacing: -0.02em;
+        }
+
+        .update-box p {
+            color: #aaa;
+            line-height: 1.5;
+            margin-bottom: 1.25rem;
+            font-size: 0.9rem;
+        }
+
+        .update-items-list {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            padding: 0.75rem;
+            margin-bottom: 1.5rem;
+            text-align: left;
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            pointer-events: auto; /* Ensure events are caught */
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+
+        .update-items-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .update-items-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .update-items-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .update-items-list::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-color);
+        }
+
+        .update-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.9rem;
+            color: #eaeaea;
+        }
+
+        .update-item:last-child { border-bottom: none; }
+
+        .update-item-icon {
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+        }
+
+        .update-progress-container {
+            display: none;
+            margin-top: 1.5rem;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 0.6rem;
+            position: relative;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--primary-color);
+            transition: width 0.4s cubic-bezier(0.1, 0.7, 0.1, 1);
+            position: relative;
+        }
+
+        .progress-status {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .update-button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .update-button:hover:not(:disabled) {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(13, 110, 253, 0.3);
+        }
+
+        .update-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #444;
+        }
     </style>
     <link rel="stylesheet" href="/threejs/driver.css" />
     <script src="/threejs/driver.js.iife.js"></script>
@@ -266,6 +431,8 @@
             display: flex;
             flex-direction: column;
             aspect-ratio: 16 / 9;
+            will-change: transform, box-shadow;
+            transform: translateZ(0);
         }
 
         .wallpaper-card:hover {
@@ -306,15 +473,25 @@
             width: 100%;
             height: 100%;
             position: relative;
-            background-color: #2a2a2a;
-            background: linear-gradient(90deg, #2b2b2b 25%, #3a3a3a 50%, #2b2b2b 75%);
-            background-size: 200% 100%;
+            background-color: #2b2b2b;
+            overflow: hidden;
+        }
+
+        .image-container::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+            transform: translateX(-100%);
             animation: loadingSkeleton 1.5s infinite;
         }
 
-        .image-container.loaded {
+        .image-container.loaded::after {
+            display: none;
             animation: none;
-            background: transparent;
         }
 
         .wallpaper-card img {
@@ -327,6 +504,7 @@
             position: absolute;
             top: 0;
             left: 0;
+            will-change: opacity;
         }
 
         .wallpaper-card img.visible {
@@ -334,12 +512,8 @@
         }
 
         @keyframes loadingSkeleton {
-            0% {
-                background-position: 200% 0;
-            }
-
             100% {
-                background-position: -200% 0;
+                transform: translateX(100%);
             }
         }
 
@@ -420,12 +594,14 @@
             text-decoration: none;
             color: var(--text-color);
             aspect-ratio: 16 / 9;
+            will-change: transform, box-shadow, border-color;
+            transform: translateZ(0);
         }
 
         .add-wallpaper-card:hover {
             border-color: var(--primary-color);
             background-color: rgba(43, 43, 43, 0.8);
-            transform: translateY(-4px);
+            transform: translateY(-4px) translateZ(0);
             box-shadow: 0 0 15px rgba(13, 110, 253, 0.3);
         }
 
@@ -468,6 +644,7 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             animation: fadeIn 0.2s ease;
             position: relative;
+            will-change: transform, opacity;
         }
 
         .lightbox-box {
@@ -671,6 +848,7 @@
             border-top: 5px solid var(--primary-color);
             border-radius: 50%;
             animation: spin 1s linear infinite;
+            will-change: transform;
         }
 
         @keyframes spin {
@@ -2052,6 +2230,112 @@
             requestAnimationFrame(raf);
         }
         requestAnimationFrame(raf);
+    </script>
+
+    <div id="update-modal" class="update-modal">
+        <div class="update-box">
+            <div class="update-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.29 7 12 12 20.71 7"></polyline><line x1="12" y1="22" x2="12" y2="12"></line></svg>
+            </div>
+            <h2 id="update-title">Essential Updates</h2>
+            <p id="update-desc">Optimizations and new features are ready for your widget library.</p>
+            
+            <div id="update-widgets-list-content" class="update-widgets-list-content">
+                <div id="update-items-list" class="update-items-list" data-lenis-prevent>
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <button id="start-update-btn" class="update-button">Install Updates Now</button>
+            <button id="finish-update-btn" class="update-button" style="display: none;">Complete & Restart</button>
+
+            <div id="update-progress-area" class="update-progress-container">
+                <div class="progress-track">
+                    <div id="update-progress-bar" class="progress-bar"></div>
+                </div>
+                <div id="update-status-text" class="progress-status">Initializing core components...</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const UpdateManager = {
+            updates: [],
+            modal: document.getElementById('update-modal'),
+            startBtn: document.getElementById('start-update-btn'),
+            finishBtn: document.getElementById('finish-update-btn'),
+            progressArea: document.getElementById('update-progress-area'),
+            progressBar: document.getElementById('update-progress-bar'),
+            statusText: document.getElementById('update-status-text'),
+
+            async init() {
+                try {
+                    const r = await fetch('/get_widget_updates', { method: 'POST' });
+                    const d = await r.json();
+                    if (d.status === 'success' && d.updates && d.updates.length > 0) {
+                        this.updates = d.updates;
+                        this.show();
+                    }
+                } catch (e) { console.error("Update check failed", e); }
+            },
+
+            show() {
+                this.modal.style.display = 'flex';
+                this.startBtn.onclick = () => this.run();
+
+                const listContainer = document.getElementById('update-items-list');
+                listContainer.innerHTML = this.updates.map(u => `
+                    <div class="update-item">
+                        <div class="update-item-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"></path><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="m3.3 7 8.7 5 8.7-5"></path><path d="M12 22V12"></path></svg>
+                        </div>
+                        <div class="update-item-name">${u.name} <span style="opacity:0.4; font-size: 0.85em;">v${u.new_ver}</span></div>
+                    </div>
+                `).join("");
+            },
+
+            async run() {
+                this.startBtn.style.display = 'none';
+                document.getElementById('update-items-list').style.opacity = '0.5';
+                this.progressArea.style.display = 'block';
+
+                let completed = 0;
+                for (const widget of this.updates) {
+                    this.statusText.textContent = `Deploying ${widget.name}...`;
+                    try {
+                        const r = await fetch('/update_widget', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ widgetId: widget.id })
+                        });
+                        if (!r.ok) throw new Error();
+                    } catch (e) {
+                        console.error(`Failed to update ${widget.id}`);
+                    }
+                    completed++;
+                    const percent = (completed / this.updates.length) * 100;
+                    this.progressBar.style.width = `${percent}%`;
+                }
+
+                this.statusText.textContent = "Updates deployed successfully!";
+                this.statusText.style.color = "var(--success-color)";
+                this.finishBtn.style.display = 'block';
+                this.finishBtn.onclick = () => this.finish();
+            },
+
+            async finish() {
+                this.finishBtn.disabled = true;
+                this.finishBtn.textContent = "Reloading...";
+                try {
+                    await fetch('/finish_update', { method: 'POST' });
+                } catch (e) { }
+
+                setTimeout(() => location.reload(), 500);
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            UpdateManager.init();
+        });
     </script>
 </body>
 

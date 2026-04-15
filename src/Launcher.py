@@ -1480,6 +1480,111 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_json_response(500, {'error': str(e)})
             return
 
+        elif self.path == '/get_widget_updates':
+            try:
+                install_index = os.path.join(SERVER_ROOT, 'widgets', 'index.json')
+                appdata_index = handler.get_data_path('widgets', 'index.json')
+                
+                updates = []
+                if os.path.exists(install_index):
+                    with open(install_index, 'r', encoding='utf-8') as f:
+                        install_data = json.load(f)
+                    
+                    appdata_data = {"widgets": []}
+                    if os.path.exists(appdata_index):
+                        try:
+                            with open(appdata_index, 'r', encoding='utf-8') as f:
+                                appdata_data = json.load(f)
+                        except: pass
+                    
+                    for iw in install_data.get('widgets', []):
+                        aw = next((w for w in appdata_data.get('widgets', []) if str(w.get('id')) == str(iw.get('id'))), None)
+                        
+                        i_ver = iw.get('ver', 1)
+                        a_ver = aw.get('ver', 1) if aw else 0
+                        
+                        if i_ver > a_ver:
+                            updates.append({
+                                'id': iw['id'],
+                                'name': iw['name'],
+                                'old_ver': a_ver,
+                                'new_ver': i_ver
+                            })
+                
+                self.send_json_response(200, {'status': 'success', 'updates': updates})
+            except Exception as e:
+                self.send_json_response(500, {'error': str(e)})
+            return
+
+        elif self.path == '/update_widget':
+            try:
+                content_len = int(self.headers.get('Content-Length'))
+                post_body = self.rfile.read(content_len)
+                data = json.loads(post_body)
+                widget_id = data.get('widgetId')
+                
+                if not widget_id:
+                    self.send_json_response(400, {'error': 'Missing widgetId'})
+                    return
+
+                src = os.path.join(SERVER_ROOT, 'widgets', widget_id)
+                dst = handler.get_data_path('widgets', widget_id)
+                
+                if not os.path.isdir(src):
+                    self.send_json_response(404, {'error': f'Source widget {widget_id} not found'})
+                    return
+
+                if os.path.exists(dst):
+                    shutil.rmtree(dst)
+                shutil.copytree(src, dst)
+                
+                install_index = os.path.join(SERVER_ROOT, 'widgets', 'index.json')
+                appdata_index = handler.get_data_path('widgets', 'index.json')
+                
+                if os.path.exists(install_index):
+                    with open(install_index, 'r', encoding='utf-8') as f:
+                        install_data = json.load(f)
+                    
+                    target_iw = next((w for w in install_data.get('widgets', []) if str(w.get('id')) == str(widget_id)), None)
+                    
+                    if target_iw:
+                        appdata_data = {"widgets": []}
+                        if os.path.exists(appdata_index):
+                             try:
+                                 with open(appdata_index, 'r', encoding='utf-8') as f:
+                                     appdata_data = json.load(f)
+                             except: pass
+                        
+                        if 'widgets' not in appdata_data: appdata_data['widgets'] = []
+                        existing = next((w for w in appdata_data['widgets'] if str(w.get('id')) == str(widget_id)), None)
+                        if existing:
+                            existing.update(target_iw)
+                        else:
+                            appdata_data['widgets'].append(target_iw)
+                            
+                        with open(appdata_index, 'w', encoding='utf-8') as f:
+                            json.dump(appdata_data, f, indent=4)
+
+                self.send_json_response(200, {'status': 'success'})
+            except Exception as e:
+                self.send_json_response(500, {'error': str(e)})
+            return
+
+        elif self.path == '/finish_update':
+            try:
+                config = read_app_config()
+                engine_port = config.get('port', 60600)
+                try:
+                    urllib.request.urlopen(f"http://localhost:{engine_port}/reload", timeout=2)
+                    print(f"[Update] Sent reload command to engine on port {engine_port}")
+                except:
+                    print(f"[Update] Engine not responding on port {engine_port}")
+                
+                self.send_json_response(200, {'status': 'success'})
+            except Exception as e:
+                self.send_json_response(500, {'error': str(e)})
+            return
+
         elif self.path == '/open_external_link':
             try:
                 content_len = int(self.headers.get('Content-Length'))

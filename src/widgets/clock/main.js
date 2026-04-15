@@ -48,17 +48,16 @@
       if (timeEl) {
         timeEl.textContent = timeString;
         timeEl.style.color = CONFIG.timeColor;
-        // Enforce block and full width so alignment works
-        timeEl.style.display = 'block';
-        timeEl.style.width = '100%';
+        timeEl.style.display = "block";
+        timeEl.style.width = "100%";
         timeEl.style.textAlign = CONFIG.align;
       }
 
       if (dayEl) {
         dayEl.textContent = day;
         dayEl.style.color = CONFIG.dayColor;
-        dayEl.style.display = 'block';
-        dayEl.style.width = '100%';
+        dayEl.style.display = "block";
+        dayEl.style.width = "100%";
         dayEl.style.textAlign = CONFIG.align;
       }
 
