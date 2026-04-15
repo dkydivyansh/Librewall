@@ -905,13 +905,12 @@
                     data.data.slice(0, 4).forEach(widget => {
                         const cardData = {
                             id: widget.id,
-                            themeName: widget.widgetName || widget.name || widget.themeName,
+                            themeName: widget.widgetName || widget.name,
                             author: widget.author,
                             thumbnailUrl: widget.thumbnailUrl,
                             description: widget.description,
                             min_version: widget.min_version,
                             zipUrl: widget.zipUrl,
-                            ver: widget.ver,
                             type: 'widget',
                             isWidget: true
                         };
@@ -931,8 +930,6 @@
         let currentTheme = null;
         let installedThemeIds = [];
         let installedWidgetIds = [];
-        let installedWidgetsMap = {}; 
-        let systemIds = []; 
         let featuredData = [];
         const featuredSection = document.getElementById('featured-section');
 
@@ -942,21 +939,11 @@
                 if (response.ok) {
                     const data = await response.json();
                     if (data.widgets) {
-                        installedWidgetsMap = {};
-                        data.widgets.forEach(w => {
-                            installedWidgetsMap[w.id.toString()] = w;
-                        });
                         installedWidgetIds = data.widgets.map(w => w.id.toString());
                     }
                 }
-                
-                const updResp = await fetch('/get_widget_updates', { method: 'POST' });
-                const updData = await updResp.json();
-                if (updData.status === 'success') {
-                    systemIds = updData.systemIds || [];
-                }
-            } catch (err) { 
-                console.error("Error fetching installed widgets:", err);
+            } catch (e) {
+                console.error("Error fetching installed widgets:", e);
             }
         }
         const featuredGrid = document.getElementById('featured-grid');
@@ -1195,8 +1182,6 @@
         if (sentinel) observer.observe(sentinel);
 
         function createWallpaperCard(theme) {
-            theme.themeName = theme.widgetName || theme.name || theme.themeName || 'Unknown';
-            
             const card = document.createElement('div');
             card.className = 'wallpaper-card';
             card.dataset.id = theme.id;
@@ -1212,29 +1197,13 @@
                 };
             }
 
-            const isWidget = theme.type === 'widget';
-            const isInstalled = (isWidget && installedWidgetIds.includes(theme.id.toString())) ||
-                              (!isWidget && installedThemeIds.includes(theme.id.toString()));
-
-            if (isInstalled) {
+            if (
+                (theme.type === 'widget' && installedWidgetIds.includes(theme.id.toString())) ||
+                installedThemeIds.includes(theme.id.toString())
+            ) {
                 const label = document.createElement('div');
                 label.className = 'card-label installed-label';
-                
-                if (isWidget) {
-                    const installedWidget = installedWidgetsMap[theme.id.toString()];
-                    const isSystem = systemIds.includes(theme.id.toString()) || isNaN(theme.id);
-                    const localVer = parseFloat(installedWidget?.ver || 1);
-                    const remoteVer = parseFloat(theme.ver || 1);
-                    
-                    if (remoteVer > localVer && !isSystem) {
-                        label.textContent = 'Update Available';
-                        label.style.backgroundColor = 'var(--primary-color)';
-                    } else {
-                        label.textContent = 'Installed';
-                    }
-                } else {
-                    label.textContent = 'Installed';
-                }
+                label.textContent = 'Installed';
                 card.appendChild(label);
             }
 
@@ -1285,8 +1254,7 @@
             const info = document.createElement('div');
             info.className = 'wallpaper-info';
             const title = document.createElement('h3');
-            const versionStr = theme.ver ? ` <span style="opacity:0.5; font-size:0.85em; font-weight:400; margin-left:4px;">v${theme.ver}</span>` : '';
-            title.innerHTML = `${theme.themeName}${versionStr}`;
+            title.textContent = theme.themeName;
             info.prepend(title);
             if (isDisabled) {
                 const warning = document.createElement('p');
@@ -1310,8 +1278,7 @@
             currentTheme = theme;
 
             document.getElementById('lightbox-img').src = theme.thumbnailUrl || '';
-            const versionStr = theme.ver ? ` <span style="opacity:0.5; font-size:0.7em; font-weight:400; margin-left:8px;">v${theme.ver}</span>` : '';
-            document.getElementById('lightbox-title').innerHTML = `${theme.themeName}${versionStr}`;
+            document.getElementById('lightbox-title').textContent = theme.themeName;
             const authEl = document.getElementById('lightbox-author');
             if (theme.authorUrl) {
                 authEl.innerHTML = `by <a href="#" class="author-external-link">${theme.author || 'Unknown'}</a> <span style="opacity:0.6; font-size:0.9em; margin-left:4px;">(ID: ${theme.id})</span>`;
@@ -1335,20 +1302,10 @@
             if (minVersion > CURRENT_APP_VERSION) {
                 installBtn.disabled = true;
                 installBtn.textContent = `Requires App v${minVersion}`;
-            } else if (theme.type === 'widget' && installedWidgetIds.includes(theme.id.toString())) {
-                const installedWidget = installedWidgetsMap[theme.id.toString()];
-                const isSystem = systemIds.includes(theme.id.toString()) || isNaN(theme.id);
-                const localVer = parseFloat(installedWidget?.ver || 1);
-                const remoteVer = parseFloat(theme.ver || 1);
-                
-                if (remoteVer > localVer && !isSystem) {
-                    installBtn.disabled = false;
-                    installBtn.textContent = 'Update';
-                } else {
-                    installBtn.disabled = true;
-                    installBtn.textContent = 'Installed';
-                }
-            } else if (installedThemeIds.includes(theme.id.toString())) {
+            } else if (
+                (theme.type === 'widget' && installedWidgetIds.includes(theme.id.toString())) ||
+                installedThemeIds.includes(theme.id.toString())
+            ) {
                 installBtn.disabled = true;
                 installBtn.textContent = 'Installed';
             } else {
@@ -1447,29 +1404,17 @@
                 installBtn.textContent = 'Installed!';
                 showNotification("Widget installed successfully! Please restart the engine.", "success");
 
-                const idStr = currentTheme.id.toString();
-                if (!installedWidgetIds.includes(idStr)) {
-                    installedWidgetIds.push(idStr);
-                }
-                
-                installedWidgetsMap[idStr] = { 
-                    ...currentTheme, 
-                    ver: currentTheme.ver 
-                };
+                installedWidgetIds.push(currentTheme.id.toString());
 
-                const card = document.querySelector(`.wallpaper-card[data-id="${idStr}"]`);
-                if (card) {
-                    let label = card.querySelector('.installed-label');
-                    if (!label) {
-                        label = document.createElement('div');
-                        label.className = 'card-label installed-label';
-                        card.appendChild(label);
-                    }
+                const card = document.querySelector(`.wallpaper-card[data-id="${currentTheme.id}"]`);
+                if (card && !card.querySelector('.installed-label')) {
+                    const label = document.createElement('div');
+                    label.className = 'card-label installed-label';
                     label.textContent = 'Installed';
-                    label.style.backgroundColor = 'var(--success-color)';
+                    card.appendChild(label);
                 }
 
-                setTimeout(hideLightbox, 1500);
+                setTimeout(hideLightbox, 2000);
 
             } catch (err) {
                 console.error("Error installing widget:", err);

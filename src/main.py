@@ -443,10 +443,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                     if asset_data:
                         self.send_response(200)
                         self.send_header('Content-type', mime_type)
-                        if mime_type.startswith('image/') or mime_type.startswith('video/'):
-                            self.send_header('Cache-Control', 'public, max-age=604800')
-                        else:
-                            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                        self.send_header('Cache-Control', 'max-age=31536000')
                         self.end_headers()
                         self.wfile.write(asset_data)
                         return
@@ -485,10 +482,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                     if asset_data:
                         self.send_response(200)
                         self.send_header('Content-type', mime_type)
-                        if mime_type.startswith('image/') or mime_type.startswith('video/'):
-                            self.send_header('Cache-Control', 'public, max-age=604800')
-                        else:
-                            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                        self.send_header('Cache-Control', 'max-age=31536000')
                         self.end_headers()
                         self.wfile.write(asset_data)
                         return
@@ -538,10 +532,10 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             with open(file_path, 'rb') as f:
                 self.send_response(200)
                 self.send_header('Content-type', mime_type)
-                if mime_type.startswith('image/') or mime_type.startswith('video/'):
-                    self.send_header('Cache-Control', 'public, max-age=604800')
-                else:
+                if clean_path in ['/', '/config', '/app_config.json', '/widget.json']: 
                     self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                else:
+                    self.send_header('Cache-Control', 'public, max-age=604800')
                 
                 f.seek(0, os.SEEK_END)
                 file_size = f.tell()
