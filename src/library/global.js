@@ -533,23 +533,53 @@ const WidgetLoader = {
 
       const trafficLog = document.getElementById("traffic-log-list");
       if (trafficLog) {
-        let html = "";
+        trafficLog.textContent = "";
+        const fragment = document.createDocumentFragment();
+
         if (data.live_traffic_log.length === 0) {
-          html =
-            '<div class="traffic-entry">Monitoring for new connections...</div>';
+          const entry = document.createElement("div");
+          entry.className = "traffic-entry";
+          entry.textContent = "Monitoring for new connections...";
+          fragment.appendChild(entry);
         } else {
           data.live_traffic_log.forEach((item) => {
-            html +=
-              `<div class="traffic-entry">` +
-              `<span class="timestamp">${item.timestamp.padEnd(15)}</span>` +
-              `<span class="type ${item.type}">${item.type.padEnd(10)}</span>` +
-              `<span class="ip">${item.ip_port.padEnd(26)}</span>` +
-              `<span class="protocol">${item.protocol.padEnd(10)}</span>` +
-              `<span class="process">${item.process}</span>` +
-              `</div>`;
+            const entry = document.createElement("div");
+            entry.className = "traffic-entry";
+
+            const timestamp = document.createElement("span");
+            timestamp.className = "timestamp";
+            timestamp.textContent = String(item.timestamp || "").padEnd(15);
+
+            const type = document.createElement("span");
+            const typeValue = String(item.type || "");
+            const safeTypeClass = /^[a-zA-Z0-9_-]+$/.test(typeValue)
+              ? typeValue
+              : "unknown";
+            type.className = `type ${safeTypeClass}`;
+            type.textContent = typeValue.padEnd(10);
+
+            const ip = document.createElement("span");
+            ip.className = "ip";
+            ip.textContent = String(item.ip_port || "").padEnd(26);
+
+            const protocol = document.createElement("span");
+            protocol.className = "protocol";
+            protocol.textContent = String(item.protocol || "").padEnd(10);
+
+            const process = document.createElement("span");
+            process.className = "process";
+            process.textContent = String(item.process || "");
+
+            entry.appendChild(timestamp);
+            entry.appendChild(type);
+            entry.appendChild(ip);
+            entry.appendChild(protocol);
+            entry.appendChild(process);
+            fragment.appendChild(entry);
           });
         }
-        trafficLog.innerHTML = html;
+
+        trafficLog.appendChild(fragment);
         trafficLog.scrollTop = trafficLog.scrollHeight;
       }
     } catch (e) {
