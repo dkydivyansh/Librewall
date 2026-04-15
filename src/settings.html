@@ -317,6 +317,7 @@
                 <div>
                     <span class="setting-label">App Data Folder</span>
                     <p style="font-size: 0.8rem; color: var(--author-color); margin: 4px 0 0 0;">Open the directory where wallpapers and widgets are saved.</p>
+                    <p id="app-data-path" style="font-size: 0.75rem; color: #888; font-family: monospace; margin: 4px 0 0 0; word-break: break-all; user-select: all; cursor: text;"></p>
                 </div>
                 <button id="open-appdata-btn" class="btn btn-primary">Open Folder</button>
             </div>
@@ -408,6 +409,11 @@
 
                 if (data.appVersionName) appVersionSpan.textContent = data.appVersionName;
                 if (data.enginePort) enginePort = data.enginePort;
+
+                const appDataPathEl = document.getElementById('app-data-path');
+                if (appDataPathEl && data.appDataPath) {
+                    appDataPathEl.textContent = data.appDataPath;
+                }
 
                 const gpuSelect = document.getElementById('gpu-preference');
                 if (data.gpu_names && data.gpu_names.length > 0) {

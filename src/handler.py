@@ -12,6 +12,16 @@ def get_appdata_dir():
     if _APP_DATA_DIR is None:
         local = os.getenv("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), "AppData", "Local")
         _APP_DATA_DIR = os.path.join(local, "Librewall")
+        
+        import sys
+        if 'WindowsApps' in getattr(sys, 'base_prefix', ''):
+            import glob
+            py_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
+            pkg_pattern = os.path.join(local, "Packages", f"PythonSoftwareFoundation.Python.{py_ver}_*")
+            matches = glob.glob(pkg_pattern)
+            if matches:
+                _APP_DATA_DIR = os.path.join(matches[0], "LocalCache", "Local", "Librewall")
+
     return _APP_DATA_DIR
 
 
