@@ -129,10 +129,26 @@
 
         let config;
 
+        // --- EDITOR SANDBOX SUPPORT ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const checkEditorIds = urlParams.get('id');
+        const isEditorMode = !!checkEditorIds;
+        
+        function getPath(path) {
+            if (!isEditorMode) return path;
+            if (path === '/config') return `/wallpapers/${checkEditorIds}/config.json`;
+            if (path === '/model') return `/wallpapers/${checkEditorIds}/${config.modelFile || 'model.glb'}`;
+            // If it's a relative path (doesn't start with / or http), prefix it with the wallpaper folder
+            if (!path.startsWith('/') && !path.startsWith('http')) {
+                return `/wallpapers/${checkEditorIds}/${path}`;
+            }
+            return path;
+        }
+
         async function init() {
 
             try {
-                const response = await fetch('/config');
+                const response = await fetch(getPath('/config'));
                 if (!response.ok) {
                     const errorText = await response.text();
                     throw new Error(`Config not found or invalid: ${response.status} ${response.statusText}. Server said: ${errorText}`);
@@ -230,19 +246,27 @@
             } else if (tmName === 'Reinhard') {
                 renderer.toneMapping = THREE.ReinhardToneMapping;
             } else if (tmName === 'AgX') {
-                renderer.toneMapping = THREE.AgXToneMapping;
+                renderer.toneMapping = THREE.AgXToneMapping !== undefined ? THREE.AgXToneMapping : THREE.ACESFilmicToneMapping;
             } else if (tmName === 'None') {
                 renderer.toneMapping = THREE.NoToneMapping;
+            } else if (tmName === 'Linear') {
+                renderer.toneMapping = THREE.LinearToneMapping;
             } else {
                 renderer.toneMapping = THREE.LinearToneMapping;
             }
 
-            renderer.toneMappingExposure = config.toneMappingExposure ?? 1.0;
-            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.toneMappingExposure = config.toneMappingExposure ?? 1.2;
+
+            // Color space — use modern API if available, fallback to deprecated
+            if (renderer.outputColorSpace !== undefined) {
+                renderer.outputColorSpace = THREE.SRGBColorSpace;
+            } else {
+                renderer.outputEncoding = THREE.sRGBEncoding;
+            }
 
             if (enableShadows === true) {
                 renderer.shadowMap.enabled = true;
-                if (quality === 'ultra') {
+                if (quality === 'high' || quality === 'ultra') {
                     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
                 }
                 console.log("Shadows enabled on renderer.");
@@ -259,9 +283,9 @@
                 console.log("Bloom enabled. Strength:", config.bloomStrength ?? 0.5);
                 const bloomPass = new UnrealBloomPass(
                     new THREE.Vector2(window.innerWidth, window.innerHeight),
-                    config.bloomStrength ?? 0.5,
-                    config.bloomRadius ?? 0.5,
-                    config.bloomThreshold ?? 0.1
+                    config.bloomStrength ?? 0.3,
+                    config.bloomRadius ?? 0.4,
+                    config.bloomThreshold ?? 0.85
                 );
 
                 if (quality === 'low') {
@@ -298,7 +322,7 @@
 
             if (isVideo) {
                 console.log("Loading background video:", mediaPath);
-                backgroundMediaElement.src = mediaPath;
+                backgroundMediaElement.src = getPath(mediaPath);
                 backgroundMediaElement.style.display = 'block';
 
                 backgroundMediaElement.addEventListener('loadeddata', () => {
@@ -314,7 +338,7 @@
                 console.log("Loading background image:", mediaPath);
                 const imgElement = document.createElement('img');
                 imgElement.id = 'background-media';
-                imgElement.src = mediaPath;
+                imgElement.src = getPath(mediaPath);
                 imgElement.style.cssText = backgroundMediaElement.style.cssText;
 
                 imgElement.addEventListener('load', () => {
@@ -398,7 +422,7 @@
                         const link = document.createElement('link');
                         link.rel = 'stylesheet';
                         link.type = 'text/css';
-                        link.href = config.cssFile;
+                        link.href = getPath(config.cssFile);
                         document.head.appendChild(link);
                         console.log(`Injected CSS: ${config.cssFile}`);
                     } catch (e) {
@@ -408,7 +432,7 @@
 
                 if (config.htmlWidgetFile) {
                     try {
-                        const response = await fetch(config.htmlWidgetFile);
+                        const response = await fetch(getPath(config.htmlWidgetFile));
                         if (!response.ok) throw new Error(`File not found: ${config.htmlWidgetFile}`);
                         const html = await response.text();
                         const container = document.getElementById('external-widget-root');
@@ -427,7 +451,7 @@
                     try {
                         const script = document.createElement('script');
                         script.type = 'module';
-                        script.src = config.logicFile;
+                        script.src = getPath(config.logicFile);
                         document.body.appendChild(script);
                         console.log(`Injected JS: ${config.logicFile}`);
                     } catch (e) {
@@ -454,6 +478,21 @@
                 function (texture) {
                     const envMap = pmremGenerator.fromEquirectangular(texture).texture;
                     scene.environment = envMap;
+                    
+                    // Intensity for environment reflections (affects metals pop!)
+                    if (scene.hasOwnProperty('environmentIntensity')) {
+                        scene.environmentIntensity = config.environmentIntensity ?? 1.0;
+                    }
+
+                    // Use HDR as blurred background (opt-in, default: off for transparent bg)
+                    if (config.useEnvironmentBackground === true) {
+                        scene.background = envMap;
+                        scene.backgroundBlurriness = config.environmentBlur ?? 0.5;
+                        if (scene.hasOwnProperty('backgroundIntensity')) {
+                            scene.backgroundIntensity = config.backgroundIntensity ?? 1.0;
+                        }
+                    }
+
                     texture.dispose();
                     pmremGenerator.dispose();
                 },
@@ -503,9 +542,9 @@
                         if (config.enableShadows === true) {
                             light.castShadow = true;
                             console.log("- SpotLight enabled to cast shadows.");
-                            light.shadow.bias = config.shadowBias ?? 0;
-                            light.shadow.mapSize.width = config.shadowMapSizeWidth ?? 1024;
-                            light.shadow.mapSize.height = config.shadowMapSizeHeight ?? 1024;
+                            light.shadow.bias = config.shadowBias ?? -0.0001;
+                            light.shadow.mapSize.width = config.shadowMapSizeWidth ?? 2048;
+                            light.shadow.mapSize.height = config.shadowMapSizeHeight ?? 2048;
                             console.log(`- Shadow settings: Bias (${light.shadow.bias}), MapSize (${light.shadow.mapSize.width})`);
                         }
                         break;
@@ -519,9 +558,11 @@
                         if (config.enableShadows === true) {
                             light.castShadow = true;
                             console.log("- DirectionalLight enabled to cast shadows.");
-                            light.shadow.bias = config.shadowBias ?? 0;
-                            light.shadow.mapSize.width = config.shadowMapSizeWidth ?? 1024;
-                            light.shadow.mapSize.height = config.shadowMapSizeHeight ?? 1024;
+                            light.shadow.bias = config.shadowBias ?? -0.0001;
+                            light.shadow.mapSize.width = config.shadowMapSizeWidth ?? 2048;
+                            light.shadow.mapSize.height = config.shadowMapSizeHeight ?? 2048;
+                            light.shadow.camera.near = 0.1;
+                            light.shadow.camera.far = 50;
                             console.log(`- Shadow settings: Bias (${light.shadow.bias}), MapSize (${light.shadow.mapSize.width})`);
                         }
                         break;
@@ -543,13 +584,194 @@
                 }
 
                 scene.add(light);
+
+                // --- EDITOR: Interactive light gizmos ---
+                if (isEditorMode && lightConfig.type !== 'AmbientLight') {
+                    const lc = new THREE.Color(colorVal);
+                    const lPos = light.position.clone();
+
+                    // Create a group for all gizmo parts
+                    const gizmoGroup = new THREE.Group();
+                    gizmoGroup.position.copy(lPos);
+                    gizmoGroup.renderOrder = 999;
+
+                    // Clickable hitbox sphere (invisible but raycastable)
+                    const hitGeo = new THREE.SphereGeometry(0.3, 8, 8);
+                    const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+                    const hitbox = new THREE.Mesh(hitGeo, hitMat);
+                    gizmoGroup.add(hitbox);
+
+                    // === Type-specific visual shapes (at local origin of group) ===
+                    if (lightConfig.type === 'PointLight') {
+                        const sphere = new THREE.Mesh(
+                            new THREE.IcosahedronGeometry(0.2, 1),
+                            new THREE.MeshBasicMaterial({ color: lc, wireframe: true, depthTest: false, transparent: true, opacity: 0.8 })
+                        );
+                        gizmoGroup.add(sphere);
+                        const rayLen = 0.35;
+                        [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]].forEach(d => {
+                            const pts = [new THREE.Vector3(d[0]*0.22,d[1]*0.22,d[2]*0.22), new THREE.Vector3(d[0]*rayLen,d[1]*rayLen,d[2]*rayLen)];
+                            const ray = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+                                new THREE.LineBasicMaterial({ color: lc, depthTest: false, transparent: true, opacity: 0.85 }));
+                            gizmoGroup.add(ray);
+                        });
+
+                    } else if (lightConfig.type === 'SpotLight') {
+                        const cone = new THREE.Mesh(
+                            new THREE.ConeGeometry(0.25, 0.6, 8, 1, true),
+                            new THREE.MeshBasicMaterial({ color: lc, wireframe: true, depthTest: false, transparent: true, opacity: 0.7 })
+                        );
+                        // Point cone toward the model center (origin)
+                        const dirToOrigin = new THREE.Vector3().subVectors(new THREE.Vector3(0,0,0), lPos).normalize();
+                        // Default cone tip points along +Y, we need to rotate it to face dirToOrigin
+                        const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, -1, 0), dirToOrigin);
+                        cone.quaternion.copy(quat);
+                        // Shift cone so its tip is at center of gizmo and body extends outward
+                        cone.position.copy(dirToOrigin.clone().multiplyScalar(0.3));
+                        gizmoGroup.add(cone);
+                        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6),
+                            new THREE.MeshBasicMaterial({ color: lc, depthTest: false }));
+                        gizmoGroup.add(dot);
+
+                    } else if (lightConfig.type === 'DirectionalLight') {
+                        // Circle
+                        const circPts = [];
+                        for (let i = 0; i <= 24; i++) {
+                            const a = (i / 24) * Math.PI * 2;
+                            circPts.push(new THREE.Vector3(Math.cos(a)*0.25, Math.sin(a)*0.25, 0));
+                        }
+                        const circle = new THREE.Line(new THREE.BufferGeometry().setFromPoints(circPts),
+                            new THREE.LineBasicMaterial({ color: lc, depthTest: false, transparent: true, opacity: 0.85 }));
+                        gizmoGroup.add(circle);
+                        // Arrow
+                        const arDir = new THREE.Vector3().subVectors(new THREE.Vector3(0,0,0), lPos).normalize();
+                        const arrow = new THREE.ArrowHelper(arDir, new THREE.Vector3(0,0,0), lPos.length()*0.4, lc.getHex(), 0.15, 0.08);
+                        arrow.traverse(c => { if(c.material) { c.material.depthTest = false; }});
+                        gizmoGroup.add(arrow);
+                        // Dot
+                        const dDot = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6),
+                            new THREE.MeshBasicMaterial({ color: lc, depthTest: false }));
+                        gizmoGroup.add(dDot);
+                    }
+
+                    // White axis cross
+                    const cs = 0.2;
+                    const cross = new THREE.LineSegments(
+                        new THREE.BufferGeometry().setFromPoints([
+                            new THREE.Vector3(-cs,0,0), new THREE.Vector3(cs,0,0),
+                            new THREE.Vector3(0,-cs,0), new THREE.Vector3(0,cs,0),
+                            new THREE.Vector3(0,0,-cs), new THREE.Vector3(0,0,cs)
+                        ]), new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false })
+                    );
+                    gizmoGroup.add(cross);
+
+                    // Direction line to origin
+                    const dirLine = new THREE.Line(
+                        new THREE.BufferGeometry().setFromPoints([lPos, new THREE.Vector3(0,0,0)]),
+                        new THREE.LineBasicMaterial({ color: lc, transparent: true, opacity: 0.3, depthTest: false })
+                    );
+                    dirLine.renderOrder = 998;
+                    scene.add(dirLine);
+
+                    scene.add(gizmoGroup);
+
+                    // Store reference for interactive editing
+                    if (!window._editorLights) window._editorLights = [];
+                    window._editorLights.push({
+                        index: index,
+                        light: light,
+                        gizmoGroup: gizmoGroup,
+                        hitbox: hitbox,
+                        dirLine: dirLine,
+                        type: lightConfig.type
+                    });
+                }
             });
+
+            // --- EDITOR: Add XYZ axes, grid, and camera-attached screen ---
+            if (isEditorMode) {
+                window._editorHelpers = [];
+
+                const axes = new THREE.AxesHelper(1.5);
+                axes.renderOrder = 500;
+                axes.material.depthTest = false;
+                scene.add(axes);
+                window._editorHelpers.push(axes);
+
+                const grid = new THREE.GridHelper(6, 12, 0x444444, 0x222222);
+                grid.material.depthTest = false;
+                grid.material.transparent = true;
+                grid.material.opacity = 0.3;
+                grid.renderOrder = 499;
+                scene.add(grid);
+                window._editorHelpers.push(grid);
+
+                // --- Screen skeleton (attached to camera — shows what user sees) ---
+                const screenGroup = new THREE.Group();
+                const fov = camera.fov * Math.PI / 180;
+                const screenDist = 1.5; // how far in front of camera
+                const sH = 2 * Math.tan(fov / 2) * screenDist;
+                const sW = sH * camera.aspect;
+                const hw = sW / 2, hh = sH / 2;
+
+                const borderPts = [
+                    new THREE.Vector3(-hw, -hh, -screenDist),
+                    new THREE.Vector3( hw, -hh, -screenDist),
+                    new THREE.Vector3( hw,  hh, -screenDist),
+                    new THREE.Vector3(-hw,  hh, -screenDist),
+                    new THREE.Vector3(-hw, -hh, -screenDist)
+                ];
+                const border = new THREE.Line(
+                    new THREE.BufferGeometry().setFromPoints(borderPts),
+                    new THREE.LineBasicMaterial({ color: 0x00e5ff, depthTest: false, transparent: true, opacity: 0.35 })
+                );
+                border.renderOrder = 500;
+                screenGroup.add(border);
+
+                // Corner brackets
+                const bLen = Math.min(hw, hh) * 0.15;
+                const cPts = [
+                    new THREE.Vector3(-hw, hh-bLen, -screenDist), new THREE.Vector3(-hw, hh, -screenDist),
+                    new THREE.Vector3(-hw, hh, -screenDist), new THREE.Vector3(-hw+bLen, hh, -screenDist),
+                    new THREE.Vector3(hw-bLen, hh, -screenDist), new THREE.Vector3(hw, hh, -screenDist),
+                    new THREE.Vector3(hw, hh, -screenDist), new THREE.Vector3(hw, hh-bLen, -screenDist),
+                    new THREE.Vector3(hw, -hh+bLen, -screenDist), new THREE.Vector3(hw, -hh, -screenDist),
+                    new THREE.Vector3(hw, -hh, -screenDist), new THREE.Vector3(hw-bLen, -hh, -screenDist),
+                    new THREE.Vector3(-hw+bLen, -hh, -screenDist), new THREE.Vector3(-hw, -hh, -screenDist),
+                    new THREE.Vector3(-hw, -hh, -screenDist), new THREE.Vector3(-hw, -hh+bLen, -screenDist),
+                ];
+                const corners = new THREE.LineSegments(
+                    new THREE.BufferGeometry().setFromPoints(cPts),
+                    new THREE.LineBasicMaterial({ color: 0x00e5ff, depthTest: false })
+                );
+                corners.renderOrder = 502;
+                screenGroup.add(corners);
+
+                // Center crosshair
+                const ch = Math.min(hw, hh) * 0.06;
+                const chPts = [
+                    new THREE.Vector3(-ch, 0, -screenDist), new THREE.Vector3(ch, 0, -screenDist),
+                    new THREE.Vector3(0, -ch, -screenDist), new THREE.Vector3(0, ch, -screenDist),
+                ];
+                const crosshair = new THREE.LineSegments(
+                    new THREE.BufferGeometry().setFromPoints(chPts),
+                    new THREE.LineBasicMaterial({ color: 0x00e5ff, depthTest: false })
+                );
+                crosshair.renderOrder = 501;
+                screenGroup.add(crosshair);
+
+                // Attach to camera so it always represents the view
+                camera.add(screenGroup);
+                scene.add(camera);
+                window._editorHelpers.push(screenGroup);
+                window._editorScreen = screenGroup;
+            }
         }
 
         function loadModel(config) {
             const loader = new GLTFLoader();
             loader.load(
-                '/model',
+                getPath('/model'),
                 function (gltf) {
                     myModel = gltf.scene;
 
@@ -577,13 +799,21 @@
                                 }
 
                                 if (material.map) {
-                                    material.map.encoding = THREE.sRGBEncoding;
+                                    if (material.map.colorSpace !== undefined) {
+                                        material.map.colorSpace = THREE.SRGBColorSpace;
+                                    } else {
+                                        material.map.encoding = THREE.sRGBEncoding;
+                                    }
                                 }
 
                                 if (material.emissive) {
                                     material.emissiveIntensity = material.emissiveIntensity || 1.0;
                                     if (material.emissiveMap) {
-                                        material.emissiveMap.encoding = THREE.sRGBEncoding;
+                                        if (material.emissiveMap.colorSpace !== undefined) {
+                                            material.emissiveMap.colorSpace = THREE.SRGBColorSpace;
+                                        } else {
+                                            material.emissiveMap.encoding = THREE.sRGBEncoding;
+                                        }
                                     }
                                     material.needsUpdate = true;
                                 }
@@ -614,6 +844,255 @@
                     }
 
                     console.log('Model loaded with config:', config);
+
+                    // --- EDITOR: Camera orbit controls + interactive light editing ---
+                    if (isEditorMode) {
+                        let isOrbiting = false;
+                        let isDraggingLight = false;
+                        let selectedLight = null;
+                        let prevMouse = { x: 0, y: 0 };
+                        let orbitPhi = Math.PI / 2;
+                        let orbitTheta = 0;
+                        let orbitRadius = camera.position.z;
+                        const raycaster = new THREE.Raycaster();
+                        const mouse = new THREE.Vector2();
+                        const dragPlane = new THREE.Plane();
+                        const intersection = new THREE.Vector3();
+
+                        // Selection highlight ring
+                        const selRingGeo = new THREE.RingGeometry(0.35, 0.4, 24);
+                        const selRingMat = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide, depthTest: false, transparent: true, opacity: 0.8 });
+                        const selRing = new THREE.Mesh(selRingGeo, selRingMat);
+                        selRing.visible = false;
+                        selRing.renderOrder = 1001;
+                        scene.add(selRing);
+
+                        function updateCameraFromOrbit() {
+                            camera.position.x = orbitRadius * Math.sin(orbitPhi) * Math.sin(orbitTheta);
+                            camera.position.y = orbitRadius * Math.cos(orbitPhi);
+                            camera.position.z = orbitRadius * Math.sin(orbitPhi) * Math.cos(orbitTheta);
+                            camera.lookAt(0, 0, 0);
+                        }
+
+                        function getHitboxes() {
+                            return (window._editorLights || []).map(el => el.hitbox);
+                        }
+
+                        function selectLight(editorLight) {
+                            selectedLight = editorLight;
+                            selRing.visible = true;
+                            selRing.position.copy(editorLight.gizmoGroup.position);
+                            selRing.lookAt(camera.position);
+                        }
+
+                        function deselectLight() {
+                            selectedLight = null;
+                            selRing.visible = false;
+                        }
+
+                        function syncLightToEditor(editorLight) {
+                            const pos = editorLight.gizmoGroup.position;
+                            window.parent.postMessage({
+                                type: 'lightMoved',
+                                index: editorLight.index,
+                                position: {
+                                    x: Math.round(pos.x * 100) / 100,
+                                    y: Math.round(pos.y * 100) / 100,
+                                    z: Math.round(pos.z * 100) / 100
+                                }
+                            }, '*');
+                        }
+
+                        // MOUSEDOWN
+                        window.addEventListener('mousedown', (e) => {
+                            if (e.button === 2) {
+                                isOrbiting = true;
+                                prevMouse.x = e.clientX;
+                                prevMouse.y = e.clientY;
+                                return;
+                            }
+                            if (e.button === 0 && window._editorLights && window._editorLights.length > 0) {
+                                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                                raycaster.setFromCamera(mouse, camera);
+                                const hitboxes = getHitboxes();
+                                const hits = raycaster.intersectObjects(hitboxes, true);
+                                if (hits.length > 0) {
+                                    const hitObj = hits[0].object;
+                                    const editorLight = window._editorLights.find(el => el.hitbox === hitObj);
+                                    if (editorLight) {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        isDraggingLight = true;
+                                        selectLight(editorLight);
+                                        // Create drag plane facing camera through light position
+                                        const camDir = new THREE.Vector3();
+                                        camera.getWorldDirection(camDir);
+                                        dragPlane.setFromNormalAndCoplanarPoint(camDir, editorLight.gizmoGroup.position);
+                                    }
+                                } else {
+                                    deselectLight();
+                                }
+                            }
+                        });
+
+                        // MOUSEMOVE
+                        window.addEventListener('mousemove', (e) => {
+                            // Orbit with right-click
+                            if (isOrbiting) {
+                                const dx = e.clientX - prevMouse.x;
+                                const dy = e.clientY - prevMouse.y;
+                                prevMouse.x = e.clientX;
+                                prevMouse.y = e.clientY;
+                                orbitTheta -= dx * 0.005;
+                                orbitPhi -= dy * 0.005;
+                                orbitPhi = Math.max(0.1, Math.min(Math.PI - 0.1, orbitPhi));
+                                updateCameraFromOrbit();
+                                return;
+                            }
+                            // Drag light with left-click
+                            if (isDraggingLight && selectedLight) {
+                                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                                raycaster.setFromCamera(mouse, camera);
+                                if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
+                                    selectedLight.gizmoGroup.position.copy(intersection);
+                                    selectedLight.light.position.copy(intersection);
+                                    selRing.position.copy(intersection);
+                                    selRing.lookAt(camera.position);
+                                    // Update direction line
+                                    const linePos = selectedLight.dirLine.geometry.attributes.position;
+                                    linePos.setXYZ(0, intersection.x, intersection.y, intersection.z);
+                                    linePos.needsUpdate = true;
+                                }
+                            }
+                        });
+
+                        // MOUSEUP
+                        window.addEventListener('mouseup', (e) => {
+                            if (e.button === 2) {
+                                isOrbiting = false;
+                                return;
+                            }
+                            if (isDraggingLight && selectedLight) {
+                                isDraggingLight = false;
+                                syncLightToEditor(selectedLight);
+                            }
+                        });
+
+                        // Context menu prevention
+                        window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+                        // Scroll to zoom
+                        window.addEventListener('wheel', (e) => {
+                            e.preventDefault();
+                            const zoomSpeed = 0.15;
+                            orbitRadius += e.deltaY > 0 ? zoomSpeed : -zoomSpeed;
+                            orbitRadius = Math.max(0.3, Math.min(20, orbitRadius));
+                            updateCameraFromOrbit();
+                        }, { passive: false });
+
+                        // Listen for editor UI messages
+                        window.addEventListener('message', (e) => {
+                            if (!e.data) return;
+
+                            // Camera updates
+                            if (e.data.type === 'cameraUpdate') {
+                                const prop = e.data.property;
+                                const val = e.data.value;
+                                if (prop === 'fov') {
+                                    camera.fov = val;
+                                    camera.updateProjectionMatrix();
+                                } else if (prop === 'distance') {
+                                    orbitRadius = val;
+                                    updateCameraFromOrbit();
+                                } else if (prop === 'azimuth') {
+                                    orbitTheta = val * Math.PI / 180;
+                                    updateCameraFromOrbit();
+                                } else if (prop === 'elevation') {
+                                    orbitPhi = (90 - val) * Math.PI / 180;
+                                    orbitPhi = Math.max(0.1, Math.min(Math.PI - 0.1, orbitPhi));
+                                    updateCameraFromOrbit();
+                                } else if (prop === 'reset') {
+                                    camera.fov = 75;
+                                    camera.updateProjectionMatrix();
+                                    orbitRadius = 2;
+                                    orbitTheta = 0;
+                                    orbitPhi = Math.PI / 2;
+                                    updateCameraFromOrbit();
+                                }
+                            }
+
+                            // Toggle wireframe helpers
+                            if (e.data.type === 'toggleHelpers') {
+                                const show = e.data.visible;
+                                (window._editorHelpers || []).forEach(h => h.visible = show);
+                                (window._editorLights || []).forEach(el => {
+                                    el.gizmoGroup.visible = show;
+                                    el.dirLine.visible = show;
+                                });
+                            }
+
+                            // Live config sync (no reload needed)
+                            if (e.data.type === 'liveConfig') {
+                                const d = e.data;
+                                if (d.exposure !== undefined) {
+                                    renderer.toneMappingExposure = d.exposure;
+                                }
+                                if (d.bgColor !== undefined) {
+                                    if (d.bgColor === 'transparent') {
+                                        renderer.setClearColor(0x000000, 0);
+                                    } else {
+                                        renderer.setClearColor(new THREE.Color(d.bgColor), 1);
+                                    }
+                                }
+                                if (d.bloomStrength !== undefined && composer && composer.passes) {
+                                    composer.passes.forEach(p => {
+                                        if (p.strength !== undefined) p.strength = d.bloomStrength;
+                                    });
+                                }
+                                if (d.bloomRadius !== undefined && composer && composer.passes) {
+                                    composer.passes.forEach(p => {
+                                        if (p.radius !== undefined) p.radius = d.bloomRadius;
+                                    });
+                                }
+                                if (d.bloomThreshold !== undefined && composer && composer.passes) {
+                                    composer.passes.forEach(p => {
+                                        if (p.threshold !== undefined) p.threshold = d.bloomThreshold;
+                                    });
+                                }
+                                if (d.lightUpdate) {
+                                    const lu = d.lightUpdate;
+                                    const lights = [];
+                                    scene.traverse(c => { if (c.isLight) lights.push(c); });
+                                    if (lights[lu.index]) {
+                                        const l = lights[lu.index];
+                                        if (lu.color) l.color.set(lu.color);
+                                        if (lu.intensity !== undefined) l.intensity = lu.intensity;
+                                        if (lu.position) l.position.set(lu.position.x, lu.position.y, lu.position.z);
+                                    }
+                                }
+                                if (d.toneMapping !== undefined) {
+                                    const tmMap = {
+                                        'None': THREE.NoToneMapping,
+                                        'Linear': THREE.LinearToneMapping,
+                                        'Reinhard': THREE.ReinhardToneMapping,
+                                        'Filmic': THREE.ACESFilmicToneMapping,
+                                        'ACESFilmic': THREE.ACESFilmicToneMapping,
+                                    };
+                                    renderer.toneMapping = tmMap[d.toneMapping] || THREE.NoToneMapping;
+                                }
+                                if (d.modelRotation && myModel) {
+                                    baseRotation.set(
+                                        (d.modelRotation.x || 0) * Math.PI / 180,
+                                        (d.modelRotation.y || 0) * Math.PI / 180,
+                                        (d.modelRotation.z || 0) * Math.PI / 180
+                                    );
+                                    myModel.rotation.copy(baseRotation);
+                                }
+                            }
+                        });
+                    }
                 },
                 undefined,
                 (error) => console.error('An error happened while loading the model:', error)
