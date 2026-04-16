@@ -115,6 +115,21 @@ const WidgetLoader = {
       if (content.settings.minHeight) {
         container.style.minHeight = content.settings.minHeight;
       }
+      if (content.settings.transparent === true) {
+        container.style.backgroundColor = "transparent";
+        container.style.backdropFilter = "none";
+        container.style.boxShadow = "none";
+        container.style.border = "none";
+      }
+      if (content.settings.fixedSize === true) {
+        container.classList.add("is-fixed-size");
+        container.style.width = "fit-content";
+        container.style.height = "fit-content";
+        container.style.minWidth = "0";
+        container.style.minHeight = "0";
+      } else {
+        container.classList.remove("is-fixed-size");
+      }
     }
 
     container.innerHTML = content.html + '<div class="resize-handle"></div>';
@@ -1043,14 +1058,16 @@ const WidgetLoader = {
         contentEl.innerHTML += fieldHtml;
       });
 
-      contentEl.querySelectorAll('input[type="range"]').forEach((slider) => {
-        const valueSpan = slider.parentElement.querySelector(
-          ".settings-slider-value",
-        );
-        if (valueSpan) {
-          slider.addEventListener("input", () => {
-            valueSpan.textContent = slider.value + "%";
-          });
+      contentEl.querySelectorAll(".settings-input").forEach((input) => {
+        if (input.type === "range") {
+          const valueSpan = input.parentElement.querySelector(
+            ".settings-slider-value",
+          );
+          if (valueSpan) {
+            input.addEventListener("input", () => {
+              valueSpan.textContent = input.value + "%";
+            });
+          }
         }
       });
     }
@@ -1081,6 +1098,10 @@ const WidgetLoader = {
       case "color":
         inputHtml = `<input type="color" class="settings-input" data-key="${key}" value="${currentValue || "#ffffff"}">`;
         break;
+      case "boolean":
+        const checked = currentValue === true ? "checked" : "";
+        inputHtml = `<input type="checkbox" class="settings-input" data-key="${key}" ${checked}>`;
+        break;
       case "select":
         const options = setting.options || [];
         const optionsHtml = options
@@ -1098,7 +1119,7 @@ const WidgetLoader = {
     }
 
     return `
-            <div class="settings-field">
+            <div class="settings-field field-type-${type}">
                 <label class="settings-label">${label}</label>
                 ${inputHtml}
             </div>
@@ -1113,10 +1134,10 @@ const WidgetLoader = {
     contentEl.querySelectorAll(".settings-input").forEach((input) => {
       const key = input.getAttribute("data-key");
       if (key) {
-        if (input.type === "number") {
+        if (input.type === "number" || input.type === "range") {
           values[key] = parseInt(input.value, 10);
-        } else if (input.type === "range") {
-          values[key] = parseInt(input.value, 10);
+        } else if (input.type === "checkbox") {
+          values[key] = input.checked;
         } else {
           values[key] = input.value;
         }
@@ -1130,6 +1151,50 @@ const WidgetLoader = {
 
     const values = this.gatherSettingsValues();
     const widget = this.loadedWidgets[this.settingsWidgetId];
+
+    if (values.hasOwnProperty("transparent")) {
+      const containerId =
+        this.settingsWidgetId === "clock"
+          ? "live-clock"
+          : this.settingsWidgetId;
+      const el = document.getElementById(containerId);
+      if (el) {
+        if (values.transparent === true) {
+          el.style.backgroundColor = "transparent";
+          el.style.backdropFilter = "none";
+          el.style.boxShadow = "none";
+          el.style.border = "none";
+        } else {
+          el.style.backgroundColor = "";
+          el.style.backdropFilter = "";
+          el.style.boxShadow = "";
+          el.style.border = "";
+        }
+      }
+    }
+
+    if (values.hasOwnProperty("fixedSize")) {
+      const containerId =
+        this.settingsWidgetId === "clock"
+          ? "live-clock"
+          : this.settingsWidgetId;
+      const el = document.getElementById(containerId);
+      if (el) {
+        if (values.fixedSize === true) {
+          el.classList.add("is-fixed-size");
+          el.style.width = "fit-content";
+          el.style.height = "fit-content";
+          el.style.minWidth = "0";
+          el.style.minHeight = "0";
+        } else {
+          el.classList.remove("is-fixed-size");
+          el.style.width = "";
+          el.style.height = "";
+          el.style.minWidth = "";
+          el.style.minHeight = "";
+        }
+      }
+    }
 
     if (widget && typeof widget.updateStyle === "function") {
       widget.updateStyle(values);

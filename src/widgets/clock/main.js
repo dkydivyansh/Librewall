@@ -16,6 +16,10 @@
     dayColor: "#eaeaea",
   };
 
+  let clockInterval = null;
+
+
+
   function updateClock() {
     const dayNames = [
       "Sunday",
@@ -72,8 +76,6 @@
     }
   }
 
-  let clockInterval = null;
-
   window["getWidgetContent_" + WIDGET_ID] = function () {
     const savedStyles =
       typeof WidgetLoader !== "undefined"
@@ -83,14 +85,25 @@
     if (savedStyles.timeColor) CONFIG.timeColor = savedStyles.timeColor;
     if (savedStyles.dayColor) CONFIG.dayColor = savedStyles.dayColor;
 
+    const isTransparent =
+      savedStyles.transparent !== undefined ? savedStyles.transparent : true;
+
     return {
       id: WIDGET_ID,
       html: `
                 <div id="clock-time"></div>
                 <div id="clock-day"></div>
             `,
-      settings: {},
+      settings: {
+        transparent: isTransparent,
+      },
       editableSettings: [
+        {
+          key: "transparent",
+          label: "Transparent Background",
+          type: "boolean",
+          value: isTransparent,
+        },
         {
           key: "align",
           label: "Alignment",

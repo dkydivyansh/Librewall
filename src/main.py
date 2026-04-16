@@ -44,6 +44,10 @@ import collections
 import datetime
 from port_map import PORT_PROTOCOL_MAP
 import subprocess
+import urllib.request
+import urllib.parse
+import urllib.error
+import ssl
 import zlib 
 import base64
 import shutil
@@ -567,6 +571,7 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
             self.send_error(403, "Forbidden: Invalid Auth Token"); return False
 
         def do_GET(self):
+            clean_path = self.path.split('?')[0]
             public_paths = ['/', '/reload', '/quit', '/port']
             if self.path in public_paths:
                 if self.path == '/reload':
@@ -603,6 +608,52 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
                         return
                     except Exception as e:
                         self.send_error(500, f"Error listing templates: {e}")
+                        return
+
+                elif clean_path == '/proxy':
+                    query = urllib.parse.urlparse(self.path).query
+                    params = urllib.parse.parse_qs(query)
+                    target_url = params.get('url', [None])[0]
+                    
+                    if not target_url:
+                        self.send_error(400, "Missing url parameter")
+                        return
+
+                    try:
+                        p_ref = self.headers.get('x-proxy-referer')
+                        p_origin = self.headers.get('x-proxy-origin')
+
+                        req = urllib.request.Request(target_url)
+                        req.add_header('User-Agent', self.headers.get('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'))
+                        req.add_header('Referer', p_ref or 'https://www.dkydivyansh.com/')
+                        req.add_header('Origin', p_origin or 'https://www.dkydivyansh.com/')
+                        with urllib.request.urlopen(req) as response:
+                            self.send_response(response.status)
+                            for header, value in response.getheaders():
+                                if header.lower() not in ['content-encoding', 'transfer-encoding']:
+                                    self.send_header(header, value)
+                            self.send_header('Access-Control-Allow-Origin', '*')
+                            self.end_headers()
+                            self.wfile.write(response.read())
+                        return
+                    except urllib.error.HTTPError as e:
+                        self.send_response(e.code)
+                        for header, value in e.headers.items():
+                            if header.lower() not in ['content-encoding', 'transfer-encoding']:
+                                self.send_header(header, value)
+                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.end_headers()
+                        self.wfile.write(e.read())
+                        return
+                    except urllib.error.URLError as e:
+                        self.send_response(502)
+                        self.send_header('Content-type', 'text/plain')
+                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.end_headers()
+                        self.wfile.write(f"Network Error: {str(e.reason)}".encode('utf-8'))
+                        return
+                    except Exception as e:
+                        self.send_error(500, str(e))
                         return
             super().do_GET()
 
