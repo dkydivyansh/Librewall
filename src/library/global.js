@@ -692,9 +692,6 @@ const WidgetLoader = {
 
   initDraggableSystem() {
     document.querySelectorAll(".widget-container").forEach((container) => {
-      container.addEventListener("dblclick", (e) =>
-        this.onContainerDoubleClick(e),
-      );
       container.addEventListener("mousedown", (e) =>
         this.onContainerMouseDown(e),
       );
@@ -708,20 +705,6 @@ const WidgetLoader = {
     }
   },
 
-  onContainerDoubleClick(e) {
-    const container = e.target.closest(".widget-container");
-    if (container && !this.isDraggable) {
-      this.isDraggable = true;
-      document.body.classList.add("is-dragging");
-      this.updateCheckboxStates();
-
-      this.resetEditMenuPosition();
-
-      console.log("Edit Mode ENABLED (v2.7)");
-    } else if (this.isDraggable) {
-      this.exitEditMode();
-    }
-  },
 
   onContainerMouseDown(e) {
     if (!this.isDraggable || e.target.classList.contains("resize-handle"))
