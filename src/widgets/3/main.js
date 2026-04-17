@@ -2,7 +2,7 @@
 @name: Live Clock
 @author: Dkydivyansh
 @description: A minimal and customizable live clock for your desktop.
-@min_version: 1
+@min_version: 3
 */
 
 export default class ClockWidget {
@@ -107,7 +107,7 @@ export default class ClockWidget {
         dayEl.style.textAlign = this.align;
       }
 
-      const containerId = this.id === "clock" ? "live-clock" : this.id;
+      const containerId = typeof WidgetLoader !== "undefined" ? WidgetLoader.getContainerId(this.id) : this.id;
       const wrapper = document.getElementById(containerId);
 
       if (wrapper) {

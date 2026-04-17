@@ -2,19 +2,19 @@
 @name: Listening Ports
 @author: Dkydivyansh
 @description: Monitors and displays active listening ports on your system.
-@min_version: 1
+@min_version: 3
 */
 
 export default class ListeningPortsWidget {
-    constructor(id) {
-        this.id = id;
-        this.html = `
+  constructor(id) {
+    this.id = id;
+    this.html = `
             <h2>Listening Ports <span id="listening-count" class="widget-count"></span></h2>
             <div id="listening-ports-list" class="net-list">Loading...</div>
         `;
-        this.settings = {};
-    }
+    this.settings = {};
+  }
 
-    init() { }
-    destroy() { }
+  init() {}
+  destroy() {}
 }

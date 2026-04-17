@@ -36,28 +36,23 @@ You must include a metadata comment block at the top of `main.js`. This is parse
 @min_version: 1
 */
 
-(function () {
-  const script = document.currentScript;
-  const WIDGET_ID = script.dataset.widgetId;
-
-  window["getWidgetContent_" + WIDGET_ID] = function () {
-    return {
-      id: WIDGET_ID,
-      html: `
-                <h2>My Widget</h2>
-                <div id="${WIDGET_ID}-content">Hello World</div>
-            `,
-      settings: {
-        minWidth: "200px",
-        minHeight: "150px",
-      },
-      init: function () {
-        console.log("Widget initialized:", WIDGET_ID);
-      },
-      destroy: function () {},
+export default class MyWidget {
+  constructor(id) {
+    this.id = id;
+    this.html = `
+      <h2>My Widget</h2>
+      <div id="${this.id}-content">Hello World</div>
+    `;
+    this.settings = {
+      minWidth: "200px",
+      minHeight: "150px"
     };
-  };
-})();
+  }
+
+  init() {}
+
+  destroy() {}
+}
 ```
 
 ### 3. Create style.css
@@ -96,18 +91,7 @@ Add your widget to `widgets/index.json`. Note that the registry is an object con
 }
 ```
 
-## Function Naming
 
-The launcher is flexible and will search for the content function in several formats based on your Widget ID (e.g., `my-widget`):
-
-1. **camelCase**: `getWidgetContent_myWidget` (Recommended)
-2. **Kebab-case**: `getWidgetContent_my-widget`
-3. **Flat**: `getWidgetContent_mywidget` (No dashes)
-
-Example ID mappings:
-
-- `live-clock` → `getWidgetContent_liveClock`
-- `weather` → `getWidgetContent_weather`
 
 ## Settings Reference
 
@@ -126,18 +110,18 @@ Example ID mappings:
 ### Example
 
 ```javascript
-settings: {
-    minWidth: '320px',
-    minHeight: '220px'
-}
+this.settings = {
+  minWidth: "320px",
+  minHeight: "220px"
+};
 ```
 
 ## Lifecycle
 
-1. **Load**: Widget JS/CSS files are dynamically injected.
-2. **Render**: `html` content is inserted into a `.widget-container`. An automatic `.resize-handle` is added.
-3. **Init**: `init()` is called after render.
-4. **Destroy**: `destroy()` is called when widget is hidden/removed.
+1. **Load (Lazy)**: Widget JS/CSS files are purely dynamically injected via ESM **only** if the widget is enabled. Disabled widgets are completely isolated and never execute code, preserving RAM and background network connections.
+2. **Render**: Class is instantiated. The \`html\` string is injected into a \`.widget-container\`. Styles like \`transparent\` or \`fixedSize\` are mapped. Core drag listeners and the \`.resize-handle\` are automatically attached to the container by \`global.js\`.
+3. **Init**: \`init()\` is called immediately after render. This is where you should find your elements (\`document.getElementById\`) and bind widget-specific logic or fetches.
+4. **Destroy (Purge)**: \`destroy()\` is called when a widget is toggled off in the Edit menu. **Important**: \`global.js\` physically deletes your widget container DOM node and purges your \`.css\` link tag. Your \`destroy()\` method *must* sever any remaining ties (intervals, tweens, window event listeners, or external APIs) so the JavaScript Garbage Collector can fully wipe the widget from memory.
 
 ## Best Practices
 
@@ -149,21 +133,31 @@ Prefix all element IDs with your widget name:
 html: `<div id="mywidget-content">...</div>`;
 ```
 
-### Clean Up Resources
+### Clean Up Resources (Critical)
+
+Because widgets are dynamically loaded and unloaded, failure to clean up resources guarantees CPU leaks, RAM spikes, and Ghost instances (where background processing continues after the widget vanishes). 
 
 Always clean up in `destroy()`:
 
 ```javascript
 let interval = null;
+const handleMouseMove = (e) => { ... };
 
 init: function() {
     interval = setInterval(update, 1000);
+    // Be very careful with document/window listeners! They persist forever if not removed.
+    document.addEventListener("mousemove", handleMouseMove); 
 },
 destroy: function() {
-    if (interval) {
-        clearInterval(interval);
-        interval = null;
-    }
+    // 1. Clear Timers
+    if (interval) clearInterval(interval);
+    
+    // 2. Clear Global Listeners
+    document.removeEventListener("mousemove", handleMouseMove);
+    
+    // 3. Kill heavy external instances (GSAP, YouTube Players, etc.)
+    if (this.myTween) this.myTween.kill();
+    if (this.player) this.player.destroy();
 }
 ```
 
@@ -172,17 +166,39 @@ destroy: function() {
 For API calls, handle errors gracefully:
 
 ```javascript
-async function fetchData() {
-  try {
-    const response = await fetch("https://api.example.com/data");
-    const data = await response.json();
-    updateUI(data);
-  } catch (error) {
-    console.error("Fetch failed:", error);
-    showError();
-  }
+function fetchData() {
+  // ...
 }
 ```
+
+## External Libraries
+
+If your widget depends on external libraries (like GSAP, Three.js, etc.) that you import via ESM, you must ensure they are properly cached on the global `window` object. This prevents crashes when users toggle your widget on and off.
+
+Because the `WidgetLoader` dynamically imports and unloads widgets, an `import()` statement may return a cached module, but the `window` reference might need checking.
+
+### Best Practice: Caching Libraries
+
+```javascript
+async init() {
+    // 1. Check/Load Core Library
+    if (typeof window.gsap === "undefined") {
+        const gsapModule = await import("./gsap.js");
+        window.gsap = gsapModule.gsap || gsapModule.default || gsapModule;
+    }
+    this.gsap = window.gsap;
+
+    // 2. Check/Load Plugins independently
+    if (typeof window.Draggable === "undefined") {
+        const DraggableModule = await import("./Draggable.js");
+        window.Draggable = DraggableModule.Draggable || DraggableModule.default;
+        this.gsap.registerPlugin(window.Draggable);
+    }
+    this.Draggable = window.Draggable;
+}
+```
+
+This pattern ensures that `this.gsap` and `this.Draggable` are always defined, even if the widget is re-initialized multiple times without a full page refresh.
 
 ## Bypass Proxy
 
@@ -250,43 +266,32 @@ Widgets can expose editable settings that users can modify through the settings 
 Add `editableSettings` array and `updateStyle` function to your widget:
 
 ```javascript
-window.getWidgetContent_myWidget = function () {
-  return {
-    id: "my-widget",
-    html: `...`,
-    settings: {
+export default class MyWidget {
+  constructor(id) {
+    this.id = id;
+    this.html = `...`;
+    this.settings = {
       minWidth: "300px",
-      minHeight: "200px",
-    },
-    editableSettings: [
+      minHeight: "200px"
+    };
+    this.editableSettings = [
       { key: "title", label: "Title", type: "string", value: "Default Title" },
-      {
-        key: "refreshRate",
-        label: "Refresh Rate (sec)",
-        type: "integer",
-        value: 30,
-      },
-      {
-        key: "opacity",
-        label: "Opacity",
-        type: "slider",
-        min: 0,
-        max: 100,
-        value: 80,
-      },
-      { key: "accentColor", label: "Color", type: "color", value: "#4a90e2" },
-    ],
-    updateStyle: function (settings) {
-      // Called when user applies new settings
-      if (settings.title) {
-        document.getElementById("my-title").innerText = settings.title;
-      }
-      // Re-fetch data with new settings, update UI, etc.
-    },
-    init: function () {},
-    destroy: function () {},
-  };
-};
+      { key: "refreshRate", label: "Refresh Rate (sec)", type: "integer", value: 30 },
+      { key: "opacity", label: "Opacity", type: "slider", min: 0, max: 100, value: 80 },
+      { key: "accentColor", label: "Color", type: "color", value: "#4a90e2" }
+    ];
+  }
+
+  updateStyle(settings) {
+    if (settings.title) {
+      document.getElementById("my-title").innerText = settings.title;
+    }
+  }
+
+  init() {}
+
+  destroy() {}
+}
 ```
 
 ### Setting Types
@@ -322,22 +327,20 @@ editableSettings: [
 Use `WidgetLoader.getStyles(widgetId)` to retrieve saved values:
 
 ```javascript
-window.getWidgetContent_myWidget = function () {
-  const saved =
-    typeof WidgetLoader !== "undefined"
-      ? WidgetLoader.getStyles("my-widget")
-      : {};
-  const title = saved.title || "Default";
+export default class MyWidget {
+  constructor(id) {
+    this.id = id;
+    const saved = typeof WidgetLoader !== "undefined" ? WidgetLoader.getStyles(id) : {};
+    const title = saved.title || "Default";
 
-  return {
     // ... use title in your HTML/settings
-  };
-};
+  }
+}
 ```
 
-### Context Menu
+### Context Menu & Edit Mode
 
-Users can left-click any widget to open a context menu with:
+When the user enters Edit Mode (`WidgetLoader.isDraggable = true`), clicks are intercepted by `global.js` for layout management.
 
-- **Edit Settings** - Opens the settings editor
-- **Hide Widget** - Hides the widget
+- **Opening Menu**: Left-clicking empty space on any widget opens the Context Menu ("Edit Settings" / "Hide Widget").
+- **Exemptions**: Clicking elements that naturally require interaction (`button`, `input`, `a`, `canvas`, or the `.resize-handle`) will **not** trigger the Context Menu. Design your UI so that interactable buttons don't accidentally block users from configuring the widget!

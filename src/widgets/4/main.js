@@ -2,13 +2,13 @@
 @name: Traffic Data
 @author: Dkydivyansh
 @description: Displays real-time network traffic data and usage statistics.
-@min_version: 1
+@min_version: 3
 */
 
 export default class TrafficDataWidget {
-    constructor(id) {
-        this.id = id;
-        this.html = `
+  constructor(id) {
+    this.id = id;
+    this.html = `
             <h2>Traffic Data</h2>
             <div class="stat-item">
                 <span class="stat-label">Upload:</span>
@@ -27,9 +27,9 @@ export default class TrafficDataWidget {
                 <span class="stat-value" id="total-recv">...</span>
             </div>
         `;
-        this.settings = {};
-    }
+    this.settings = {};
+  }
 
-    init() { }
-    destroy() { }
+  init() {}
+  destroy() {}
 }

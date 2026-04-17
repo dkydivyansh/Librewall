@@ -68,6 +68,6 @@
     "thumbnailImage": "image.png"
   },
   "Enable_Global_Widget": true,
-  "fpsLimit": 0,
-  "qualityPreset": "ultra"
+  "fpsLimit": 60,
+  "qualityPreset": "high"
 }

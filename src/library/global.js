@@ -4,6 +4,18 @@ const WidgetLoader = {
   visibility: {},
   wsPort: null,
   networkEnabled: false,
+  idMap: {
+    "3": "live-clock",
+    "4": "traffic-data",
+    "5": "listening-ports",
+    "6": "live-traffic-log",
+    "7": "active-connections",
+    clock: "live-clock", // Legacy support
+  },
+  getContainerId(id) {
+    const safeId = String(id);
+    return this.idMap[safeId] || safeId;
+  },
 
   async loadRegistry() {
     try {
@@ -71,7 +83,7 @@ const WidgetLoader = {
   },
 
   renderWidget(id, WidgetClass, wrapper) {
-    const containerId = id === "clock" ? "live-clock" : id;
+    const containerId = this.getContainerId(id);
 
     let container = document.getElementById(containerId);
     if (!container) {
@@ -145,7 +157,7 @@ const WidgetLoader = {
       widget.destroy();
     }
 
-    const containerId = id === "clock" ? "live-clock" : id;
+    const containerId = this.getContainerId(id);
     const container = document.getElementById(containerId);
     if (container) {
       container.remove();
@@ -204,7 +216,7 @@ const WidgetLoader = {
     } catch (e) {}
 
     this.registry.forEach((w) => {
-      const containerId = w.id === "clock" ? "live-clock" : w.id;
+      const containerId = this.getContainerId(w.id);
 
       if (this.visibility[containerId] === undefined) {
         if (!hasVisibilityConfig && containerId === "live-clock") {
@@ -221,7 +233,7 @@ const WidgetLoader = {
   },
 
   async toggleVisibility(widgetId, visible) {
-    const containerId = widgetId === "clock" ? "live-clock" : widgetId;
+    const containerId = this.getContainerId(widgetId);
     this.visibility[containerId] = visible;
 
     if (visible) {
@@ -278,8 +290,7 @@ const WidgetLoader = {
 
     await Promise.all(
       this.registry.map(async (widgetInfo) => {
-        const containerId =
-          widgetInfo.id === "clock" ? "live-clock" : widgetInfo.id;
+        const containerId = this.getContainerId(widgetInfo.id);
         if (this.visibility[containerId]) {
           await this.toggleVisibility(widgetInfo.id, true);
         }
@@ -324,9 +335,12 @@ const WidgetLoader = {
             return;
 
           let widgetId = container.id;
-          if (widgetId === "live-clock") widgetId = "clock";
+          // Reverse lookup or use original ID if possible?
+          // Since we use descriptive IDs for containers, let's find the original widget ID
+          const entry = Object.entries(this.idMap).find(([k, v]) => v === widgetId);
+          const finalId = entry ? entry[0] : widgetId;
 
-          this.showContextMenu(widgetId, e.clientX, e.clientY);
+          this.showContextMenu(finalId, e.clientX, e.clientY);
           e.stopPropagation();
         }
       });
@@ -355,7 +369,7 @@ const WidgetLoader = {
     );
 
     this.registry.forEach((w) => {
-      const containerId = w.id === "clock" ? "live-clock" : w.id;
+      const containerId = this.getContainerId(w.id);
       const checked = this.visibility[containerId] !== false ? "checked" : "";
 
       const isError = w.status === "error" || w.status === "missing";
@@ -526,10 +540,14 @@ const WidgetLoader = {
         listeningCount.textContent = `(${data.listening_count})`;
       if (listeningList) {
         if (data.listening_ports.length === 0) {
-          listeningList.innerHTML = '<div class="net-entry">No listening ports found.</div>';
+          listeningList.innerHTML =
+            '<div class="net-entry">No listening ports found.</div>';
         } else {
           listeningList.innerHTML = data.listening_ports
-            .map((item) => `<div class="net-entry"><span class="net-cell net-port">${item.port} (${item.protocol})</span><span class="net-cell net-process">${item.process}</span></div>`)
+            .map(
+              (item) =>
+                `<div class="net-entry"><span class="net-cell net-port">${item.port} (${item.protocol})</span><span class="net-cell net-process">${item.process}</span></div>`,
+            )
             .join("");
         }
       }
@@ -539,10 +557,14 @@ const WidgetLoader = {
       if (activeCount) activeCount.textContent = `(${data.active_count})`;
       if (activeList) {
         if (data.active_connections.length === 0) {
-          activeList.innerHTML = '<div class="net-entry">No established connections found.</div>';
+          activeList.innerHTML =
+            '<div class="net-entry">No established connections found.</div>';
         } else {
           activeList.innerHTML = data.active_connections
-            .map((item) => `<div class="net-entry"><span class="net-cell net-ip">${item.ip}:${item.port}</span><span class="net-cell net-protocol">${item.protocol}</span><span class="net-cell net-process">${item.process}</span></div>`)
+            .map(
+              (item) =>
+                `<div class="net-entry"><span class="net-cell net-ip">${item.ip}:${item.port}</span><span class="net-cell net-protocol">${item.protocol}</span><span class="net-cell net-process">${item.process}</span></div>`,
+            )
             .join("");
         }
       }
@@ -555,12 +577,14 @@ const WidgetLoader = {
         } else {
           // Dynamically adjust limit based on visible container height
           const estimatedLineHeight = 16;
-          const maxVisible = Math.ceil(trafficLog.clientHeight / estimatedLineHeight) + 2;
+          const maxVisible =
+            Math.ceil(trafficLog.clientHeight / estimatedLineHeight) + 2;
           const visibleLogs = data.live_traffic_log.slice(-maxVisible);
 
           trafficLog.innerHTML = visibleLogs
             .map(
-              (item) => `<div class="net-entry ${item.category}"><span class="net-cell net-timestamp">${item.timestamp}</span><span class="net-cell net-port">${item.ip_port}</span><span class="net-cell net-protocol">${item.protocol}</span><span class="net-cell net-process">${item.process}</span></div>`
+              (item) =>
+                `<div class="net-entry ${item.category}"><span class="net-cell net-timestamp">${item.timestamp}</span><span class="net-cell net-port">${item.ip_port}</span><span class="net-cell net-protocol">${item.protocol}</span><span class="net-cell net-process">${item.process}</span></div>`,
             )
             .join("");
         }
@@ -759,7 +783,7 @@ const WidgetLoader = {
       .querySelectorAll('#edit-mode-menu input[type="checkbox"]')
       .forEach((checkbox) => {
         const widgetId = checkbox.getAttribute("data-widget");
-        const containerId = widgetId === "clock" ? "live-clock" : widgetId;
+        const containerId = this.getContainerId(widgetId);
         if (widgetId && this.visibility.hasOwnProperty(containerId)) {
           checkbox.checked = this.visibility[containerId];
         }
@@ -905,11 +929,8 @@ const WidgetLoader = {
     if (removeBtn) {
       removeBtn.addEventListener("click", () => {
         if (this.contextMenuWidgetId) {
-          const containerId =
-            this.contextMenuWidgetId === "clock"
-              ? "live-clock"
-              : this.contextMenuWidgetId;
-          this.toggleVisibility(containerId, false);
+          const containerId = this.getContainerId(this.contextMenuWidgetId);
+          this.toggleVisibility(this.contextMenuWidgetId, false);
           this.saveVisibility();
         }
         this.hideContextMenu();
@@ -1131,10 +1152,7 @@ const WidgetLoader = {
     const widget = this.loadedWidgets[this.settingsWidgetId];
 
     if (values.hasOwnProperty("transparent")) {
-      const containerId =
-        this.settingsWidgetId === "clock"
-          ? "live-clock"
-          : this.settingsWidgetId;
+      const containerId = this.getContainerId(this.settingsWidgetId);
       const el = document.getElementById(containerId);
       if (el) {
         if (values.transparent === true) {
@@ -1152,10 +1170,7 @@ const WidgetLoader = {
     }
 
     if (values.hasOwnProperty("fixedSize")) {
-      const containerId =
-        this.settingsWidgetId === "clock"
-          ? "live-clock"
-          : this.settingsWidgetId;
+      const containerId = this.getContainerId(this.settingsWidgetId);
       const el = document.getElementById(containerId);
       if (el) {
         if (values.fixedSize === true) {
