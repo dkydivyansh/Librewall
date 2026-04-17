@@ -5,20 +5,16 @@
 @min_version: 1
 */
 
-(function () {
-    const script = document.currentScript;
-    const WIDGET_ID = script.dataset.widgetId;
+export default class ListeningPortsWidget {
+    constructor(id) {
+        this.id = id;
+        this.html = `
+            <h2>Listening Ports <span id="listening-count" class="widget-count"></span></h2>
+            <div id="listening-ports-list" class="net-list">Loading...</div>
+        `;
+        this.settings = {};
+    }
 
-    window['getWidgetContent_' + WIDGET_ID] = function () {
-        return {
-            id: WIDGET_ID,
-            html: `
-                <h2>Listening Ports <span id="listening-count" class="widget-count"></span></h2>
-                <pre id="listening-list">Loading...</pre>
-            `,
-            settings: {},
-            init: function () { },
-            destroy: function () { }
-        };
-    };
-})();
+    init() { }
+    destroy() { }
+}

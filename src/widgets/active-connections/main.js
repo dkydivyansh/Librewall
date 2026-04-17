@@ -5,20 +5,16 @@
 @min_version: 1
 */
 
-(function () {
-    const script = document.currentScript;
-    const WIDGET_ID = script.dataset.widgetId;
+export default class ActiveConnectionsWidget {
+    constructor(id) {
+        this.id = id;
+        this.html = `
+            <h2>Active Connections <span id="active-count" class="widget-count"></span></h2>
+            <div id="active-list" class="net-list">Loading...</div>
+        `;
+        this.settings = {};
+    }
 
-    window['getWidgetContent_' + WIDGET_ID] = function () {
-        return {
-            id: WIDGET_ID,
-            html: `
-                <h2>Active Connections <span id="active-count" class="widget-count"></span></h2>
-                <pre id="active-list">Loading...</pre>
-            `,
-            settings: {},
-            init: function () { },
-            destroy: function () { }
-        };
-    };
-})();
+    init() { }
+    destroy() { }
+}

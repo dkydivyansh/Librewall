@@ -278,7 +278,7 @@ CURRENT_STATS = {
     "upload_bps": 0, "download_bps": 0, "total_sent": 0, "total_recv": 0
 }
 TRAFFIC_LOCK = threading.Lock()
-LIVE_TRAFFIC_LOG = collections.deque(maxlen=50) 
+LIVE_TRAFFIC_LOG = collections.deque(maxlen=500) 
 SEEN_CONNECTIONS = set()
 PROCESS_HIDE_LIST = [
     'librewall.exe', 'engine.exe'
@@ -1150,7 +1150,7 @@ def live_traffic_updater(current_process_name):
                         ip_port = f"{conn.raddr.ip}:{conn.raddr.port}"
                     log_entry = {
                         "timestamp": datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3],
-                        "type": conn_type, "ip_port": ip_port,
+                        "category": conn_type, "ip_port": ip_port,
                         "protocol": protocol, "process": process
                     }
                     new_log_entries.append(log_entry)
@@ -1196,12 +1196,12 @@ def get_network_data(current_process_name):
                     continue
                 active_connections_raw.append({
                     "ip": conn.raddr.ip, "port": conn.raddr.port,
-                    "type": conn.type.name, "protocol": remote_protocol, "process": process_name
+                    "protocol": remote_protocol, "process": process_name
                 })
             elif conn.status == 'LISTEN':
                 protocol = PORT_PROTOCOL_MAP.get(conn.laddr.port, str(conn.laddr.port))
                 listening_ports_raw.append({
-                    "port": conn.laddr.port, "type": conn.type.name,
+                    "port": conn.laddr.port,
                     "protocol": protocol, "process": process_name
                 })
     except (psutil.AccessDenied, psutil.ZombieProcess, psutil.NoSuchProcess): pass

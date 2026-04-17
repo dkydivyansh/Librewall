@@ -5,20 +5,18 @@
 @min_version: 1
 */
 
-(function () {
-    const script = document.currentScript;
-    const WIDGET_ID = script.dataset.widgetId;
-
-    window['getWidgetContent_' + WIDGET_ID] = function () {
-        return {
-            id: WIDGET_ID,
-            html: `
-                <h2>Live Traffic Log</h2>
-                <pre id="traffic-log-list">Monitoring...</pre>
-            `,
-            settings: {},
-            init: function () { },
-            destroy: function () { }
-        };
+export default class LiveTrafficLogWidget {
+  constructor(id) {
+    this.id = id;
+    this.html = `
+            <h2>Live Traffic Log</h2>
+            <div id="traffic-log-list" class="net-list">Monitoring...</div>
+        `;
+    this.settings = {
+      minWidth: "650px",
     };
-})();
+  }
+
+  init() {}
+  destroy() {}
+}

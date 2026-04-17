@@ -5,37 +5,31 @@
 @min_version: 1
 */
 
-(function () {
-    const script = document.currentScript;
-    const WIDGET_ID = script.dataset.widgetId;
+export default class TrafficDataWidget {
+    constructor(id) {
+        this.id = id;
+        this.html = `
+            <h2>Traffic Data</h2>
+            <div class="stat-item">
+                <span class="stat-label">Upload:</span>
+                <span class="stat-value" id="upload-speed">...</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Download:</span>
+                <span class="stat-value" id="download-speed">...</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Sent:</span>
+                <span class="stat-value" id="total-sent">...</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Recv:</span>
+                <span class="stat-value" id="total-recv">...</span>
+            </div>
+        `;
+        this.settings = {};
+    }
 
-    window['getWidgetContent_' + WIDGET_ID] = function () {
-        return {
-            id: WIDGET_ID,
-            html: `
-                <h2>Traffic Data</h2>
-                <div class="stat-item">
-                    <span class="stat-label">Upload:</span>
-                    <span class="stat-value" id="upload-speed">...</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Download:</span>
-                    <span class="stat-value" id="download-speed">...</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Total Sent:</span>
-                    <span class="stat-value" id="total-sent">...</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Total Recv:</span>
-                    <span class="stat-value" id="total-recv">...</span>
-                </div>
-            `,
-            settings: {},
-            init: function () {
-                // Network data is handled by global WebSocket connection
-            },
-            destroy: function () { }
-        };
-    };
-})();
+    init() { }
+    destroy() { }
+}

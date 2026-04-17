@@ -5,30 +5,72 @@
 @min_version: 1
 */
 
-(function () {
-  const script = document.currentScript;
-  const WIDGET_ID = script.dataset.widgetId;
+export default class ClockWidget {
+  constructor(WIDGET_ID) {
+    this.id = WIDGET_ID;
+    
+    // Config properties
+    this.align = "right";
+    this.timeColor = "#ffffff";
+    this.dayColor = "#eaeaea";
+    this.transparent = true;
 
-  const CONFIG = {
-    align: "right",
+    // Load saved styles
+    const savedStyles = typeof WidgetLoader !== "undefined" ? WidgetLoader.getStyles(this.id) : {};
+    if (savedStyles.align !== undefined) this.align = savedStyles.align;
+    if (savedStyles.timeColor !== undefined) this.timeColor = savedStyles.timeColor;
+    if (savedStyles.dayColor !== undefined) this.dayColor = savedStyles.dayColor;
+    if (savedStyles.transparent !== undefined) this.transparent = savedStyles.transparent;
 
-    timeColor: "#ffffff",
-    dayColor: "#eaeaea",
-  };
+    this.html = `
+        <div id="clock-time"></div>
+        <div id="clock-day"></div>
+    `;
 
-  let clockInterval = null;
+    this.settings = {
+        transparent: this.transparent
+    };
 
+    this.editableSettings = [
+        {
+          key: "transparent",
+          label: "Transparent Background",
+          type: "boolean",
+          value: this.transparent,
+        },
+        {
+          key: "align",
+          label: "Alignment",
+          type: "select",
+          value: this.align,
+          options: [
+            { value: "left", label: "Left" },
+            { value: "center", label: "Center" },
+            { value: "right", label: "Right" },
+          ],
+        },
+        {
+          key: "timeColor",
+          label: "Time Color",
+          type: "color",
+          value: this.timeColor,
+        },
+        {
+          key: "dayColor",
+          label: "Day Color",
+          type: "color",
+          value: this.dayColor,
+        },
+    ];
 
+    this.clockInterval = null;
+    this.updateClock = this.updateClock.bind(this);
+  }
 
-  function updateClock() {
+  updateClock() {
     const dayNames = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
+      "Sunday", "Monday", "Tuesday", "Wednesday",
+      "Thursday", "Friday", "Saturday"
     ];
     const now = new Date();
     let hours = now.getHours();
@@ -51,100 +93,47 @@
 
       if (timeEl) {
         timeEl.textContent = timeString;
-        timeEl.style.color = CONFIG.timeColor;
+        timeEl.style.color = this.timeColor;
         timeEl.style.display = "block";
         timeEl.style.width = "100%";
-        timeEl.style.textAlign = CONFIG.align;
+        timeEl.style.textAlign = this.align;
       }
 
       if (dayEl) {
         dayEl.textContent = day;
-        dayEl.style.color = CONFIG.dayColor;
+        dayEl.style.color = this.dayColor;
         dayEl.style.display = "block";
         dayEl.style.width = "100%";
-        dayEl.style.textAlign = CONFIG.align;
+        dayEl.style.textAlign = this.align;
       }
 
-      const containerId = WIDGET_ID === "clock" ? "live-clock" : WIDGET_ID;
+      const containerId = this.id === "clock" ? "live-clock" : this.id;
       const wrapper = document.getElementById(containerId);
 
       if (wrapper) {
-        wrapper.style.textAlign = CONFIG.align;
+        wrapper.style.textAlign = this.align;
       }
     } catch (e) {
       console.error(`[Clock Debug] Error in updateClock:`, e);
     }
   }
 
-  window["getWidgetContent_" + WIDGET_ID] = function () {
-    const savedStyles =
-      typeof WidgetLoader !== "undefined"
-        ? WidgetLoader.getStyles(WIDGET_ID)
-        : {};
-    if (savedStyles.align) CONFIG.align = savedStyles.align;
-    if (savedStyles.timeColor) CONFIG.timeColor = savedStyles.timeColor;
-    if (savedStyles.dayColor) CONFIG.dayColor = savedStyles.dayColor;
+  updateStyle(settings) {
+    if (settings.align !== undefined) this.align = settings.align;
+    if (settings.timeColor !== undefined) this.timeColor = settings.timeColor;
+    if (settings.dayColor !== undefined) this.dayColor = settings.dayColor;
+    this.updateClock();
+  }
 
-    const isTransparent =
-      savedStyles.transparent !== undefined ? savedStyles.transparent : true;
+  init() {
+    this.updateClock();
+    this.clockInterval = setInterval(this.updateClock, 1000);
+  }
 
-    return {
-      id: WIDGET_ID,
-      html: `
-                <div id="clock-time"></div>
-                <div id="clock-day"></div>
-            `,
-      settings: {
-        transparent: isTransparent,
-      },
-      editableSettings: [
-        {
-          key: "transparent",
-          label: "Transparent Background",
-          type: "boolean",
-          value: isTransparent,
-        },
-        {
-          key: "align",
-          label: "Alignment",
-          type: "select",
-          value: CONFIG.align,
-          options: [
-            { value: "left", label: "Left" },
-            { value: "center", label: "Center" },
-            { value: "right", label: "Right" },
-          ],
-        },
-        {
-          key: "timeColor",
-          label: "Time Color",
-          type: "color",
-          value: CONFIG.timeColor,
-        },
-        {
-          key: "dayColor",
-          label: "Day Color",
-          type: "color",
-          value: CONFIG.dayColor,
-        },
-      ],
-      updateStyle: function (settings) {
-        if (settings.align) CONFIG.align = settings.align;
-        if (settings.timeColor) CONFIG.timeColor = settings.timeColor;
-        if (settings.dayColor) CONFIG.dayColor = settings.dayColor;
-        console.log(`[Clock] Settings updated: align=${CONFIG.align}`);
-        updateClock();
-      },
-      init: function () {
-        updateClock();
-        clockInterval = setInterval(updateClock, 1000);
-      },
-      destroy: function () {
-        if (clockInterval) {
-          clearInterval(clockInterval);
-          clockInterval = null;
-        }
-      },
-    };
-  };
-})();
+  destroy() {
+    if (this.clockInterval) {
+      clearInterval(this.clockInterval);
+      this.clockInterval = null;
+    }
+  }
+}

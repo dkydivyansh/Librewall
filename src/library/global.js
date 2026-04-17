@@ -21,8 +21,6 @@ const WidgetLoader = {
 
   async loadWidget(widgetInfo) {
     const { id } = widgetInfo;
-    if (this.loadedWidgets[id]) return this.loadedWidgets[id];
-
     const safeId = String(id);
     const folder = safeId;
 
@@ -37,53 +35,14 @@ const WidgetLoader = {
       }
 
       const jsPath = `/widgets/${folder}/main.js`;
-      await new Promise((resolve, reject) => {
-        if (document.querySelector(`script[src="${jsPath}"]`)) {
-          resolve();
-          return;
-        }
-        const script = document.createElement("script");
-        script.src = jsPath;
-        script.id = `widget-js-${safeId}`;
-        script.dataset.widgetId = safeId;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
+      const module = await import(jsPath);
+      const WidgetClass = module.default;
 
-      const camelId = this.camelCase(safeId);
-      const funcNames = [
-        `getWidgetContent_${camelId}`,
-        `getWidgetContent_${safeId}`,
-        `getWidgetContent_${safeId.replace(/-/g, "")}`,
-      ];
-
-      let getContent = null;
-      for (const funcName of funcNames) {
-        if (typeof window[funcName] === "function") {
-          getContent = window[funcName];
-          break;
-        }
-      }
-
-      if (
-        !getContent &&
-        typeof window[`getWidgetContent_${safeId}`] === "function"
-      ) {
-        getContent = window[`getWidgetContent_${safeId}`];
-      }
-
-      if (getContent) {
-        this.loadedWidgets[id] = getContent();
-        console.log(`Widget loaded: ${id}`);
+      if (WidgetClass) {
         widgetInfo.status = "loaded";
-        return this.loadedWidgets[id];
+        return WidgetClass;
       } else {
-        console.warn(
-          `Widget ${id} missing getWidgetContent function. Tried: ${funcNames.join(", ")}`,
-        );
         widgetInfo.status = "error";
-        widgetInfo.errorMsg = "Corrupted: Missing function";
         return null;
       }
     } catch (e) {
@@ -93,11 +52,25 @@ const WidgetLoader = {
     }
   },
 
-  camelCase(str) {
-    return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+  applyPosition(containerId, container) {
+    try {
+      if (this.positionCache && this.positionCache[containerId]) {
+        const pos = this.positionCache[containerId];
+        if (pos.top) container.style.top = pos.top;
+        if (pos.left) container.style.left = pos.left;
+        if (pos.right) container.style.right = pos.right;
+        if (pos.width) container.style.width = pos.width;
+        if (pos.height) container.style.height = pos.height;
+        if (pos.right && pos.left === "auto") {
+          container.style.left = "auto";
+        } else {
+          container.style.right = "auto";
+        }
+      }
+    } catch (e) {}
   },
 
-  renderWidget(id, content, wrapper) {
+  renderWidget(id, WidgetClass, wrapper) {
     const containerId = id === "clock" ? "live-clock" : id;
 
     let container = document.getElementById(containerId);
@@ -108,20 +81,23 @@ const WidgetLoader = {
       wrapper.appendChild(container);
     }
 
-    if (content.settings) {
-      if (content.settings.minWidth) {
-        container.style.minWidth = content.settings.minWidth;
+    const instance = new WidgetClass(id);
+    this.loadedWidgets[id] = instance;
+
+    if (instance.settings) {
+      if (instance.settings.minWidth) {
+        container.style.minWidth = instance.settings.minWidth;
       }
-      if (content.settings.minHeight) {
-        container.style.minHeight = content.settings.minHeight;
+      if (instance.settings.minHeight) {
+        container.style.minHeight = instance.settings.minHeight;
       }
-      if (content.settings.transparent === true) {
+      if (instance.settings.transparent === true) {
         container.style.backgroundColor = "transparent";
         container.style.backdropFilter = "none";
         container.style.boxShadow = "none";
         container.style.border = "none";
       }
-      if (content.settings.fixedSize === true) {
+      if (instance.settings.fixedSize === true) {
         container.classList.add("is-fixed-size");
         container.style.width = "fit-content";
         container.style.height = "fit-content";
@@ -132,10 +108,32 @@ const WidgetLoader = {
       }
     }
 
-    container.innerHTML = content.html + '<div class="resize-handle"></div>';
+    container.innerHTML = instance.html + '<div class="resize-handle"></div>';
 
-    if (typeof content.init === "function") {
-      content.init();
+    container.addEventListener("mousedown", (e) =>
+      this.onContainerMouseDown(e),
+    );
+    const handle = container.querySelector(".resize-handle");
+    if (handle) {
+      handle.addEventListener("mousedown", (e) => this.onResizeMouseDown(e));
+    }
+
+    container.addEventListener("click", (e) => {
+      if (this.isDraggable && e.button === 0) {
+        if (this.hasMovedDuringDrag) return;
+        if (e.target.closest("button, input, a, canvas, .resize-handle"))
+          return;
+        this.showContextMenu(id, e.clientX, e.clientY);
+        e.stopPropagation();
+      }
+    });
+
+    if (typeof this.applyPosition === "function") {
+      this.applyPosition(containerId, container);
+    }
+
+    if (typeof instance.init === "function") {
+      instance.init();
     }
 
     return container;
@@ -150,8 +148,13 @@ const WidgetLoader = {
     const containerId = id === "clock" ? "live-clock" : id;
     const container = document.getElementById(containerId);
     if (container) {
-      container.style.display = "none";
+      container.remove();
     }
+
+    const cssLink = document.getElementById(`widget-css-${id}`);
+    if (cssLink) cssLink.remove();
+
+    delete this.loadedWidgets[id];
   },
 
   async savePositions() {
@@ -175,45 +178,7 @@ const WidgetLoader = {
     }
   },
 
-  async restorePositions() {
-    try {
-      const response = await fetch("/widget.json");
-      let positions = {};
-
-      if (response.ok) {
-        positions = await response.json();
-      }
-
-      if (!positions || Object.keys(positions).length === 0) {
-        console.log("No saved positions found. Adding default Clock widget.");
-        const clockId = "live-clock";
-        const clockWidth = 300;
-
-        const centerX = window.innerWidth / 2 - clockWidth / 2;
-
-        positions = {
-          [clockId]: {
-            left: `${Math.max(0, centerX)}px`,
-            top: "40px",
-          },
-        };
-
-        this.visibility[clockId] = true;
-        this.saveVisibility();
-      }
-
-      Object.entries(positions).forEach(([id, pos]) => {
-        const el = document.getElementById(id);
-        if (el) {
-          el.style.left = pos.left;
-          el.style.top = pos.top;
-          el.style.position = "absolute";
-        }
-      });
-    } catch (e) {
-      console.error("Error restoring positions:", e);
-    }
-  },
+  positionCache: {},
 
   async saveVisibility() {
     try {
@@ -248,11 +213,6 @@ const WidgetLoader = {
           this.visibility[containerId] = false;
         }
       }
-
-      const el = document.getElementById(containerId);
-      if (el) {
-        el.style.display = this.visibility[containerId] ? "" : "none";
-      }
     });
 
     if (!hasVisibilityConfig) {
@@ -260,11 +220,30 @@ const WidgetLoader = {
     }
   },
 
-  toggleVisibility(widgetId, visible) {
-    const el = document.getElementById(widgetId);
-    if (el) {
-      el.style.display = visible ? "" : "none";
-      this.visibility[widgetId] = visible;
+  async toggleVisibility(widgetId, visible) {
+    const containerId = widgetId === "clock" ? "live-clock" : widgetId;
+    this.visibility[containerId] = visible;
+
+    if (visible) {
+      if (this.loadedWidgets[widgetId]) {
+        const el = document.getElementById(containerId);
+        if (el) {
+          el.style.display = "";
+          if (typeof this.applyPosition === "function")
+            this.applyPosition(containerId, el);
+        }
+        return;
+      }
+      const widgetInfo = this.registry.find((w) => w.id === widgetId);
+      if (!widgetInfo) return;
+
+      const WidgetClass = await this.loadWidget(widgetInfo);
+      if (WidgetClass) {
+        const wrapper = document.getElementById("widget-wrapper");
+        this.renderWidget(widgetId, WidgetClass, wrapper);
+      }
+    } else {
+      this.unloadWidget(widgetId);
     }
   },
 
@@ -286,50 +265,34 @@ const WidgetLoader = {
       this.networkEnabled =
         config.Enable_Global_Widget === true ||
         config.Enable_Network_Widget === true;
-    } catch (e) {
-      this.networkEnabled = true;
+    } catch (e) {}
+
+    this.registry = this.registry.filter((w) => w.status !== "missing");
+
+    await this.restorePositions();
+    await this.restoreVisibility();
+
+    if (this.networkEnabled) {
+      await this.initNetworkConnection();
     }
 
-    const validWidgets = this.registry.filter((w) => w.status !== "missing");
-
     await Promise.all(
-      validWidgets.map(async (widgetInfo) => {
-        const content = await this.loadWidget(widgetInfo);
-        if (content) {
-          this.renderWidget(widgetInfo.id, content, wrapper);
+      this.registry.map(async (widgetInfo) => {
+        const containerId =
+          widgetInfo.id === "clock" ? "live-clock" : widgetInfo.id;
+        if (this.visibility[containerId]) {
+          await this.toggleVisibility(widgetInfo.id, true);
         }
       }),
     );
-
-    this.registry = validWidgets.filter((w) => w.status !== "missing");
-
-    if (this.networkEnabled) {
-      await this.restorePositions();
-      await this.restoreVisibility();
-      await this.initNetworkConnection();
-    } else {
-      await this.restorePositions();
-      await this.restoreVisibility();
-
-      [
-        "traffic-data",
-        "listening-ports",
-        "live-traffic-log",
-        "active-connections",
-      ].forEach((id) => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = "none";
-      });
-    }
 
     this.initDraggableSystem();
     this.initEditMenu();
     this.initContextMenu();
     this.initSettingsEditor();
     this.initTemplateManager();
-    this.populateEditMenu();
+    await this.populateEditMenu();
     this.initWidgetSearch();
-    this.setupWidgetClickHandlers();
 
     setTimeout(() => this.hideLoading(), 500);
   },
@@ -370,28 +333,59 @@ const WidgetLoader = {
     });
   },
 
-  populateEditMenu() {
+  async populateEditMenu() {
     const list = document.getElementById("widget-toggle-list");
     if (!list) return;
 
     list.innerHTML = "";
+
+    await Promise.all(
+      this.registry.map(async (w) => {
+        if (w._hasSettings === undefined) {
+          try {
+            const folder = String(w.id);
+            const res = await fetch(`/widgets/${folder}/main.js`);
+            const text = await res.text();
+            w._hasSettings = text.includes("editableSettings");
+          } catch (e) {
+            w._hasSettings = false;
+          }
+        }
+      }),
+    );
+
     this.registry.forEach((w) => {
       const containerId = w.id === "clock" ? "live-clock" : w.id;
       const checked = this.visibility[containerId] !== false ? "checked" : "";
 
-      const widget = this.loadedWidgets[w.id];
-      const hasEditableSettings =
-        widget?.editableSettings && widget.editableSettings.length > 0;
-      const isError = w.status === "error";
+      const isError = w.status === "error" || w.status === "missing";
+      const hasSettings = w._hasSettings !== false;
 
       const label = document.createElement("label");
       label.className = "widget-toggle";
+
+      if (isError) {
+        label.style.backgroundColor = "rgba(255, 68, 68, 0.1)";
+        label.style.border = "1px solid rgba(255, 68, 68, 0.3)";
+        label.style.borderRadius = "8px";
+        label.style.marginBottom = "5px";
+      }
+
       label.innerHTML = `
-                <input type="checkbox" data-widget="${containerId}" ${checked} ${isError ? "disabled" : ""}>
-                <span>${w.name}</span>
-                ${isError ? '<span class="widget-error-icon" title="Corrupted: Missing Data" style="color: #ff4444; margin-left: 8px;">⚠️</span>' : ""}
+                <input type="checkbox" data-widget="${w.id}" data-container-id="${containerId}" ${checked} ${isError ? "disabled" : ""}>
+                <span ${isError ? 'style="color: #ffaa99;"' : ""}>${w.name}</span>
                 ${
-                  hasEditableSettings && !isError
+                  isError
+                    ? `
+                <span class="widget-error-icon" title="Corrupted or Missing" style="color: #ff4444; margin-left: auto; display: flex; align-items: center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="currentColor" height="20px" width="20px" version="1.1" viewBox="0 0 512.018 512.018" xml:space="preserve">
+                        <g><path d="M509.769,480.665L275.102,11.331c-7.253-14.464-30.933-14.464-38.187,0L2.249,480.665c-3.307,6.613-2.944,14.464,0.939,20.757c3.904,6.272,10.752,10.112,18.155,10.112h469.333c7.403,0,14.251-3.84,18.155-10.112C512.713,495.129,513.075,487.278,509.769,480.665z M256.009,426.201c-11.776,0-21.333-9.557-21.333-21.333s9.557-21.333,21.333-21.333s21.333,9.557,21.333,21.333S267.785,426.201,256.009,426.201z M277.342,340.867c0,11.776-9.536,21.333-21.333,21.333c-11.797,0-21.333-9.557-21.333-21.333V191.534c0-11.776,9.536-21.333,21.333-21.333c11.797,0,21.333,9.557,21.333,21.333V340.867z"/></g>
+                    </svg>
+                </span>`
+                    : ""
+                }
+                ${
+                  !isError && hasSettings
                     ? `
                 <button class="widget-edit-btn" data-widget-id="${w.id}" title="Edit Settings">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -407,10 +401,29 @@ const WidgetLoader = {
     });
 
     list.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
-      checkbox.addEventListener("change", (e) => {
+      checkbox.addEventListener("change", async (e) => {
         const widgetId = e.target.getAttribute("data-widget");
         if (widgetId) {
-          this.toggleVisibility(widgetId, e.target.checked);
+          e.target.disabled = true;
+          e.target.style.opacity = "0.5";
+          try {
+            await this.toggleVisibility(widgetId, e.target.checked);
+            this.saveVisibility();
+
+            const wInfo = this.registry.find((w) => String(w.id) === widgetId);
+            if (
+              wInfo &&
+              (wInfo.status === "error" || wInfo.status === "missing")
+            ) {
+              e.target.checked = false;
+              this.populateEditMenu();
+            }
+          } catch (err) {
+            console.error(err);
+            e.target.checked = !e.target.checked;
+          }
+          e.target.disabled = false;
+          e.target.style.opacity = "1";
         }
       });
     });
@@ -508,63 +521,49 @@ const WidgetLoader = {
         totalRecvEl.textContent = this.formatBytes(data.total_recv);
 
       const listeningCount = document.getElementById("listening-count");
-      const listeningList = document.getElementById("listening-list");
+      const listeningList = document.getElementById("listening-ports-list");
       if (listeningCount)
         listeningCount.textContent = `(${data.listening_count})`;
       if (listeningList) {
-        let html = "";
         if (data.listening_ports.length === 0) {
-          html = "No listening ports found.";
+          listeningList.innerHTML = '<div class="net-entry">No listening ports found.</div>';
         } else {
-          html += "Port/Protocol".padEnd(15) + "Type".padEnd(15) + "Process\n";
-          data.listening_ports.forEach((item) => {
-            let port = (item.port + " (" + item.protocol + ")").padEnd(15);
-            html += `${port}${item.type.padEnd(15)}${item.process}\n`;
-          });
+          listeningList.innerHTML = data.listening_ports
+            .map((item) => `<div class="net-entry"><span class="net-cell net-port">${item.port} (${item.protocol})</span><span class="net-cell net-process">${item.process}</span></div>`)
+            .join("");
         }
-        listeningList.textContent = html;
       }
 
       const activeCount = document.getElementById("active-count");
       const activeList = document.getElementById("active-list");
       if (activeCount) activeCount.textContent = `(${data.active_count})`;
       if (activeList) {
-        let html = "";
         if (data.active_connections.length === 0) {
-          html = "No established connections found.";
+          activeList.innerHTML = '<div class="net-entry">No established connections found.</div>';
         } else {
-          html +=
-            "IP Address".padEnd(22) +
-            "Protocol".padEnd(10) +
-            "Type".padEnd(15) +
-            "Process\n";
-          data.active_connections.forEach((item) => {
-            let ip = (item.ip + ":" + item.port).padEnd(22);
-            html += `${ip}${item.protocol.padEnd(10)}${item.type.padEnd(15)}${item.process}\n`;
-          });
+          activeList.innerHTML = data.active_connections
+            .map((item) => `<div class="net-entry"><span class="net-cell net-ip">${item.ip}:${item.port}</span><span class="net-cell net-protocol">${item.protocol}</span><span class="net-cell net-process">${item.process}</span></div>`)
+            .join("");
         }
-        activeList.textContent = html;
       }
 
       const trafficLog = document.getElementById("traffic-log-list");
       if (trafficLog) {
-        let html = "";
         if (data.live_traffic_log.length === 0) {
-          html =
+          trafficLog.innerHTML =
             '<div class="traffic-entry">Monitoring for new connections...</div>';
         } else {
-          data.live_traffic_log.forEach((item) => {
-            html +=
-              `<div class="traffic-entry">` +
-              `<span class="timestamp">${item.timestamp.padEnd(15)}</span>` +
-              `<span class="type ${item.type}">${item.type.padEnd(10)}</span>` +
-              `<span class="ip">${item.ip_port.padEnd(26)}</span>` +
-              `<span class="protocol">${item.protocol.padEnd(10)}</span>` +
-              `<span class="process">${item.process}</span>` +
-              `</div>`;
-          });
+          // Dynamically adjust limit based on visible container height
+          const estimatedLineHeight = 16;
+          const maxVisible = Math.ceil(trafficLog.clientHeight / estimatedLineHeight) + 2;
+          const visibleLogs = data.live_traffic_log.slice(-maxVisible);
+
+          trafficLog.innerHTML = visibleLogs
+            .map(
+              (item) => `<div class="net-entry ${item.category}"><span class="net-cell net-timestamp">${item.timestamp}</span><span class="net-cell net-port">${item.ip_port}</span><span class="net-cell net-protocol">${item.protocol}</span><span class="net-cell net-process">${item.process}</span></div>`
+            )
+            .join("");
         }
-        trafficLog.innerHTML = html;
         trafficLog.scrollTop = trafficLog.scrollHeight;
       }
     } catch (e) {
@@ -573,9 +572,10 @@ const WidgetLoader = {
   },
 
   async savePositions() {
-    const positions = {};
+    if (!this.positionCache) this.positionCache = {};
+
     document.querySelectorAll(".widget-container").forEach((container) => {
-      positions[container.id] = {
+      this.positionCache[container.id] = {
         top: container.style.top,
         left: container.style.left,
         right: container.style.right,
@@ -588,7 +588,7 @@ const WidgetLoader = {
       await fetch("/save_widget_positions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(positions),
+        body: JSON.stringify(this.positionCache),
       });
       console.log("Widget positions saved");
     } catch (e) {
@@ -596,25 +596,18 @@ const WidgetLoader = {
     }
   },
   async restorePositions() {
+    this.positionCache = {};
     try {
       const response = await fetch("/widget.json");
       if (response.ok) {
         const positions = await response.json();
         if (positions && Object.keys(positions).length > 0) {
-          Object.keys(positions).forEach((id) => {
+          this.positionCache = positions;
+
+          Object.keys(this.positionCache).forEach((id) => {
             const el = document.getElementById(id);
             if (el) {
-              const pos = positions[id];
-              if (pos.top) el.style.top = pos.top;
-              if (pos.left) el.style.left = pos.left;
-              if (pos.right) el.style.right = pos.right;
-              if (pos.width) el.style.width = pos.width;
-              if (pos.height) el.style.height = pos.height;
-              if (pos.right && pos.left === "auto") {
-                el.style.left = "auto";
-              } else {
-                el.style.right = "auto";
-              }
+              this.applyPosition(id, el);
             }
           });
           console.log("Widget positions restored");
@@ -626,7 +619,7 @@ const WidgetLoader = {
     const ww = window.innerWidth;
     const wh = window.innerHeight;
 
-    const dynPositions = {
+    this.positionCache = {
       "live-clock": {
         top: "72px",
         left: `${Math.max(10, ww - 800)}px`,
@@ -664,15 +657,10 @@ const WidgetLoader = {
       },
     };
 
-    Object.keys(dynPositions).forEach((id) => {
+    Object.keys(this.positionCache).forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
-        const pos = dynPositions[id];
-        el.style.top = pos.top;
-        el.style.left = pos.left;
-        el.style.right = pos.right;
-        el.style.width = pos.width;
-        el.style.height = pos.height;
+        this.applyPosition(id, el);
       }
     });
   },
@@ -691,20 +679,11 @@ const WidgetLoader = {
   originalMouseY: 0,
 
   initDraggableSystem() {
-    document.querySelectorAll(".widget-container").forEach((container) => {
-      container.addEventListener("mousedown", (e) =>
-        this.onContainerMouseDown(e),
-      );
-    });
-    document.querySelectorAll(".resize-handle").forEach((handle) => {
-      handle.addEventListener("mousedown", (e) => this.onResizeMouseDown(e));
-    });
     const bgCatcher = document.getElementById("background-click-catcher");
     if (bgCatcher) {
       bgCatcher.addEventListener("click", () => this.exitEditMode());
     }
   },
-
 
   onContainerMouseDown(e) {
     if (!this.isDraggable || e.target.classList.contains("resize-handle"))
@@ -780,8 +759,9 @@ const WidgetLoader = {
       .querySelectorAll('#edit-mode-menu input[type="checkbox"]')
       .forEach((checkbox) => {
         const widgetId = checkbox.getAttribute("data-widget");
-        if (widgetId && this.visibility.hasOwnProperty(widgetId)) {
-          checkbox.checked = this.visibility[widgetId];
+        const containerId = widgetId === "clock" ? "live-clock" : widgetId;
+        if (widgetId && this.visibility.hasOwnProperty(containerId)) {
+          checkbox.checked = this.visibility[containerId];
         }
       });
   },
@@ -867,32 +847,33 @@ const WidgetLoader = {
         editMenu.style.transform = "none";
         editMenu.style.left = rect.left + "px";
         editMenu.style.top = rect.top + "px";
-        e.preventDefault();
-      });
+        const onMouseMove = (e) => {
+          let newLeft = e.clientX - menuOffsetX;
+          let newTop = e.clientY - menuOffsetY;
 
-      window.addEventListener("mousemove", (e) => {
-        if (!isMenuDragging) return;
+          const rect = editMenu.getBoundingClientRect();
 
-        let newLeft = e.clientX - menuOffsetX;
-        let newTop = e.clientY - menuOffsetY;
+          newLeft = Math.max(
+            0,
+            Math.min(newLeft, window.innerWidth - rect.width),
+          );
+          newTop = Math.max(
+            0,
+            Math.min(newTop, window.innerHeight - rect.height),
+          );
 
-        const rect = editMenu.getBoundingClientRect();
+          editMenu.style.left = newLeft + "px";
+          editMenu.style.top = newTop + "px";
+        };
 
-        newLeft = Math.max(
-          0,
-          Math.min(newLeft, window.innerWidth - rect.width),
-        );
-        newTop = Math.max(
-          0,
-          Math.min(newTop, window.innerHeight - rect.height),
-        );
+        const onMouseUp = () => {
+          isMenuDragging = false;
+          window.removeEventListener("mousemove", onMouseMove);
+          window.removeEventListener("mouseup", onMouseUp);
+        };
 
-        editMenu.style.left = newLeft + "px";
-        editMenu.style.top = newTop + "px";
-      });
-
-      window.addEventListener("mouseup", () => {
-        isMenuDragging = false;
+        window.addEventListener("mousemove", onMouseMove);
+        window.addEventListener("mouseup", onMouseUp);
       });
     }
   },
@@ -1008,10 +989,11 @@ const WidgetLoader = {
     }
   },
 
-  openSettingsEditor(widgetId) {
+  async openSettingsEditor(widgetId) {
     const editor = document.getElementById("widget-settings-editor");
     const titleEl = document.getElementById("settings-editor-title");
     const contentEl = document.getElementById("settings-editor-content");
+    const applyBtn = document.getElementById("settings-apply-btn");
 
     if (!editor || !contentEl) return;
 
@@ -1022,7 +1004,20 @@ const WidgetLoader = {
 
     if (titleEl) titleEl.textContent = `${widgetName} Settings`;
 
-    const widget = this.loadedWidgets[widgetId];
+    let widget = this.loadedWidgets[widgetId];
+    let isWidgetActive = !!widget;
+
+    if (!isWidgetActive && widgetInfo) {
+      const WidgetClass = await this.loadWidget(widgetInfo);
+      if (WidgetClass) {
+        widget = new WidgetClass(widgetId);
+      }
+    }
+
+    if (applyBtn) {
+      applyBtn.style.display = isWidgetActive ? "" : "none";
+    }
+
     const editableSettings = widget?.editableSettings || [];
 
     const savedStyles = this.getStyles(widgetId);
@@ -1230,30 +1225,32 @@ const WidgetLoader = {
         editor.style.transform = "none";
         editor.style.left = rect.left + "px";
         editor.style.top = rect.top + "px";
-        e.preventDefault();
-      });
+        const onMouseMove = (e) => {
+          let newLeft = e.clientX - settingsOffsetX;
+          let newTop = e.clientY - settingsOffsetY;
+          const rect = editor.getBoundingClientRect();
 
-      window.addEventListener("mousemove", (e) => {
-        if (!isSettingsDragging) return;
-        let newLeft = e.clientX - settingsOffsetX;
-        let newTop = e.clientY - settingsOffsetY;
-        const rect = editor.getBoundingClientRect();
+          newLeft = Math.max(
+            0,
+            Math.min(newLeft, window.innerWidth - rect.width),
+          );
+          newTop = Math.max(
+            0,
+            Math.min(newTop, window.innerHeight - rect.height),
+          );
 
-        newLeft = Math.max(
-          0,
-          Math.min(newLeft, window.innerWidth - rect.width),
-        );
-        newTop = Math.max(
-          0,
-          Math.min(newTop, window.innerHeight - rect.height),
-        );
+          editor.style.left = newLeft + "px";
+          editor.style.top = newTop + "px";
+        };
 
-        editor.style.left = newLeft + "px";
-        editor.style.top = newTop + "px";
-      });
+        const onMouseUp = () => {
+          isSettingsDragging = false;
+          window.removeEventListener("mousemove", onMouseMove);
+          window.removeEventListener("mouseup", onMouseUp);
+        };
 
-      window.addEventListener("mouseup", () => {
-        isSettingsDragging = false;
+        window.addEventListener("mousemove", onMouseMove);
+        window.addEventListener("mouseup", onMouseUp);
       });
     }
   },
@@ -1483,29 +1480,33 @@ const WidgetLoader = {
         mgr.style.transform = "none";
         mgr.style.left = rect.left + "px";
         mgr.style.top = rect.top + "px";
-        e.preventDefault();
+        const onMouseMove = (e) => {
+          let newLeft = e.clientX - offsetX;
+          let newTop = e.clientY - offsetY;
+          const rect = mgr.getBoundingClientRect();
+
+          newLeft = Math.max(
+            0,
+            Math.min(newLeft, window.innerWidth - rect.width),
+          );
+          newTop = Math.max(
+            0,
+            Math.min(newTop, window.innerHeight - rect.height),
+          );
+
+          mgr.style.left = newLeft + "px";
+          mgr.style.top = newTop + "px";
+        };
+
+        const onMouseUp = () => {
+          isDragging = false;
+          window.removeEventListener("mousemove", onMouseMove);
+          window.removeEventListener("mouseup", onMouseUp);
+        };
+
+        window.addEventListener("mousemove", onMouseMove);
+        window.addEventListener("mouseup", onMouseUp);
       });
-
-      window.addEventListener("mousemove", (e) => {
-        if (!isDragging) return;
-        let newLeft = e.clientX - offsetX;
-        let newTop = e.clientY - offsetY;
-        const rect = mgr.getBoundingClientRect();
-
-        newLeft = Math.max(
-          0,
-          Math.min(newLeft, window.innerWidth - rect.width),
-        );
-        newTop = Math.max(
-          0,
-          Math.min(newTop, window.innerHeight - rect.height),
-        );
-
-        mgr.style.left = newLeft + "px";
-        mgr.style.top = newTop + "px";
-      });
-
-      window.addEventListener("mouseup", () => (isDragging = false));
     }
   },
 };

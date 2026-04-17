@@ -1,55 +1,58 @@
 #traffic-log-list {
-    padding: 0;
+  padding: 0;
 }
 
 .traffic-entry {
-    white-space: pre;
-    font-size: 0.9rem;
-    line-height: 1.5;
-    padding: 2px 0.75rem;
+  white-space: pre;
+  font-size: 0.85rem;
+  line-height: 1.1;
+  padding: 0 0.4rem;
 }
 
 .traffic-entry span {
-    display: inline-block;
-    vertical-align: top;
+  display: inline-block;
+  vertical-align: top;
+  padding-right: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .traffic-timestamp {
-    width: 110px;
-    color: #999;
+  width: 78px;
+  color: #999;
 }
 
 .traffic-type {
-    width: 90px;
-    font-weight: bold;
+  width: 82px;
+  font-weight: bold;
 }
 
 .traffic-ip {
-    width: 280px;
-    color: #f0e68c;
+  width: 190px;
+  color: #f0e68c;
 }
 
 .traffic-protocol {
-    width: 110px;
-    color: #aaa;
+  width: 60px;
+  color: #aaa;
 }
 
 .traffic-process {
-    color: #f1f1f1;
+  color: #f1f1f1;
 }
 
 .OUTGOING {
-    color: cornflowerblue;
+  color: cornflowerblue;
 }
 
 .INCOMING {
-    color: #e94c4c;
+  color: #e94c4c;
 }
 
 .AT-OUT {
-    color: mediumpurple;
+  color: mediumpurple;
 }
 
 .AT-IN {
-    color: lightcoral;
+  color: lightcoral;
 }

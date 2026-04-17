@@ -46,7 +46,7 @@ body {
 }
 
 .widget-container {
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: rgba(255, 255, 255, 0.041);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 2px dashed transparent;
@@ -992,4 +992,70 @@ input[type="checkbox"].settings-input:focus {
   width: 16px;
   height: 16px;
   stroke: currentColor;
+}
+
+/* Unified Network Widget Styling */
+.net-list {
+  padding: 0;
+  height: calc(100% - 40px);
+  overflow-y: auto;
+}
+
+.net-entry {
+  white-space: pre;
+  font-size: 0.85rem;
+  line-height: 1.1;
+  padding: 0 0.4rem;
+  display: flex;
+}
+
+.net-cell {
+  display: inline-block;
+  vertical-align: top;
+  padding-right: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.net-timestamp {
+  width: 78px;
+  color: #999;
+}
+.net-type {
+  width: 82px;
+  font-weight: bold;
+}
+.net-ip {
+  width: 220px;
+  color: #f0e68c;
+}
+.net-port {
+  width: 220px;
+  color: #f0e68c;
+}
+.net-protocol {
+  width: 75px;
+  color: #aaa;
+}
+.net-process {
+  color: #f1f1f1;
+  flex-grow: 1;
+}
+
+.OUTGOING,
+.ESTABLISHED {
+  color: cornflowerblue;
+}
+.INCOMING,
+.CLOSE_WAIT {
+  color: #e94c4c;
+}
+.AT-OUT,
+.SYN_SENT {
+  color: mediumpurple;
+}
+.AT-IN,
+.LISTEN {
+  color: #50e3c2;
 }
