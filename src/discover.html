@@ -1504,11 +1504,11 @@
             currentPage = 1;
             currentSearchQuery = searchInput.value;
             if (currentSearchQuery) {
-                featuredSection.style.display = 'none';
+                if (featuredSection) featuredSection.style.display = 'none';
+                if (widgetsSection) widgetsSection.style.display = 'none';
             } else {
-                if (featuredData.length > 0) {
-                    featuredSection.style.display = 'block';
-                }
+                if (featuredSection && featuredData.length > 0) featuredSection.style.display = 'block';
+                if (widgetsSection && widgetsData.length > 0) widgetsSection.style.display = 'block';
             }
             fetchWallpapers();
         });
@@ -1517,9 +1517,8 @@
             if (e.target.value === '') {
                 currentSearchQuery = '';
                 currentPage = 1;
-                if (featuredData.length > 0) {
-                    featuredSection.style.display = 'block';
-                }
+                if (featuredSection && featuredData.length > 0) featuredSection.style.display = 'block';
+                if (widgetsSection && widgetsData.length > 0) widgetsSection.style.display = 'block';
                 fetchWallpapers();
             }
         });
@@ -1563,11 +1562,11 @@
             currentSearchQuery = '';
 
             if (currentFilter !== 'all') {
-                featuredSection.style.display = 'none';
+                if (featuredSection) featuredSection.style.display = 'none';
+                if (widgetsSection) widgetsSection.style.display = 'none';
             } else {
-                if (featuredData.length > 0) {
-                    featuredSection.style.display = 'block';
-                }
+                if (featuredSection && featuredData.length > 0) featuredSection.style.display = 'block';
+                if (widgetsSection && widgetsData.length > 0) widgetsSection.style.display = 'block';
             }
 
             fetchWallpapers();

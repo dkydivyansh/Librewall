@@ -821,9 +821,21 @@
                         }
                     });
 
-                    const box = new THREE.Box3().setFromObject(myModel);
-                    const center = box.getCenter(new THREE.Vector3());
-                    myModel.position.sub(center);
+                    if (config.disableAutoCenter !== true) {
+                        const box = new THREE.Box3().setFromObject(myModel);
+                        const center = box.getCenter(new THREE.Vector3());
+                        myModel.position.sub(center);
+                    } else {
+                        myModel.position.set(0, 0, 0);
+                    }
+
+                    const posX = config.modelPositionX !== undefined ? config.modelPositionX : 0;
+                    const posY = config.modelPositionY !== undefined ? config.modelPositionY : 0;
+                    const posZ = config.modelPositionZ !== undefined ? config.modelPositionZ : 0;
+
+                    myModel.position.x += posX;
+                    myModel.position.y += posY;
+                    myModel.position.z += posZ;
 
                     const rot = config.modelFrontRotation || { x: 0, y: 0, z: 0 };
                     baseRotation.set(
@@ -1089,6 +1101,37 @@
                                         (d.modelRotation.z || 0) * Math.PI / 180
                                     );
                                     myModel.rotation.copy(baseRotation);
+                                }
+
+                                if (d.disableAutoCenter !== undefined && myModel) {
+                                    config.disableAutoCenter = d.disableAutoCenter;
+                                    if (config.disableAutoCenter !== true) {
+                                        const box = new THREE.Box3().setFromObject(myModel);
+                                        const center = box.getCenter(new THREE.Vector3());
+                                        myModel.position.set(0, 0, 0);
+                                        myModel.position.sub(center);
+                                    } else {
+                                        myModel.position.set(0, 0, 0);
+                                    }
+                                }
+
+                                if ((d.modelPositionX !== undefined || d.modelPositionY !== undefined || d.modelPositionZ !== undefined) && myModel) {
+                                    if (d.modelPositionX !== undefined) config.modelPositionX = d.modelPositionX;
+                                    if (d.modelPositionY !== undefined) config.modelPositionY = d.modelPositionY;
+                                    if (d.modelPositionZ !== undefined) config.modelPositionZ = d.modelPositionZ;
+
+                                    if (config.disableAutoCenter !== true) {
+                                        const box = new THREE.Box3().setFromObject(myModel);
+                                        const center = box.getCenter(new THREE.Vector3());
+                                        myModel.position.set(0, 0, 0);
+                                        myModel.position.sub(center);
+                                    } else {
+                                        myModel.position.set(0, 0, 0);
+                                    }
+
+                                    myModel.position.x += (config.modelPositionX || 0);
+                                    myModel.position.y += (config.modelPositionY || 0);
+                                    myModel.position.z += (config.modelPositionZ || 0);
                                 }
                             }
                         });
