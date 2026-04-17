@@ -1081,6 +1081,81 @@
             color: #e74c3c;
         }
 
+        .widget-card.is-corrupted {
+            border-color: rgba(231, 76, 60, 0.3);
+            background: rgba(231, 76, 60, 0.05);
+        }
+
+        .widget-card.is-corrupted:hover {
+            border-color: var(--danger-color);
+        }
+
+        .widget-error-tooltip {
+            cursor: help;
+            display: flex;
+            align-items: center;
+        }
+
+        .redownload-btn {
+            background: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            margin-right: 8px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .redownload-btn:hover {
+            opacity: 0.9;
+        }
+        
+        .redownload-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .notification-toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(43, 43, 43, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            padding: 12px 24px;
+            border-radius: 12px;
+            color: white;
+            z-index: 100000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .notification-toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .notification-toast.success {
+            border-left: 4px solid var(--success-color);
+        }
+
+        .notification-toast.error {
+            border-left: 4px solid var(--danger-color);
+        }
+
         .widget-delete-btn {
             position: absolute;
             top: 20px;
@@ -2169,6 +2244,34 @@
             widgetToDeleteId = null;
         }
 
+        async function redownloadWidget(id, btn) {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner" style="width:12px; height:12px; border-width:2px; margin:0;"></div>';
+            
+            try {
+                const response = await fetch('/install_widget', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ widgetId: id })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showNotification("Widget redownloaded successfully!");
+                    openManageWidgets(); 
+                } else {
+                    throw new Error(data.error || "Download failed");
+                }
+            } catch (e) {
+                showNotification(e.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
         async function openManageWidgets() {
             manageWidgetsModal.style.display = 'flex';
             installedWidgetsList.innerHTML = '<div class="spinner" style="width:40px; height:40px; margin: 50px auto;"></div>';
@@ -2186,34 +2289,84 @@
                     return;
                 }
 
+                const appSettings = await fetch('/get_app_settings').then(r => r.json());
+
+                installedWidgetsList.innerHTML = '';
+
                 for (const widget of widgets) {
-                    let isCorrupted = false;
+                    let status = 'active'; 
+                    
                     try {
-                        const check = await fetch(`/widgets/${widget.id}/main.js?t=${Date.now()}`, { method: 'HEAD' });
-                        if (!check.ok) isCorrupted = true;
-                    } catch (e) { isCorrupted = true; }
+                        const jsPath = `/widgets/${widget.id}/main.js?t=${Date.now()}`;
+                        const module = await import(jsPath);
+                        if (!module.default) {
+                            status = 'error';
+                        }
+                    } catch (e) {
+                        status = 'missing';
+                    }
+
+                    const isCorrupted = status === 'error' || status === 'missing';
+                    let isAvailableInMarketplace = false;
+
+                    if (isCorrupted && appSettings.apiBaseUrl) {
+                        try {
+                            const baseUrl = appSettings.apiBaseUrl;
+                            const separator = baseUrl.includes('?') ? '&' : (baseUrl.endsWith('/') ? '?' : '/?');
+                            const checkUrl = `${baseUrl}${separator}action=get_widget_by_id&id=${encodeURIComponent(widget.id)}`;
+                            
+                            const checkResp = await fetch(checkUrl);
+                            const checkData = await checkResp.json();
+                            
+                            // Correct check for the provided marketplace API response format
+                            if (checkData.data && checkData.data.zipUrl) {
+                                isAvailableInMarketplace = true;
+                                console.log(`[ManageWidgets] Widget ${widget.id} IS available in marketplace.`);
+                            } else if (checkData.status === 'success' && checkData.data) {
+                                isAvailableInMarketplace = true;
+                                console.log(`[ManageWidgets] Widget ${widget.id} IS available in marketplace.`);
+                            } else if (checkData.id && checkData.zipUrl) {
+                                // Fallback for direct top-level object
+                                isAvailableInMarketplace = true;
+                            } else {
+                            }
+                        } catch(e) { 
+                        }
+                    }
 
                     const protectedWidgets = ['3', '4', '5', '6', '7'];
                     const isProtected = protectedWidgets.includes(widget.id);
 
                     const card = document.createElement('div');
-                    card.className = 'widget-card';
+                    card.className = `widget-card ${isCorrupted ? 'is-corrupted' : ''}`;
                     card.innerHTML = `
                         <div class="widget-card-header">
-                            <div class="widget-icon-placeholder">${widget.name.charAt(0).toUpperCase()}</div>
-                            ${isProtected ?
+                            <div class="widget-icon-placeholder" style="${isCorrupted ? 'background: var(--danger-color); opacity: 0.8;' : ''}">
+                                ${isCorrupted ? '!' : widget.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                ${isAvailableInMarketplace ? `
+                                    <button class="redownload-btn" onclick="redownloadWidget('${widget.id}', this)" title="Redownload from marketplace">
+                                        <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:currentColor;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                                        Redownload
+                                    </button>
+                                ` : ''}
+                                ${isProtected ?
                             `<div title="System Widget" style="opacity:0.5; padding:8px;"><svg viewBox="0 0 24 24" style="width:20px; height:20px; fill:#888;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg></div>` :
                             `<button class="widget-delete-btn" title="Delete Widget" onclick="promptDeleteWidget('${widget.id}', '${widget.name.replace(/'/g, "\\'")}')">
-                                    <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                                </button>`
+                                        <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                    </button>`
                         }
+                            </div>
                         </div>
                         <div class="widget-card-info">
                             <h3>${widget.name} <span style="opacity:0.4; font-size: 0.75em; font-weight: 400; margin-left: 5px;">v${widget.ver || '1'}</span></h3>
                             <p>by ${widget.author}</p>
                         </div>
                         <div class="widget-card-meta">
-                            <span class="widget-status ${isCorrupted ? 'corrupted' : 'active'}">${isCorrupted ? 'Corrupted' : 'Active'}</span>
+                            <span class="widget-status ${isCorrupted ? 'corrupted' : 'active'}">
+                                ${status === 'missing' ? 'Corrupted' : (status === 'error' ? 'Invalid' : 'Active')}
+                            </span>
                         </div>
                     `;
                     installedWidgetsList.appendChild(card);
@@ -2417,15 +2570,12 @@
                     const rData = await rResp.json();
                     const installedWidgets = rData.widgets || [];
 
-                    console.log(`[MarketUpdate] Checking ${installedWidgets.length} widgets...`);
-
                     const foundUpdates = [];
                     for (const w of installedWidgets) {
                         if (isNaN(w.id)) continue; 
                         
                         try {
                             const checkUrl = `${apiBaseUrl}action=get_widget_by_id&id=${w.id}`;
-                            console.log(`[MarketUpdate] Fetching ${checkUrl}`);
                             const mResp = await fetch(checkUrl);
                             if (!mResp.ok) throw new Error(`HTTP ${mResp.status}`);
                             
@@ -2433,10 +2583,8 @@
                             if (mData && mData.data) {
                                 const rv = parseFloat(mData.data.ver || 1);
                                 const lv = parseFloat(w.ver || 1);
-                                console.log(`[MarketUpdate] Widget ${w.id}: local v${lv}, remote v${rv}`);
                                 
                                 if (rv > lv) {
-                                    console.log(`[MarketUpdate] Update found for ${w.name}!`);
                                     foundUpdates.push({
                                         id: w.id,
                                         name: w.name,
@@ -2444,18 +2592,15 @@
                                         new_ver: rv
                                     });
                                 }
-                            } else {
-                                console.warn(`[MarketUpdate] Invalid response for ${w.id}:`, mData);
                             }
-                        } catch (e) { console.warn(`[MarketUpdate] Scan fail for ${w.id}:`, e); }
+                        } catch (e) { }
                     }
 
                     if (foundUpdates.length > 0) {
-                        console.log(`[MarketUpdate] Found ${foundUpdates.length} updates!`);
                         this.updates = foundUpdates;
                         this.showBar();
                     }
-                } catch (e) { console.error("[MarketUpdate] init fail", e); }
+                } catch (e) { }
             },
 
             showBar() {
