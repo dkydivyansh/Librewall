@@ -1285,6 +1285,15 @@
             </div>
         </div>
     </div>
+    <div id="missing-theme-modal" class="welcome-modal">
+        <div class="welcome-box">
+            <h2 style="color: var(--danger-color);">Missing Default Theme</h2>
+            <p>No wallpapers found in your library.<br>Would you like to install the default theme?</p>
+            <div class="welcome-buttons">
+                <button class="btn btn-primary" id="install-default-theme-btn" style="width: 100%;">Install Default Theme</button>
+            </div>
+        </div>
+    </div>
 
     <input type="file" id="import-file-input" accept=".zip" style="display: none;">
     <div id="engine-off-warning" class="engine-warning">The active wallpaper is not running because the Engine is
@@ -1704,6 +1713,7 @@
 
                     } else {
                         validGrid.innerHTML = "<p>No wallpapers found.</p>";
+                        document.getElementById('missing-theme-modal').style.display = 'flex';
                     }
 
                     if (data.invalidWallpapers?.length) {
@@ -2094,6 +2104,27 @@
 
             startLibrewallTour();
 
+        };
+        
+        document.getElementById('install-default-theme-btn').onclick = async () => {
+            const btn = document.getElementById('install-default-theme-btn');
+            btn.disabled = true;
+            btn.textContent = "Installing...";
+            try {
+                const r = await fetch('/install_theme', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ themeId: '135' })
+                });
+                if (!r.ok) throw new Error("Installation failed");
+                document.getElementById('missing-theme-modal').style.display = 'none';
+                loadWallpapers();
+                showAlert("Success", "Default Theme installed successfully!");
+            } catch (e) {
+                showAlert("Error", e.message);
+                btn.disabled = false;
+                btn.textContent = "Install Default Theme";
+            }
         };
 
         function startLibrewallTour() {

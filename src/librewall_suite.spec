@@ -1,4 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import copy_metadata
 
 block_cipher = None
 
@@ -6,7 +7,7 @@ a_gui = Analysis(
     ['Launcher.py'],
     pathex=['.'],
     binaries=[],
-    datas=[('1.ico', '.')], # Launcher icon
+    datas=[('1.ico', '.')] + copy_metadata('certifi'),
     hiddenimports=[],
     hookspath=[],
     runtime_hooks=[],
@@ -20,9 +21,8 @@ a_engine = Analysis(
     pathex=['.'],
     binaries=[],
     datas=[
-        ('3.ico', '.') # Engine icon
-        # Removed 'icon.ico' and 'wallpapers' as requested
-    ],
+        ('3.ico', '.') 
+    ] + copy_metadata('certifi'),
     hiddenimports=['port_map', 'video_widget', 'frontend.engine_assets'], 
     hookspath=[],
     runtime_hooks=[],

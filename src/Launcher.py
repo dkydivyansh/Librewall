@@ -29,6 +29,18 @@ import socket
 import json
 import mimetypes
 import urllib.request
+import ssl
+import certifi
+
+try:
+    secure_context = ssl.create_default_context(cafile=certifi.where())
+    https_handler = urllib.request.HTTPSHandler(context=secure_context)
+    secure_opener = urllib.request.build_opener(https_handler)
+    urllib.request.install_opener(secure_opener)
+    print("Secure SSL Context successfully initialized.")
+except Exception as e:
+    print(f"Warning: Failed to initialize secure SSL context: {e}")
+
 import webbrowser
 import subprocess
 import shutil
@@ -141,11 +153,17 @@ def _get_hwnd_by_title_substring(substring: str) -> int:
     user32.EnumWindows(EnumWindowsProc(callback), 0)
     return found_hwnd.value
 
-def bring_existing_instance_to_front(window_title="librewall") -> bool:
-    hwnd = user32.FindWindowW(None, window_title)
+def bring_existing_instance_to_front(mutex_name=r"Local\librewall") -> bool:
+    found_hwnd = ctypes.c_ulong(0)
 
-    if not hwnd:
-        hwnd = _get_hwnd_by_title_substring(window_title)
+    def callback(hwnd, lParam):
+        if user32.GetPropW(hwnd, mutex_name):
+            found_hwnd.value = hwnd
+            return False
+        return True
+
+    user32.EnumWindows(EnumWindowsProc(callback), 0)
+    hwnd = found_hwnd.value
 
     if not hwnd:
         return False
@@ -177,6 +195,9 @@ def check_single_instance(mutex_name=r"Local\librewall", window_title="librewall
     gpu_utils.mutex_handle = mutex_handle
 
     if kernel32.GetLastError() == 183:
+        user32.MessageBeep(0)
+        bring_existing_instance_to_front(mutex_name)
+        
         if mutex_handle:
             kernel32.CloseHandle(mutex_handle)
         sys.exit(0)
@@ -1679,6 +1700,12 @@ class EditorWindow(QMainWindow):
         self.webEngineView.settings().setAttribute(self.webEngineView.settings().WebAttribute.Accelerated2dCanvasEnabled, True)
         self.webEngineView.setHtml(LOADING_HTML_CONTENT, QUrl("about:blank"))
         self.show()
+        
+        try:
+            hwnd = int(self.winId())
+            user32.SetPropW(hwnd, r"Local\librewall", 1)
+        except Exception as e:
+            print(f"Warning: Could not set window property: {e}")
 
     def toggle_devtools(self):
         if not self.dev_tools_window:

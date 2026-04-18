@@ -48,6 +48,16 @@ import urllib.request
 import urllib.parse
 import urllib.error
 import ssl
+import certifi
+
+try:
+    secure_context = ssl.create_default_context(cafile=certifi.where())
+    https_handler = urllib.request.HTTPSHandler(context=secure_context)
+    secure_opener = urllib.request.build_opener(https_handler)
+    urllib.request.install_opener(secure_opener)
+    print("Engine Secure SSL Context successfully initialized.")
+except Exception as e:
+    print(f"Warning: Failed to initialize secure SSL context: {e}")
 import zlib 
 import base64
 import shutil
