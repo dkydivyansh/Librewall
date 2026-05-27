@@ -470,32 +470,84 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: var(--bg-color);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
             z-index: 9999;
             display: flex;
             justify-content: center;
             align-items: center;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.6s ease-out;
         }
 
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid var(--card-bg);
-            border-top: 5px solid var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            will-change: transform;
+        .pyramid-loader {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            display: block;
+            transform-style: preserve-3d;
+            transform: rotateX(-20deg);
         }
 
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
+        .pyramid-loader .wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            animation: pyramidSpin 4s linear infinite;
+        }
 
+        @keyframes pyramidSpin {
             100% {
-                transform: rotate(360deg);
+                transform: rotateY(360deg);
             }
+        }
+
+        .pyramid-loader .wrapper .side {
+            width: 70px;
+            height: 70px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            margin: auto;
+            transform-origin: center top;
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        }
+
+        .pyramid-loader .wrapper .side1 {
+            transform: rotateZ(-30deg) rotateY(90deg);
+            background: conic-gradient(#2BDEAC, #F028FD, #D8CCE6, #2F2585);
+        }
+
+        .pyramid-loader .wrapper .side2 {
+            transform: rotateZ(30deg) rotateY(90deg);
+            background: conic-gradient(#2F2585, #D8CCE6, #F028FD, #2BDEAC);
+        }
+
+        .pyramid-loader .wrapper .side3 {
+            transform: rotateX(30deg);
+            background: conic-gradient(#2F2585, #D8CCE6, #F028FD, #2BDEAC);
+        }
+
+        .pyramid-loader .wrapper .side4 {
+            transform: rotateX(-30deg);
+            background: conic-gradient(#2BDEAC, #F028FD, #D8CCE6, #2F2585);
+        }
+
+        .pyramid-loader .wrapper .shadow {
+            width: 60px;
+            height: 60px;
+            background: #8B5AD5;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            margin: auto;
+            transform: rotateX(90deg) translateZ(-40px);
+            filter: blur(12px);
         }
 
         ::-webkit-scrollbar {
@@ -574,6 +626,20 @@
 
         .type-label.widget {
             background-color: #ff9800;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--card-bg);
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spinnerRotate 1s linear infinite;
+        }
+
+        @keyframes spinnerRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .infinite-loader {
@@ -751,7 +817,15 @@
 
 <body>
     <div id="loader">
-        <div class="spinner"></div>
+        <div class="pyramid-loader">
+            <div class="wrapper">
+                <span class="side side1"></span>
+                <span class="side side2"></span>
+                <span class="side side3"></span>
+                <span class="side side4"></span>
+                <span class="shadow"></span>
+            </div>
+        </div>
     </div>
     <div id="notification-toast" class="notification-toast">
         <span id="notification-msg"></span>

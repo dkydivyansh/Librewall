@@ -200,8 +200,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QMenu, QSystemTrayIcon
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 
-from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile 
-from PyQt6.QtGui import QAction
+from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile
 
 user32   = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
@@ -1176,7 +1175,7 @@ def get_network_data(current_process_name):
     with TRAFFIC_LOCK: live_traffic = list(LIVE_TRAFFIC_LOG)
 
     active_connections_raw, listening_ports_raw = [], []
-    loopback_ips = ('1.27.0.0.1', '::1')
+    loopback_ips = ('127.0.0.1', '::1')
     try:
         connections = psutil.net_connections(kind='inet')
         for conn in connections:
@@ -1290,8 +1289,6 @@ if __name__ == "__main__":
         print("Debug Mode Enabled: Remote debugging active on port 9222")
         os.environ["QTWEBENGINE_REMOTE_DEBUGGING"] = "9222"
 
-    import secrets
-    import string
 
     try: 
         import psutil
