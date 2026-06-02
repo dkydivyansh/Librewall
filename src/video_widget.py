@@ -4,6 +4,7 @@ import ctypes
 from PyQt6.QtWidgets import QWidget, QMenu
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction
+import subprocess
 if getattr(sys, 'frozen', False):
     ROOT_DIR = os.path.dirname(sys.executable)
 else:
@@ -76,6 +77,12 @@ class NativeVideoWidget(QWidget):
             print(f"Video Engine Initialization Failed: {e}")
     def contextMenuEvent(self, event):
         menu = QMenu(self)
+        
+        action_open = QAction("Open Librewall", self)
+        action_open.triggered.connect(self.open_librewall)
+        menu.addAction(action_open)
+        menu.addSeparator()
+        
         if self.is_paused:
             action_pause = QAction("Resume Wallpaper", self)
             action_pause.triggered.connect(lambda: self.set_paused(False))
@@ -85,6 +92,19 @@ class NativeVideoWidget(QWidget):
         menu.addAction(action_pause)
         menu.addSeparator()
         menu.exec(event.globalPos())
+
+    def open_librewall(self):
+        print("Context menu: Opening Librewall")
+        launcher_exe = os.path.join(ROOT_DIR, 'librewall.exe')
+        launcher_py = os.path.join(ROOT_DIR, 'Launcher.py')
+        detach_flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        try:
+            if os.path.exists(launcher_exe):
+                subprocess.Popen([launcher_exe], cwd=ROOT_DIR, creationflags=detach_flags, close_fds=True)
+            elif os.path.exists(launcher_py):
+                subprocess.Popen([sys.executable, launcher_py], cwd=ROOT_DIR, creationflags=detach_flags, close_fds=True)
+        except Exception as e:
+            print(f"Error launching GUI: {e}")
     def set_paused(self, paused: bool):
         if hasattr(self, 'player'):
             self.player.pause = paused

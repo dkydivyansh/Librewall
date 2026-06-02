@@ -7,11 +7,13 @@ LAUNCHER_FILES = {
     'settings.html': 'DATA_SETTINGS',
     'discover.html': 'DATA_DISCOVER',
     'featured.html': 'DATA_FEATURED',
-    'widgets.html': 'DATA_WIDGETS'
+    'widgets.html': 'DATA_WIDGETS',
+    '1.ico': 'ICON_1'
 }
 LAUNCHER_OUTPUT = 'frontend_assets.py'
 ENGINE_FILES = {
-    'index.html': 'DATA_INDEX'
+    'index.html': 'DATA_INDEX',
+    '1.ico': 'ICON_1'
 }
 ENGINE_OUTPUT = 'engine_assets.py'
 LIBRARY_DIR = os.path.join('library', 'jsm')

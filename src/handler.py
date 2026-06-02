@@ -4,23 +4,28 @@ import shutil
 
 import api_config
 
+import threading
+
 _APP_DATA_DIR = None
+_appdata_lock = threading.Lock()
 
 def get_appdata_dir():
     """Return the root AppData directory for Librewall."""
     global _APP_DATA_DIR
-    if _APP_DATA_DIR is None:
-        local = os.getenv("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), "AppData", "Local")
-        _APP_DATA_DIR = os.path.join(local, "Librewall")
-        
-        import sys
-        if 'WindowsApps' in getattr(sys, 'base_prefix', ''):
-            import glob
-            py_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
-            pkg_pattern = os.path.join(local, "Packages", f"PythonSoftwareFoundation.Python.{py_ver}_*")
-            matches = glob.glob(pkg_pattern)
-            if matches:
-                _APP_DATA_DIR = os.path.join(matches[0], "LocalCache", "Local", "Librewall")
+    with _appdata_lock:
+        if _APP_DATA_DIR is None:
+            local = os.getenv("LOCALAPPDATA") or os.path.join(os.path.expanduser("~"), "AppData", "Local")
+            result = os.path.join(local, "Librewall")
+            
+            import sys
+            if 'WindowsApps' in getattr(sys, 'base_prefix', ''):
+                import glob
+                py_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
+                pkg_pattern = os.path.join(local, "Packages", f"PythonSoftwareFoundation.Python.{py_ver}_*")
+                matches = glob.glob(pkg_pattern)
+                if matches:
+                    result = os.path.join(matches[0], "LocalCache", "Local", "Librewall")
+            _APP_DATA_DIR = result
 
     return _APP_DATA_DIR
 
@@ -50,21 +55,31 @@ def init_appdata(install_dir):
         dst = os.path.join(base, name)
         src = os.path.join(install_dir, name)
 
+        os.makedirs(dst, exist_ok=True)
+        is_empty = (len(os.listdir(dst)) == 0)
+
+        # For wallpapers, only copy defaults if the directory is completely empty.
+        # For widgets, always scan and restore any missing system widgets.
+        should_copy_items = is_empty if name == api_config.WALLPAPERS_DIR else True
+
+        if should_copy_items and os.path.isdir(src):
+            for item in os.listdir(src):
+                src_item = os.path.join(src, item)
+                dst_item = os.path.join(dst, item)
+                if os.path.isdir(src_item) and item != "__pycache__":
+                    # Only copy if it doesn't already exist in the destination
+                    if not os.path.exists(dst_item) or (os.path.isdir(dst_item) and len(os.listdir(dst_item)) == 0):
+                        try:
+                            if os.path.exists(dst_item):
+                                shutil.rmtree(dst_item)
+                            shutil.copytree(src_item, dst_item)
+                            action = "Copied default" if is_empty else "Restored missing"
+                            print(f"[handler] {action} {name} item: {item}")
+                        except Exception as e:
+                            print(f"[handler] Failed to copy {name} item {item}: {e}")
+
         if name == api_config.WIDGETS_DIR:
-            os.makedirs(dst, exist_ok=True)
             if os.path.isdir(src):
-                for item in os.listdir(src):
-                    src_item = os.path.join(src, item)
-                    dst_item = os.path.join(dst, item)
-                    if os.path.isdir(src_item) and item != "__pycache__":
-                        if not os.path.exists(dst_item) or (os.path.isdir(dst_item) and not os.listdir(dst_item)):
-                            try:
-                                if os.path.exists(dst_item):
-                                    shutil.rmtree(dst_item)
-                                shutil.copytree(src_item, dst_item)
-                                print(f"[handler] Restored/Copied missing system widget: {item}")
-                            except Exception as e:
-                                print(f"[handler] Failed to copy widget {item}: {e}")
                 src_idx = os.path.join(src, "index.json")
                 dst_idx = os.path.join(dst, "index.json")
                 if os.path.isfile(src_idx):
@@ -98,17 +113,6 @@ def init_appdata(install_dir):
                                 print(f"[handler] Added {added} system widgets to local registry")
                         except Exception as e:
                             print(f"[handler] Error merging widget registry: {e}")
-            continue
-
-        if os.path.isdir(dst) and os.listdir(dst):
-            continue
-        if os.path.isdir(src):
-            if os.path.isdir(dst):
-                shutil.rmtree(dst)
-            shutil.copytree(src, dst)
-            print(f"[handler] Copied {name}/")
-        else:
-            os.makedirs(dst, exist_ok=True)
 
     dst_cfg = get_app_config_path()
     if not os.path.isfile(dst_cfg):

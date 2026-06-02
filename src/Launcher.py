@@ -51,6 +51,7 @@ import urllib.parse
 import email
 import random
 import string
+import re
 from PyQt6.QtCore import QUrl, Qt, QTimer
 try:
     from PyQt6.QtQuick import QQuickWindow, QSGRendererInterface
@@ -70,6 +71,7 @@ from ctypes import wintypes
 import hashlib
 from PIL import Image
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
+    "--no-sandbox "
     "--gpu-preference=high-performance "
     "--enable-gpu-rasterization "
     "--disable-gpu-driver-bug-workarounds "
@@ -781,6 +783,39 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_json_response(500, {'error': str(e)})
             return
 
+        elif self.path == '/wipe_user_data':
+            try:
+                try:
+                    gpu_utils.fast_kill_processes(['engine.exe', 'main.exe', 'librewall.exe'])
+                except Exception: pass
+                
+                appdata_dir = handler.get_appdata_dir()
+                if os.path.exists(appdata_dir):
+                    for item in os.listdir(appdata_dir):
+                        if item == 'app':
+                            continue
+                        item_path = os.path.join(appdata_dir, item)
+                        try:
+                            if os.path.isdir(item_path):
+                                shutil.rmtree(item_path, ignore_errors=True)
+                            else:
+                                os.remove(item_path)
+                        except Exception:
+                            pass
+                
+                try:
+                    update_startup_shortcut(False)
+                except Exception: pass
+                
+                self.send_json_response(200, {'status': 'success'})
+                
+                time.sleep(0.5)
+                os._exit(0)
+            except Exception as e:
+                print(f"Error wiping data: {e}")
+                self.send_json_response(500, {'error': str(e)})
+            return
+
         elif self.path == '/restart_app':
             try:
                 self.send_json_response(200, {'status': 'success', 'message': 'Initiating restart sequence...'})
@@ -926,7 +961,6 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                             main_js_path = root_folder + 'main.js' if root_folder + 'main.js' in zf.namelist() else 'main.js'
                             with zf.open(main_js_path) as source:
                                 js_content = source.read().decode('utf-8', errors='ignore')
-                                import re
                                 name_match = re.search(r'@name:\s*([^\n\r]+)', js_content)
                                 if not name_match: name_match = re.search(r'name:\s*[\'"]([^\'"]+)[\'"]', js_content)
                                 author_match = re.search(r'@author:\s*([^\n\r]+)', js_content)
@@ -1055,7 +1089,6 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                             with zf.open(file_info) as source, open(target_path, 'wb') as target:
                                 target.write(source.read())
 
-                        import re
                         main_js_path = os.path.join(widgets_dir, 'main.js')
                         widget_name = f"Widget {theme_id}"
                         widget_author = "Local Import"
@@ -1759,7 +1792,12 @@ if __name__ == "__main__":
     threading.Thread(target=cleanup_old_cache, daemon=True).start()
 
     icon_path = os.path.join(SERVER_ROOT, '1.ico')
-    if os.path.exists(icon_path):
+    if HAS_EMBEDDED_ASSETS and frontend_assets.get_asset('ICON_1'):
+        icon_data = frontend_assets.get_asset('ICON_1')
+        from PyQt6.QtGui import QImage, QPixmap
+        image = QImage.fromData(icon_data)
+        app.setWindowIcon(QIcon(QPixmap.fromImage(image)))
+    elif os.path.exists(icon_path):
         app.setWindowIcon(QIcon(icon_path))
 
     try:
@@ -1788,6 +1826,20 @@ if __name__ == "__main__":
             sys.exit(1)
 
     startup_config = read_app_config()
+    
+    if not startup_config.get('first_run_completed', False):
+        if startup_config.get('auto_start', True):
+            print("First run detected: Registering engine for auto-start with Windows.")
+            update_startup_shortcut(True)
+        
+        startup_config['first_run_completed'] = True
+        config_path = handler.get_app_config_path()
+        try:
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(startup_config, f, indent=2)
+        except Exception as e:
+            print(f"Failed to save first_run_completed flag: {e}")
+
     if startup_config.get('auto_start', True):
 
         engine_port = startup_config.get('port', 8080)

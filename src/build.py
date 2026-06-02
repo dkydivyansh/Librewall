@@ -22,6 +22,14 @@ def run_build():
     ]
 
     print(f" Starting Build Process for Librewall...")
+
+    print(" Running build-assets.py...")
+    try:
+        subprocess.run([sys.executable, "build-assets.py"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f" Error running build-assets.py: {e}")
+        sys.exit(1)
+
     print(f" Running PyInstaller on {SPEC_FILE}...")
 
     start_time = time.time()

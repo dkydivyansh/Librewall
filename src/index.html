@@ -253,7 +253,7 @@
         async function init() {
 
             try {
-                const response = await fetch(getPath('/config'));
+                const response = await fetch(getPath('/config') + '?t=' + Date.now());
                 if (!response.ok) {
                     const errorText = await response.text();
                     throw new Error(`Config not found or invalid: ${response.status} ${response.statusText}. Server said: ${errorText}`);
@@ -524,7 +524,7 @@
                         const link = document.createElement('link');
                         link.rel = 'stylesheet';
                         link.type = 'text/css';
-                        link.href = getPath(config.cssFile);
+                        link.href = getPath(config.cssFile) + '?t=' + Date.now();
                         document.head.appendChild(link);
                         console.log(`Injected CSS: ${config.cssFile}`);
                     } catch (e) {
@@ -534,7 +534,7 @@
 
                 if (config.htmlWidgetFile) {
                     try {
-                        const response = await fetch(getPath(config.htmlWidgetFile));
+                        const response = await fetch(getPath(config.htmlWidgetFile) + '?t=' + Date.now());
                         if (!response.ok) throw new Error(`File not found: ${config.htmlWidgetFile}`);
                         const html = await response.text();
                         const container = document.getElementById('external-widget-root');
@@ -553,7 +553,7 @@
                     try {
                         const script = document.createElement('script');
                         script.type = 'module';
-                        script.src = getPath(config.logicFile);
+                        script.src = getPath(config.logicFile) + '?t=' + Date.now();
                         document.body.appendChild(script);
                         console.log(`Injected JS: ${config.logicFile}`);
                     } catch (e) {

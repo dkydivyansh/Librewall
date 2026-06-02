@@ -2160,7 +2160,7 @@
                 await fetch('/save_app_settings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tour_v2: true })
+                    body: JSON.stringify({ tour_v2: true, auto_start: true })
                 });
                 document.getElementById('welcome-modal').style.display = 'none';
             } catch (e) {

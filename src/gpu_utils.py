@@ -84,20 +84,31 @@ def release_mutex():
         kernel32.CloseHandle(mutex_handle)
         mutex_handle = None
 
+def fast_kill_processes(target_names):
+    import psutil
+    current_pid = os.getpid()
+    for proc in psutil.process_iter(['pid', 'name']):
+        try:
+            if proc.info['pid'] != current_pid and proc.info['name'] and proc.info['name'].lower() in target_names:
+                proc.kill()
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+
 def restart_librewall():
     try:
         release_mutex() 
     except Exception as e:
         print(f"Mutex release failed: {e}")
-    time.sleep(0.3) 
-    try:
-        subprocess.run('taskkill /F /IM engine.exe /IM main.exe /T', shell=True, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
-    except:
-        pass
+        
+    # Instantly kill sibling engine processes without taskkill overhead/race conditions
+    fast_kill_processes(['engine.exe', 'main.exe', 'librewall.exe'])
+    
     if getattr(sys, 'frozen', False):
         exe = sys.executable
         args = [exe]
     else:
         exe = sys.executable
         args = [exe, os.path.abspath(sys.argv[0])]
+        
+    # os.execv completely replaces the current process, making restart instantaneous
     os.execv(exe, args)

@@ -173,6 +173,7 @@ def get_reliable_windows_id():
 current_scale = get_real_screen_scale()
 
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
+    "--no-sandbox "
     f"--force-device-scale-factor={current_scale} "
     "--high-dpi-support=1 "
     "--enable-use-zoom-for-dsf=true "
@@ -805,6 +806,10 @@ class CustomWebEngineView(QWebEngineView):
         super().__init__()
         self.window = window
         self.context_menu = QMenu(self)
+        
+        open_action = self.context_menu.addAction("Open Librewall")
+        self.context_menu.addSeparator()
+        
         reload_action = self.context_menu.addAction("Reload Wallpaper")
         self.context_menu.addSeparator()
         self.pause_action = self.context_menu.addAction("Pause Wallpaper")
@@ -815,15 +820,22 @@ class CustomWebEngineView(QWebEngineView):
             edit_widgets_action = self.context_menu.addAction("Edit Widgets")
             edit_widgets_action.triggered.connect(self.toggle_edit_mode)
             
+        open_action.triggered.connect(self.open_librewall)
         reload_action.triggered.connect(self.reload_page)
         self.pause_action.triggered.connect(self.window.pause_wallpaper)
         self.resume_action.triggered.connect(self.window.resume_wallpaper)
 
     def contextMenuEvent(self, event):
-        if self.window.is_paused:
-            self.pause_action.setEnabled(False); self.resume_action.setEnabled(True)
+        if getattr(self.window, 'is_app_mode', False):
+            self.pause_action.setVisible(False)
+            self.resume_action.setVisible(False)
         else:
-            self.pause_action.setEnabled(True); self.resume_action.setEnabled(False)
+            self.pause_action.setVisible(True)
+            self.resume_action.setVisible(True)
+            if self.window.is_paused:
+                self.pause_action.setEnabled(False); self.resume_action.setEnabled(True)
+            else:
+                self.pause_action.setEnabled(True); self.resume_action.setEnabled(False)
         self.context_menu.exec(event.globalPos())
     def toggle_edit_mode(self):
         print("Context menu: Triggering Edit Mode")
@@ -832,6 +844,18 @@ class CustomWebEngineView(QWebEngineView):
         print("Context menu reload: Triggering app restart.")
         self.window.app.is_restarting = True
         QTimer.singleShot(0, self.window.app.quit)
+    def open_librewall(self):
+        print("Context menu: Opening Librewall")
+        launcher_exe = os.path.join(SCRIPT_DIR, 'librewall.exe')
+        launcher_py = os.path.join(SCRIPT_DIR, 'Launcher.py')
+        detach_flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        try:
+            if os.path.exists(launcher_exe):
+                subprocess.Popen([launcher_exe], cwd=SCRIPT_DIR, creationflags=detach_flags, close_fds=True)
+            elif os.path.exists(launcher_py):
+                subprocess.Popen([sys.executable, launcher_py], cwd=SCRIPT_DIR, creationflags=detach_flags, close_fds=True)
+        except Exception as e:
+            print(f"Error launching GUI: {e}")
 
 class AuthWebEnginePage(QWebEnginePage):
 
@@ -986,6 +1010,8 @@ class WallpaperWindow(QMainWindow):
             self.browser.page().runJavaScript(js_patch)
 
     def pause_wallpaper(self):
+        if getattr(self, 'is_app_mode', False):
+            return
         if not self.is_paused:
             print("Status: Paused ⏸")
             self.is_paused = True
@@ -1001,6 +1027,8 @@ class WallpaperWindow(QMainWindow):
                 self.browser.page().runJavaScript(js_pause)
 
     def resume_wallpaper(self):
+        if getattr(self, 'is_app_mode', False):
+            return
         if self.is_paused:
             print("Status: Live ▶")
             self.is_paused = False
@@ -1024,44 +1052,30 @@ class WallpaperWindow(QMainWindow):
             ex_style &= ~win32con.WS_EX_APPWINDOW   
             win32gui.SetWindowLong(self.window_handle, win32con.GWL_EXSTYLE, ex_style)
 
-            progman = win32gui.FindWindow("Progman", None)
-            win32gui.SendMessageTimeout(progman, 0x052C, 0, 0, win32con.SMTO_NORMAL, 1000)
-
-            workerw = None
-            def find_workerw(hwnd, _):
-                nonlocal workerw
-                if win32gui.FindWindowEx(hwnd, 0, "SHELLDLL_DefView", None):
-                    workerw = win32gui.FindWindowEx(0, hwnd, "WorkerW", None)
-                    return False
-                return True
-            win32gui.EnumWindows(find_workerw, 0)
-
-            if workerw:
-                print(f"Attaching to Desktop (WorkerW: {workerw})")
-                win32gui.SetParent(self.window_handle, workerw)
-
-                win32gui.SetWindowPos(
-                    self.window_handle, 
-                    1,
-                    self.rect.x(), self.rect.y(), self.rect.width(), self.rect.height(), 
-                    win32con.SWP_NOACTIVATE
-                )
+            # We completely bypass the unreliable Windows 11 WorkerW hack.
+            # Instead, we place the window strictly at the bottom of the Z-order.
+            if getattr(self, 'is_app_mode', False):
+                print("App Mode: Placing window at HWND_BOTTOM.")
             else:
-                print("WorkerW not found. Using Fallback.")
+                print("Wallpaper Mode: Placing window at HWND_BOTTOM.")
 
-                safe_height = self.rect.height()
-                if not self.is_app_mode: safe_height -= 1
+            safe_height = self.rect.height()
+            if not getattr(self, 'is_app_mode', False): 
+                safe_height -= 1
 
-                win32gui.SetWindowPos(
-                    self.window_handle, 
-                    1,
-                    self.rect.x(), self.rect.y(), self.rect.width(), safe_height, 
-                    win32con.SWP_NOACTIVATE
-                )
+            win32gui.SetWindowPos(
+                self.window_handle, 
+                1, # HWND_BOTTOM
+                self.rect.x(), self.rect.y(), self.rect.width(), safe_height, 
+                win32con.SWP_NOACTIVATE | win32con.SWP_SHOWWINDOW
+            )
         except Exception as e:
             print(f"Error setting up window layer: {e}")
 
     def check_fullscreen(self):
+        if getattr(self, 'is_app_mode', False):
+            return
+            
         try:
             fg_window = win32gui.GetForegroundWindow()
             if not fg_window or fg_window == self.window_handle: return
@@ -1271,9 +1285,15 @@ if __name__ == "__main__":
     import string
     app = QApplication(sys.argv)
 
-    icon_path = os.path.join(SCRIPT_DIR, 'icon.ico') 
-    if os.path.exists(icon_path):
-        app.setWindowIcon(QIcon(icon_path))
+    if HAS_EMBEDDED_ASSETS and engine_assets.get_asset('ICON_1'):
+        icon_data = engine_assets.get_asset('ICON_1')
+        from PyQt6.QtGui import QImage, QPixmap
+        image = QImage.fromData(icon_data)
+        app.setWindowIcon(QIcon(QPixmap.fromImage(image)))
+    else:
+        icon_path = os.path.join(SCRIPT_DIR, '1.ico') 
+        if os.path.exists(icon_path):
+            app.setWindowIcon(QIcon(icon_path))
 
     try:
         myappid = api_config.APP_USER_MODEL_ID
@@ -1335,11 +1355,7 @@ if __name__ == "__main__":
         threading.Thread(target=start_websocket_thread, args=(current_proc_name,), daemon=True).start()
 
     tray_icon = QSystemTrayIcon(app)
-    tray_icon_path = os.path.join(SCRIPT_DIR, '1.ico')
-    if os.path.exists(tray_icon_path):
-        tray_icon.setIcon(QIcon(tray_icon_path))
-    else:
-        tray_icon.setIcon(app.windowIcon())
+    tray_icon.setIcon(app.windowIcon())
     
     tray_menu = QMenu()
     
@@ -1374,6 +1390,8 @@ if __name__ == "__main__":
             window.pause_wallpaper()
             pause_action.setText("Resume Wallpaper")
     pause_action.triggered.connect(toggle_pause)
+    if getattr(window, 'is_app_mode', False):
+        pause_action.setVisible(False)
     tray_menu.addAction(pause_action)
     
     reload_action = QAction("Reload Wallpaper", app)
