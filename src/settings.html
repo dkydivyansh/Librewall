@@ -391,6 +391,17 @@
     </div>
 
     <main class="content-wrapper">
+        <h2>Library</h2>
+        <div class="settings-card">
+            <div class="setting-row">
+                <div>
+                    <span class="setting-label">Import Theme / Widget</span>
+                    <p style="font-size: 0.8rem; color: #aaa; margin: 4px 0 0 0;">Load a .zip file manually into Librewall.</p>
+                </div>
+                <button id="import-btn" class="btn btn-primary">Import</button>
+            </div>
+        </div>
+
         <h2>General</h2>
         <div class="settings-card">
             <div class="setting-row">
@@ -418,6 +429,34 @@
                     <option value="1">Power Saving (iGPU)</option>
                     <option value="2">High Performance (dGPU)</option>
                 </select>
+            </div>
+        </div>
+
+        <input type="file" id="import-file-input" accept=".zip" style="display: none;">
+        <div id="import-warning-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100000; align-items:center; justify-content:center;">
+            <div style="background:var(--card-bg); padding:20px; border-radius:8px; max-width:400px; text-align:center; border:1px solid var(--danger-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                <h3 style="margin-top:0; color:var(--danger-color);">Security Warning</h3>
+                <p style="color:var(--author-color); margin: 15px 0;">Import external files at your own risk. They may contain malware and can harm your system.</p>
+                <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
+                    <button id="import-warning-cancel" class="btn" style="background:#555;">Cancel</button>
+                    <button id="import-warning-continue" class="btn btn-danger">Continue</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="import-preview-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100000; align-items:center; justify-content:center;">
+            <div style="background:var(--card-bg); padding:20px; border-radius:8px; max-width:400px; text-align:left; border:1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                <h3 style="margin-top:0; color:var(--text-color); text-align:center;">Confirm Installation</h3>
+                <div style="margin: 15px 0; background: var(--bg-color); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <p style="margin: 0 0 10px 0;"><strong>Type:</strong> <span id="preview-type" style="text-transform: capitalize; color: var(--primary-color);"></span></p>
+                    <p style="margin: 0 0 10px 0;"><strong>Name:</strong> <span id="preview-name"></span></p>
+                    <p style="margin: 0 0 10px 0;"><strong>Author:</strong> <span id="preview-author" style="color: var(--author-color);"></span></p>
+                    <p style="margin: 0; font-size: 0.85em; color: var(--secondary-color);"><strong>ID:</strong> <span id="preview-id"></span></p>
+                </div>
+                <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
+                    <button id="import-preview-cancel" class="btn" style="background:#555;">Cancel</button>
+                    <button id="import-preview-confirm" class="btn btn-primary">Install</button>
+                </div>
             </div>
         </div>
 
@@ -763,6 +802,63 @@
                 container.innerHTML = '<p style="color:var(--danger-color); text-align:center;">Failed to load contributors.</p>';
             }
         }
+
+        const importOverlay = document.getElementById('import-warning-overlay');
+        document.getElementById('import-btn').onclick = () => { importOverlay.style.display = 'flex'; };
+        document.getElementById('import-warning-cancel').onclick = () => importOverlay.style.display = 'none';
+        document.getElementById('import-warning-continue').onclick = () => {
+            importOverlay.style.display = 'none';
+            document.getElementById('import-file-input').click();
+        };
+
+        let pendingImportFormData = null;
+        document.getElementById('import-file-input').onchange = async (e) => {
+            if (!e.target.files[0]) return;
+            const btn = document.getElementById('import-btn');
+            const file = e.target.files[0];
+            const txt = btn.textContent; 
+            btn.disabled = true; 
+            btn.textContent = "Scanning...";
+            
+            const fd = new FormData(); 
+            fd.append('themeFile', file);
+            
+            try {
+                const r = await fetch('/preview_import', { method: 'POST', body: fd });
+                if (!r.ok) throw new Error((await r.json()).error);
+                const data = await r.json();
+                
+                document.getElementById('preview-type').textContent = data.type;
+                document.getElementById('preview-name').textContent = data.name;
+                document.getElementById('preview-author').textContent = data.author;
+                document.getElementById('preview-id').textContent = data.id;
+                
+                pendingImportFormData = fd;
+                document.getElementById('import-preview-overlay').style.display = 'flex';
+                
+            } catch (err) { alert('Error Reading Zip: ' + err.message); }
+            finally { btn.disabled = false; btn.textContent = txt; e.target.value = null; }
+        };
+
+        document.getElementById('import-preview-cancel').onclick = () => document.getElementById('import-preview-overlay').style.display = 'none';
+        
+        document.getElementById('import-preview-confirm').onclick = async () => {
+            if (!pendingImportFormData) return;
+            document.getElementById('import-preview-overlay').style.display = 'none';
+            const btn = document.getElementById('import-btn');
+            const txt = btn.textContent; 
+            btn.disabled = true; 
+            btn.textContent = "Installing...";
+            
+            try {
+                const r = await fetch('/import_theme', { method: 'POST', body: pendingImportFormData });
+                if (!r.ok) throw new Error((await r.json()).error);
+                const data = await r.json();
+                
+                alert('Installed Successfully!');
+            } catch (err) { alert('Installation Error: ' + err.message); }
+            finally { btn.disabled = false; btn.textContent = txt; pendingImportFormData = null; }
+        };
 
         loadSettings();
         loadContributors();

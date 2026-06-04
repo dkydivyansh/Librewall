@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marketplace</title>
+    <title>Cursors</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -638,8 +638,13 @@
         }
 
         @keyframes spinnerRotate {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .infinite-loader {
@@ -833,16 +838,13 @@
 
     <header class="header">
         <a href="/" class="header-btn">&larr; Back</a>
-        <h1 class="header-title">Marketplace</h1>
+        <h1 class="header-title">Cursors</h1>
+        <button class="header-btn" onclick="document.getElementById('cursor-test-modal').style.display='flex'"
+            style="margin-left: auto; margin-right: 1rem; background-color: #2a2a2a; border: 1px solid #444; padding: 8px 16px;">Test Cursors</button>
+        <button class="header-btn" id="default-cursor-btn"
+            style="margin-right: 1rem; background-color: #444;">Default Cursor</button>
         <form class="search-form" id="search-form">
-            <div class="filter-buttons" id="filter-container">
-                <button class="filter-chip active" type="button" data-value="all" onclick="setFilter('all')">All
-                    Types</button>
-                <button class="filter-chip" type="button" data-value="3d" onclick="setFilter('3d')">3D Models</button>
-                <button class="filter-chip" type="button" data-value="video"
-                    onclick="setFilter('video')">Videos</button>
-                <button class="filter-chip" type="button" data-value="app" onclick="setFilter('app')">Apps</button>
-            </div>
+
             <div class="search-container">
                 <input type="search" id="search-input" placeholder="Search themes...">
                 <button type="submit">
@@ -870,25 +872,86 @@
         </div>
     </div>
 
+    <div id="custom-confirm-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:20002; align-items:center; justify-content:center;">
+        <div
+            style="background:var(--card-bg); padding:20px; border-radius:8px; max-width:400px; text-align:center; border:1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <h3 style="margin-top:0; color:var(--text-color);" id="custom-confirm-title">Confirm Action</h3>
+            <p style="color:var(--secondary-color); word-break:break-word; margin: 15px 0;" id="custom-confirm-text"></p>
+            <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
+                <button onclick="closeCustomConfirmModal()" class="btn btn-secondary"
+                    style="background:#555; border:none; color:white; padding:8px 16px; border-radius:4px; cursor:pointer;">Cancel</button>
+                <button onclick="executeCustomConfirm()" class="btn btn-primary"
+                    style="background:#0d6efd; border:none; color:white; padding:8px 16px; border-radius:4px; cursor:pointer;" id="custom-confirm-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cursor-test-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:20003; align-items:center; justify-content:center;">
+        <div style="background:var(--card-bg); padding:30px; border-radius:12px; max-width:600px; width: 90%; text-align:center; border:1px solid var(--border-color); box-shadow: 0 10px 40px rgba(0,0,0,0.6);">
+            <h2 style="margin-top:0; color:var(--text-color); margin-bottom: 20px;">Cursor Test Area</h2>
+            <p style="color:var(--secondary-color); margin-bottom: 25px; font-size: 0.9rem;">Hover over the boxes below to test different cursor states.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 15px;">
+                <div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: default; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 8px; opacity: 0.7;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <div style="font-size: 0.8rem; color: var(--secondary-color);">Default</div>
+                </div>
+                <div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 8px; opacity: 0.7;"><path d="M9 11V4c0-1.1.9-2 2-2s2 .9 2 2v7M13 13v-2c0-1.1.9-2 2-2s2 .9 2 2v2M17 13v-1c0-1.1.9-2 2-2s2 .9 2 2v7c0 2.2-1.8 4-4 4h-3c-1.1 0-2.1-.4-2.8-1.2l-4.2-4.2c-.8-.8-.8-2 0-2.8.8-.8 2-.8 2.8 0L9 11"/></svg>
+                    <div style="font-size: 0.8rem; color: var(--secondary-color);">Link</div>
+                </div>
+                <div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: text; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 8px; opacity: 0.7;"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+                    <div style="font-size: 0.8rem; color: var(--secondary-color);">Text</div>
+                </div>
+                <div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: crosshair; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 8px; opacity: 0.7;"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+                    <div style="font-size: 0.8rem; color: var(--secondary-color);">Crosshair</div>
+                </div>
+                <div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: help; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 8px; opacity: 0.7;"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r="0.5"/></svg>
+                    <div style="font-size: 0.8rem; color: var(--secondary-color);">Help</div>
+                </div>
+                <div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: move; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 8px; opacity: 0.7;"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="19 9 22 12 19 15"/><polyline points="9 19 12 22 15 19"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+                    <div style="font-size: 0.8rem; color: var(--secondary-color);">Move</div>
+                </div>
+                <div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: not-allowed; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 8px; opacity: 0.7;"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                    <div style="font-size: 0.8rem; color: var(--secondary-color);">Unavailable</div>
+                </div>
+                <div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: wait; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 8px; opacity: 0.7;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <div style="font-size: 0.8rem; color: var(--secondary-color);">Working</div>
+                </div>
+                <div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: ns-resize; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 8px; opacity: 0.7;"><polyline points="8 18 12 22 16 18"/><polyline points="8 6 12 2 16 6"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+                    <div style="font-size: 0.8rem; color: var(--secondary-color);">Resize V</div>
+                </div>
+                <div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: ew-resize; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 8px; opacity: 0.7;"><polyline points="18 8 22 12 18 16"/><polyline points="6 8 2 12 6 16"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                    <div style="font-size: 0.8rem; color: var(--secondary-color);">Resize H</div>
+                </div>
+                <div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: nwse-resize; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 8px; opacity: 0.7;"><polyline points="21 15 21 21 15 21"/><polyline points="9 3 3 3 3 9"/><line x1="21" y1="21" x2="3" y2="3"/></svg>
+                    <div style="font-size: 0.8rem; color: var(--secondary-color);">Resize D1</div>
+                </div>
+                <div style="padding: 20px; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: nesw-resize; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 8px; opacity: 0.7;"><polyline points="9 21 3 21 3 15"/><polyline points="21 9 21 3 15 3"/><line x1="3" y1="21" x2="21" y2="3"/></svg>
+                    <div style="font-size: 0.8rem; color: var(--secondary-color);">Resize D2</div>
+                </div>
+            </div>
+            
+            <div style="margin-top:30px;">
+                <button onclick="document.getElementById('cursor-test-modal').style.display='none'" class="btn btn-secondary"
+                    style="background:#555; border:none; color:white; padding:10px 24px; border-radius:4px; cursor:pointer; font-weight: bold;">Close</button>
+            </div>
+        </div>
+    </div>
+
     <main class="content-wrapper">
-        <div id="featured-section" style="display: none; margin-bottom: 2.5rem;">
-            <div class="featured-header">
-                <h2 style="border: none; padding: 0; margin: 0;">Featured</h2>
-                <a href="/featured.html" class="featured-see-more">See More <span>&rarr;</span></a>
-            </div>
-            <div id="featured-grid" class="wallpaper-grid"></div>
-        </div>
-
-        <div id="widgets-section" style="display: none; margin-bottom: 2.5rem;">
-            <div class="featured-header">
-                <h2 style="border: none; padding: 0; margin: 0;">Widgets</h2>
-                <a href="/widgets.html" class="featured-see-more">See More <span>&rarr;</span></a>
-            </div>
-            <div id="widgets-grid" class="wallpaper-grid"></div>
-        </div>
-
-
-        <h2 id="page-title">New Releases</h2>
 
         <div id="wallpaper-grid-valid" class="wallpaper-grid"></div>
 
@@ -957,45 +1020,10 @@
             if (!isInitialized || API_BASE_URL === '#') {
                 showEndpointError();
             } else {
-                fetchFeatured();
-                await fetchInstalledWidgets();
-                fetchWidgets();
                 fetchWallpapers();
             }
         });
 
-        let widgetsData = [];
-        const widgetsGrid = document.getElementById('widgets-grid');
-        const widgetsSection = document.getElementById('widgets-section');
-
-        async function fetchWidgets() {
-            if (!widgetsSection || !widgetsGrid) return;
-
-            try {
-                const response = await fetch(`${API_BASE_URL}?action=get_widgets&page=1`);
-                if (!response.ok) return;
-                const data = await response.json();
-
-                if (data.data && data.data.length > 0) {
-                    widgetsData = data.data.map(widget => ({
-                        id: widget.id,
-                        themeName: widget.widgetName || widget.name || widget.themeName,
-                        author: widget.author,
-                        thumbnailUrl: widget.thumbnailUrl,
-                        description: widget.description,
-                        min_version: widget.min_version,
-                        zipUrl: widget.zipUrl,
-                        ver: widget.ver,
-                        type: 'widget',
-                        isWidget: true
-                    }));
-                    widgetsSection.style.display = 'block';
-                    updateWidgetsLayout();
-                }
-            } catch (e) {
-                console.error("Error fetching widgets:", e);
-            }
-        }
         const API_PAGE_LIMIT = 50;
 
         let CURRENT_APP_VERSION = 1;
@@ -1003,37 +1031,7 @@
         let currentSearchQuery = '';
         let currentTheme = null;
         let installedThemeIds = [];
-        let installedWidgetIds = [];
-        let installedWidgetsMap = {}; 
-        let systemIds = []; 
-        let featuredData = [];
-        const featuredSection = document.getElementById('featured-section');
-
-        async function fetchInstalledWidgets() {
-            try {
-                const response = await fetch('/widgets/index.json');
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.widgets) {
-                        installedWidgetsMap = {};
-                        data.widgets.forEach(w => {
-                            installedWidgetsMap[w.id.toString()] = w;
-                        });
-                        installedWidgetIds = data.widgets.map(w => w.id.toString());
-                    }
-                }
-                
-                const updResp = await fetch('/get_widget_updates', { method: 'POST' });
-                const updData = await updResp.json();
-                if (updData.status === 'success') {
-                    systemIds = updData.systemIds || [];
-                }
-            } catch (err) { 
-                console.error("Error fetching installed widgets:", err);
-            }
-        }
-        const featuredGrid = document.getElementById('featured-grid');
-
+        
         const lightboxOverlay = document.getElementById('lightbox-overlay');
         const lightboxClose = document.getElementById('lightbox-close');
 
@@ -1046,74 +1044,17 @@
         const errorView = document.getElementById('connection-error');
         const retryBtn = document.getElementById('retry-btn');
 
-        const pageTitle = document.getElementById('page-title');
         const searchForm = document.getElementById('search-form');
         const searchInput = document.getElementById('search-input');
-        async function fetchFeatured() {
-            if (!API_BASE_URL || API_BASE_URL === '#') return;
-
-            try {
-                const response = await fetch(`${API_BASE_URL}?action=discover&featured=true`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.data && data.data.length > 0) {
-                        featuredData = data.data;
-                        featuredSection.style.display = 'block';
-                        updateFeaturedLayout();
-                    }
-                }
-            } catch (err) {
-                console.error("Failed to fetch featured:", err);
-            }
-        }
-        function updateFeaturedLayout() {
-            if (!featuredData.length) return;
-
-            const containerWidth = featuredSection.clientWidth;
-            const cardWidth = 240;
-            const gap = 24;
-
-            let columns = Math.floor((containerWidth + gap) / (cardWidth + gap));
-            columns = Math.max(1, Math.min(columns, 9, featuredData.length));
-
-            const itemsToShow = featuredData.slice(0, columns);
-
-            featuredGrid.innerHTML = '';
-            itemsToShow.forEach(theme => {
-                const card = createWallpaperCard(theme);
-                card.classList.add('featured-glow');
-                featuredGrid.appendChild(card);
-            });
-        }
-
-        function updateWidgetsLayout() {
-            if (!widgetsData.length || !widgetsGrid) return;
-
-            const containerWidth = widgetsSection.clientWidth;
-            const cardWidth = 240;
-            const gap = 24;
-
-            let columns = Math.floor((containerWidth + gap) / (cardWidth + gap));
-            columns = Math.max(1, Math.min(columns, 10, widgetsData.length));
-
-            const itemsToShow = widgetsData.slice(0, columns);
-
-            widgetsGrid.innerHTML = '';
-            itemsToShow.forEach(widget => {
-                widgetsGrid.appendChild(createWallpaperCard(widget));
-            });
-        }
-        let resizeTimeout;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                updateFeaturedLayout();
-                updateWidgetsLayout();
-            }, 100);
-        });
-
+        
+        let installedCursorId = 'default';
         async function fetchInstalledThemes() {
             try {
+                const cResp = await fetch('/get_installed_cursor');
+                if (cResp.ok) {
+                    const cData = await cResp.json();
+                    if (cData.installedId) installedCursorId = cData.installedId;
+                }
                 const response = await fetch('/installed_themes');
                 const data = await response.json();
                 if (data.installedIds) {
@@ -1127,7 +1068,7 @@
                 console.error("Could not fetch installed themes list:", err);
             }
         }
-        let currentFilter = 'all';
+
         async function fetchWallpapers(append = false) {
             if (!API_BASE_URL || API_BASE_URL === '#') {
                 console.warn("fetchWallpapers called before API_BASE_URL was ready.");
@@ -1138,17 +1079,13 @@
             if (append && !hasMore) return;
 
             let url = '';
+            const limit = 20;
+            const offset = (currentPage - 1) * limit;
 
             if (currentSearchQuery) {
-                url = `${API_BASE_URL}?action=search&query=${currentSearchQuery}&page=${currentPage}`;
-                if (!append) pageTitle.textContent = `Searching for "${currentSearchQuery}"`;
-            } else if (currentFilter !== 'all') {
-
-                url = `${API_BASE_URL}?action=filter&type=${currentFilter}&page=${currentPage}`;
-                if (!append) pageTitle.textContent = `${currentFilter.toUpperCase()} Wallpapers`;
+                url = `${API_BASE_URL}?action=get_cursors&query=${currentSearchQuery}&limit=${limit}&offset=${offset}`;
             } else {
-                url = `${API_BASE_URL}?action=discover&page=${currentPage}`;
-                if (!append) pageTitle.textContent = 'New Releases';
+                url = `${API_BASE_URL}?action=get_cursors&limit=${limit}&offset=${offset}`;
             }
 
             isLoading = true;
@@ -1218,17 +1155,51 @@
 
                 if (data.data && data.data.length > 0) {
                     const uninstalledThemes = [];
-                    const installedThemes = [];
+                    let activeTheme = null;
+
                     data.data.forEach(theme => {
-                        if (installedThemeIds.includes(theme.id.toString())) {
-                            installedThemes.push(theme);
+                        if (theme.id.toString() === installedCursorId) {
+                            activeTheme = theme;
                         } else {
                             uninstalledThemes.push(theme);
                         }
                     });
-                    const sortedThemes = uninstalledThemes.concat(installedThemes);
+
+                    const sortedThemes = [];
+                    if (activeTheme) sortedThemes.push(activeTheme);
+                    sortedThemes.push(...uninstalledThemes);
+
+                    // Show Default Card if active or just to provide the option
+                    if (!append && !currentSearchQuery) {
+                        const defaultTheme = {
+                            id: 'default',
+                            cursorName: 'Windows Default (system scheme)',
+                            author: 'System',
+                            description: 'The standard Windows cursor pack.',
+                            thumbnailUrl: 'default',
+                            type: 'cursor'
+                        };
+                        const defaultCard = createWallpaperCard(defaultTheme);
+                        if (installedCursorId === 'default') {
+                            const label = document.createElement('div');
+                            label.className = 'card-label installed-label';
+                            label.textContent = 'Last Installed';
+                            label.style.backgroundColor = 'var(--success-color)';
+                            defaultCard.appendChild(label);
+                        }
+                        grid.appendChild(defaultCard);
+                    }
+
                     sortedThemes.forEach(theme => {
-                        grid.appendChild(createWallpaperCard(theme));
+                        const card = createWallpaperCard(theme);
+                        if (theme.id.toString() === installedCursorId) {
+                            const label = document.createElement('div');
+                            label.className = 'card-label installed-label';
+                            label.textContent = 'Last Installed';
+                            label.style.backgroundColor = 'var(--success-color)';
+                            card.appendChild(label);
+                        }
+                        grid.appendChild(card);
                     });
 
                     if (data.data.length < API_PAGE_LIMIT) {
@@ -1289,8 +1260,8 @@
         if (sentinel) observer.observe(sentinel);
 
         function createWallpaperCard(theme) {
-            theme.themeName = theme.widgetName || theme.name || theme.themeName || 'Unknown';
-            
+            theme.themeName = theme.cursorName || theme.widgetName || theme.name || theme.themeName || 'Unknown';
+
             const card = document.createElement('div');
             card.className = 'wallpaper-card';
             card.dataset.id = theme.id;
@@ -1306,74 +1277,39 @@
                 };
             }
 
-            const isWidget = theme.type === 'widget';
-            const isInstalled = (isWidget && installedWidgetIds.includes(theme.id.toString())) ||
-                              (!isWidget && installedThemeIds.includes(theme.id.toString()));
-
-            if (isInstalled) {
-                const label = document.createElement('div');
-                label.className = 'card-label installed-label';
-                
-                if (isWidget) {
-                    const installedWidget = installedWidgetsMap[theme.id.toString()];
-                    const isSystem = systemIds.includes(theme.id.toString()) || isNaN(theme.id);
-                    const localVer = parseFloat(installedWidget?.ver || 1);
-                    const remoteVer = parseFloat(theme.ver || 1);
-                    
-                    if (remoteVer > localVer && !isSystem) {
-                        label.textContent = 'Update Available';
-                        label.style.backgroundColor = 'var(--primary-color)';
-                    } else {
-                        label.textContent = 'Installed';
-                    }
-                } else {
-                    label.textContent = 'Installed';
-                }
-                card.appendChild(label);
-            }
-
-            const type = theme.type || '3d';
-
-            let typeLabelText = '';
-            let typeClass = '';
-
-            if (type === 'video') {
-                typeLabelText = 'VIDEO';
-                typeClass = 'video';
-            } else if (type === 'app') {
-                typeLabelText = 'APP';
-                typeClass = 'app';
-            } else if (type === 'widget') {
-                typeLabelText = 'WIDGET';
-                typeClass = 'widget';
+            if (theme.thumbnailUrl === 'default') {
+                const placeholder = document.createElement('div');
+                placeholder.style.width = '100%';
+                placeholder.style.aspectRatio = '16/9';
+                placeholder.style.backgroundColor = 'var(--hover-bg)';
+                placeholder.style.display = 'flex';
+                placeholder.style.alignItems = 'center';
+                placeholder.style.justifyContent = 'center';
+                placeholder.style.fontSize = '1.5rem';
+                placeholder.style.color = 'var(--secondary-color)';
+                placeholder.style.fontWeight = 'bold';
+                placeholder.textContent = 'Default';
+                card.appendChild(placeholder);
             } else {
-                typeLabelText = '3D';
-                typeClass = 'model3d';
-            }
+                const img = document.createElement('img');
+                const staticUrl = theme.thumbnailUrl ? `/proxy_thumbnail?url=${encodeURIComponent(theme.thumbnailUrl)}` : '';
+                img.src = staticUrl;
+                img.loading = 'lazy';
+                img.decoding = 'async';
+                img.alt = theme.themeName;
 
-            const typeBadge = document.createElement('div');
-            typeBadge.className = `type-label ${typeClass}`;
+                if (theme.thumbnailUrl) {
+                    const preload = new Image();
+                    preload.src = theme.thumbnailUrl;
 
-            typeBadge.textContent = typeLabelText;
-            card.appendChild(typeBadge);
-
-            const img = document.createElement('img');
-            const staticUrl = theme.thumbnailUrl ? `/proxy_thumbnail?url=${encodeURIComponent(theme.thumbnailUrl)}` : '';
-            img.src = staticUrl;
-            img.loading = 'lazy';
-            img.decoding = 'async';
-            img.alt = theme.themeName;
-
-            if (theme.thumbnailUrl) {
-                const preload = new Image();
-                preload.src = theme.thumbnailUrl;
-
-                card.addEventListener('mouseenter', () => {
-                    img.src = theme.thumbnailUrl;
-                });
-                card.addEventListener('mouseleave', () => {
-                    img.src = staticUrl;
-                });
+                    card.addEventListener('mouseenter', () => {
+                        img.src = theme.thumbnailUrl;
+                    });
+                    card.addEventListener('mouseleave', () => {
+                        img.src = staticUrl;
+                    });
+                }
+                card.appendChild(img);
             }
 
             const info = document.createElement('div');
@@ -1395,7 +1331,6 @@
                 };
             }
 
-            card.appendChild(img);
             card.appendChild(info);
             return card;
         }
@@ -1403,7 +1338,36 @@
         function showLightbox(theme, isDisabled = false) {
             currentTheme = theme;
 
-            document.getElementById('lightbox-img').src = theme.thumbnailUrl || '';
+            if (theme.thumbnailUrl === 'default') {
+                const imgEl = document.getElementById('lightbox-img');
+                imgEl.style.display = 'none';
+                const imgContainer = imgEl.parentElement;
+                let placeholder = imgContainer.querySelector('.lightbox-default-placeholder');
+                if (!placeholder) {
+                    placeholder = document.createElement('div');
+                    placeholder.className = 'lightbox-default-placeholder';
+                    placeholder.style.width = '100%';
+                    placeholder.style.height = '200px';
+                    placeholder.style.backgroundColor = 'var(--hover-bg)';
+                    placeholder.style.display = 'flex';
+                    placeholder.style.alignItems = 'center';
+                    placeholder.style.justifyContent = 'center';
+                    placeholder.style.fontSize = '2rem';
+                    placeholder.style.color = 'var(--secondary-color)';
+                    placeholder.style.fontWeight = 'bold';
+                    placeholder.style.borderRadius = '12px';
+                    placeholder.textContent = 'Default';
+                    imgContainer.appendChild(placeholder);
+                } else {
+                    placeholder.style.display = 'flex';
+                }
+            } else {
+                const imgEl = document.getElementById('lightbox-img');
+                imgEl.style.display = '';
+                const placeholder = imgEl.parentElement.querySelector('.lightbox-default-placeholder');
+                if (placeholder) placeholder.style.display = 'none';
+                imgEl.src = theme.thumbnailUrl || '';
+            }
             const versionStr = theme.ver ? ` <span style="opacity:0.5; font-size:0.7em; font-weight:400; margin-left:8px;">v${theme.ver}</span>` : '';
             document.getElementById('lightbox-title').innerHTML = `${theme.themeName}${versionStr}`;
             const authEl = document.getElementById('lightbox-author');
@@ -1434,7 +1398,7 @@
                 const isSystem = systemIds.includes(theme.id.toString()) || isNaN(theme.id);
                 const localVer = parseFloat(installedWidget?.ver || 1);
                 const remoteVer = parseFloat(theme.ver || 1);
-                
+
                 if (remoteVer > localVer && !isSystem) {
                     installBtn.disabled = false;
                     installBtn.textContent = 'Update';
@@ -1442,9 +1406,12 @@
                     installBtn.disabled = true;
                     installBtn.textContent = 'Installed';
                 }
-            } else if (installedThemeIds.includes(theme.id.toString())) {
+            } else if (theme.id.toString() === installedCursorId) {
                 installBtn.disabled = true;
                 installBtn.textContent = 'Installed';
+            } else if (theme.id === 'default') {
+                installBtn.disabled = false;
+                installBtn.textContent = 'Set as Default';
             } else {
                 installBtn.disabled = false;
                 installBtn.textContent = 'Install';
@@ -1458,10 +1425,64 @@
             currentTheme = null;
         }
 
+        let confirmActionCallback = null;
+
+        function showCustomConfirmModal(title, text, onConfirm) {
+            document.getElementById('custom-confirm-title').textContent = title;
+            document.getElementById('custom-confirm-text').textContent = text;
+            confirmActionCallback = onConfirm;
+            document.getElementById('custom-confirm-modal').style.display = 'flex';
+        }
+
+        function closeCustomConfirmModal() {
+            document.getElementById('custom-confirm-modal').style.display = 'none';
+            confirmActionCallback = null;
+        }
+
+        function executeCustomConfirm() {
+            document.getElementById('custom-confirm-modal').style.display = 'none';
+            if (confirmActionCallback) {
+                confirmActionCallback();
+            }
+        }
+
         async function performInstall() {
             const minVersion = currentTheme.min_version || 1;
 
             if (!currentTheme || minVersion > CURRENT_APP_VERSION) {
+                return;
+            }
+
+            // Handle default cursor installation via the lightbox
+            if (currentTheme.id === 'default') {
+                showCustomConfirmModal(
+                    "Confirm Action",
+                    "Are you sure you want to restore the modern Windows default cursor?",
+                    async () => {
+                        const installBtn = document.getElementById('lightbox-install');
+                        installBtn.disabled = true;
+                        installBtn.textContent = 'Restoring...';
+                        try {
+                            const response = await fetch('/install_cursor', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ cursorId: 'default' })
+                            });
+                            if (!response.ok) throw new Error('Failed to restore default cursor');
+                            installBtn.textContent = 'Done!';
+                            showNotification("Default cursor restored successfully!", "success");
+                            setTimeout(() => {
+                                hideLightbox();
+                                window.location.reload();
+                            }, 1500);
+                        } catch (err) {
+                            console.error(err);
+                            installBtn.textContent = 'Error';
+                            showNotification("Error: " + err.message, "error");
+                            installBtn.disabled = false;
+                        }
+                    }
+                );
                 return;
             }
 
@@ -1470,44 +1491,54 @@
                 return;
             }
 
-            const installBtn = document.getElementById('lightbox-install');
-            installBtn.disabled = true;
-            installBtn.textContent = 'Installing...';
+            showCustomConfirmModal(
+                "Confirm Action",
+                `Are you sure you want to install the "${currentTheme.themeName}" cursor pack?`,
+                async () => {
+                    const installBtn = document.getElementById('lightbox-install');
+                    installBtn.disabled = true;
+                    installBtn.textContent = 'Installing...';
 
-            try {
-                const response = await fetch('/install_theme', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ themeId: currentTheme.id })
-                });
+                    try {
+                        const response = await fetch('/install_cursor', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ cursorId: currentTheme.id, zipUrl: currentTheme.zipUrl })
+                        });
 
-                const data = await response.json();
+                        const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.error || 'Installation failed.');
-                }
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Installation failed.');
+                        }
 
-                installBtn.textContent = 'Installed!';
+                        installBtn.textContent = 'Installed!';
 
-                installedThemeIds.push(currentTheme.id.toString());
+                        installedThemeIds.push(currentTheme.id.toString());
 
-                const card = document.querySelector(`.wallpaper-card[data-id="${currentTheme.id}"]`);
-                if (card) {
-                    if (!card.querySelector('.installed-label')) {
-                        const label = document.createElement('div');
-                        label.className = 'card-label installed-label';
-                        label.textContent = 'Installed';
-                        card.appendChild(label);
+                        const card = document.querySelector(`.wallpaper-card[data-id="${currentTheme.id}"]`);
+                        if (card) {
+                            if (!card.querySelector('.installed-label')) {
+                                const label = document.createElement('div');
+                                label.className = 'card-label installed-label';
+                                label.textContent = 'Installed';
+                                card.appendChild(label);
+                            }
+                        }
+
+                        setTimeout(() => {
+                            hideLightbox();
+                            window.location.reload();
+                        }, 1500);
+
+                    } catch (err) {
+                        console.error("Error installing cursor:", err);
+                        installBtn.textContent = `Error: ${err.message}`;
+                        showNotification(`Error: ${err.message}`, "error");
+                        installBtn.disabled = false;
                     }
                 }
-
-                setTimeout(hideLightbox, 2000);
-
-            } catch (err) {
-                console.error("Error installing theme:", err);
-                installBtn.textContent = `Error: ${err.message}`;
-                installBtn.disabled = false;
-            }
+            );
         }
 
         function showNotification(msg, type = 'success') {
@@ -1545,10 +1576,10 @@
                 if (!installedWidgetIds.includes(idStr)) {
                     installedWidgetIds.push(idStr);
                 }
-                
-                installedWidgetsMap[idStr] = { 
-                    ...currentTheme, 
-                    ver: currentTheme.ver 
+
+                installedWidgetsMap[idStr] = {
+                    ...currentTheme,
+                    ver: currentTheme.ver
                 };
 
                 const card = document.querySelector(`.wallpaper-card[data-id="${idStr}"]`);
@@ -1577,13 +1608,6 @@
             e.preventDefault();
             currentPage = 1;
             currentSearchQuery = searchInput.value;
-            if (currentSearchQuery) {
-                if (featuredSection) featuredSection.style.display = 'none';
-                if (widgetsSection) widgetsSection.style.display = 'none';
-            } else {
-                if (featuredSection && featuredData.length > 0) featuredSection.style.display = 'block';
-                if (widgetsSection && widgetsData.length > 0) widgetsSection.style.display = 'block';
-            }
             fetchWallpapers();
         });
 
@@ -1591,8 +1615,6 @@
             if (e.target.value === '') {
                 currentSearchQuery = '';
                 currentPage = 1;
-                if (featuredSection && featuredData.length > 0) featuredSection.style.display = 'block';
-                if (widgetsSection && widgetsData.length > 0) widgetsSection.style.display = 'block';
                 fetchWallpapers();
             }
         });
@@ -1619,32 +1641,30 @@
             }
         });
 
-        window.setFilter = function (filterValue) {
-            currentPage = 1;
-            currentFilter = filterValue;
 
-            const buttons = document.querySelectorAll('.filter-chip');
-            buttons.forEach(btn => {
-                if (btn.dataset.value === filterValue) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
 
-            searchInput.value = '';
-            currentSearchQuery = '';
-
-            if (currentFilter !== 'all') {
-                if (featuredSection) featuredSection.style.display = 'none';
-                if (widgetsSection) widgetsSection.style.display = 'none';
-            } else {
-                if (featuredSection && featuredData.length > 0) featuredSection.style.display = 'block';
-                if (widgetsSection && widgetsData.length > 0) widgetsSection.style.display = 'block';
+        document.getElementById('default-cursor-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('default-cursor-btn');
+            const originalText = btn.textContent;
+            btn.textContent = 'Restoring...';
+            btn.disabled = true;
+            try {
+                const response = await fetch('/install_cursor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cursorId: 'default' })
+                });
+                if (!response.ok) throw new Error('Failed to restore default cursor');
+                showNotification("Default cursor restored successfully!", "success");
+                setTimeout(() => window.location.reload(), 1500);
+            } catch (err) {
+                console.error(err);
+                showNotification("Error: " + err.message, "error");
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
             }
-
-            fetchWallpapers();
-        };
+        });
 
         let pendingUrl = '';
         window.openExternalLinkModal = function (url) {

@@ -8,6 +8,7 @@ LAUNCHER_FILES = {
     'discover.html': 'DATA_DISCOVER',
     'featured.html': 'DATA_FEATURED',
     'widgets.html': 'DATA_WIDGETS',
+    'cursors.html': 'DATA_CURSORS',
     '1.ico': 'ICON_1'
 }
 LAUNCHER_OUTPUT = 'frontend_assets.py'

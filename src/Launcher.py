@@ -52,6 +52,8 @@ import email
 import random
 import string
 import re
+import winreg
+import difflib
 from PyQt6.QtCore import QUrl, Qt, QTimer
 try:
     from PyQt6.QtQuick import QQuickWindow, QSGRendererInterface
@@ -112,6 +114,7 @@ DISCOVER_HTML = api_config.DISCOVER_HTML
 SETTINGS_HTML = api_config.SETTINGS_HTML
 FEATURED_HTML = api_config.FEATURED_HTML
 WIDGETS_HTML = api_config.WIDGETS_HTML
+CURSORS_HTML = api_config.CURSORS_HTML
 
 APP_SECURITY_TOKEN = ''.join(random.choices(string.digits, k=12))
 print(f"Authentication Token (User-Agent): {APP_SECURITY_TOKEN}")
@@ -530,6 +533,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
             f'/{SETTINGS_HTML}': ('DATA_SETTINGS', SETTINGS_HTML),
             f'/{FEATURED_HTML}': ('DATA_FEATURED', FEATURED_HTML),
             f'/{WIDGETS_HTML}': ('DATA_WIDGETS', WIDGETS_HTML),
+            f'/{CURSORS_HTML}': ('DATA_CURSORS', CURSORS_HTML),
         }
 
         if self.path in routes:
@@ -559,6 +563,22 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     return
                 installed_ids = [d for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]
                 self.send_json_response(200, {'installedIds': installed_ids, 'appVersion': CURRENT_APP_VERSION })
+            except Exception as e:
+                self.send_json_response(500, {'error': str(e)})
+            return
+
+        elif self.path == '/get_installed_cursor':
+            try:
+                cursor_dir = os.path.join(handler.get_appdata_dir(), "active_cursor")
+                config_path = os.path.join(cursor_dir, "config.json")
+                active_id = "default"
+                if os.path.exists(config_path):
+                    try:
+                        with open(config_path, 'r') as f:
+                            data = json.load(f)
+                            active_id = str(data.get('active_id', 'default'))
+                    except: pass
+                self.send_json_response(200, {'installedId': active_id})
             except Exception as e:
                 self.send_json_response(500, {'error': str(e)})
             return
@@ -822,6 +842,278 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 gpu_utils.restart_librewall()
             except Exception as e:
                 print(f"Error triggering restart: {e}")
+                self.send_json_response(500, {'error': str(e)})
+            return
+
+        elif self.path == '/install_cursor':
+            try:
+                content_len = int(self.headers.get('Content-Length'))
+                post_body = self.rfile.read(content_len)
+                data = json.loads(post_body)
+                cursor_id = str(data.get('cursorId', ''))
+                
+                if not cursor_id:
+                    self.send_json_response(400, {'error': "Missing 'cursorId'"})
+                    return
+
+                cursor_dir = os.path.join(handler.get_appdata_dir(), "active_cursor")
+                os.makedirs(cursor_dir, exist_ok=True)
+                config_path = os.path.join(cursor_dir, "config.json")
+                
+                if cursor_id == 'default':
+                    try:
+                        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Control Panel\Cursors', 0, winreg.KEY_SET_VALUE)
+                        
+                        aero_cursors = {
+                            'Arrow': r'%SystemRoot%\cursors\aero_arrow.cur',
+                            'Help': r'%SystemRoot%\cursors\aero_helpsel.cur',
+                            'AppStarting': r'%SystemRoot%\cursors\aero_working.ani',
+                            'Wait': r'%SystemRoot%\cursors\aero_busy.ani',
+                            'Crosshair': '',
+                            'IBeam': '',
+                            'NWPen': r'%SystemRoot%\cursors\aero_pen.cur',
+                            'No': r'%SystemRoot%\cursors\aero_unavail.cur',
+                            'SizeNS': r'%SystemRoot%\cursors\aero_ns.cur',
+                            'SizeWE': r'%SystemRoot%\cursors\aero_ew.cur',
+                            'SizeNWSE': r'%SystemRoot%\cursors\aero_nwse.cur',
+                            'SizeNESW': r'%SystemRoot%\cursors\aero_nesw.cur',
+                            'SizeAll': r'%SystemRoot%\cursors\aero_move.cur',
+                            'UpArrow': r'%SystemRoot%\cursors\aero_up.cur',
+                            'Hand': r'%SystemRoot%\cursors\aero_link.cur',
+                            'Person': r'%SystemRoot%\cursors\aero_person.cur',
+                            'Pin': r'%SystemRoot%\cursors\aero_pin.cur'
+                        }
+                        
+                        for role, path in aero_cursors.items():
+                            winreg.SetValueEx(key, role, 0, winreg.REG_EXPAND_SZ, path)
+                            
+                        winreg.SetValueEx(key, '', 0, winreg.REG_SZ, 'Windows Default')
+                        winreg.SetValueEx(key, 'Scheme Source', 0, winreg.REG_DWORD, 2)
+                        winreg.CloseKey(key)
+                        SPI_SETCURSORS = 0x0057
+                        SPIF_UPDATEINIFILE = 0x01
+                        SPIF_SENDCHANGE = 0x02
+                        ctypes.windll.user32.SystemParametersInfoW(SPI_SETCURSORS, 0, None, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE)
+                        
+                        with open(config_path, 'w') as f:
+                            json.dump({"active_id": "default"}, f)
+                            
+                        self.send_json_response(200, {'status': 'success', 'message': 'Modern default cursor restored.'})
+                    except Exception as e:
+                        print(f"Error restoring default cursors: {e}")
+                        self.send_json_response(500, {'error': str(e)})
+                    return
+                
+                zip_url = data.get('zipUrl')
+                if not zip_url:
+                    self.send_json_response(400, {'error': "Missing 'zipUrl'"})
+                    return
+                
+                install_path = os.path.join(cursor_dir, "installed")
+                if os.path.exists(install_path):
+                    shutil.rmtree(install_path, ignore_errors=True)
+                os.makedirs(install_path, exist_ok=True)
+                temp_zip = os.path.join(cursor_dir, f"temp_{cursor_id}.zip")
+                req = urllib.request.Request(zip_url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req) as response, open(temp_zip, 'wb') as out_file:
+                    out_file.write(response.read())
+                    
+                with zipfile.ZipFile(temp_zip, 'r') as zip_ref:
+                    zip_ref.extractall(install_path)
+                    
+                try:
+                    os.remove(temp_zip)
+                except Exception:
+                    pass
+
+                cursor_files = {}
+                for root, dirs, files in os.walk(install_path):
+                    for file in files:
+                        if file.lower().endswith(('.cur', '.ani')):
+                            clean_name = os.path.splitext(file.lower())[0]
+                            cursor_files[clean_name] = os.path.abspath(os.path.join(root, file))
+
+                if not cursor_files:
+                    self.send_json_response(400, {'error': "No .cur or .ani files found in the package."})
+                    return
+
+                print(f"Found {len(cursor_files)} cursor files: {list(cursor_files.keys())}")
+
+                valid_roles = [
+                    'Arrow', 'Help', 'AppStarting', 'Wait', 'Crosshair', 'IBeam',
+                    'NWPen', 'No', 'SizeNS', 'SizeWE', 'SizeNWSE', 'SizeNESW',
+                    'SizeAll', 'UpArrow', 'Hand', 'Person', 'Pin'
+                ]
+
+                final_mapping = {}
+                inf_file = None
+                crs_file = None
+                for root, dirs, files in os.walk(install_path):
+                    for file in files:
+                        if file.lower().endswith('.inf'):
+                            inf_file = os.path.join(root, file)
+                        elif file.lower().endswith('.crs'):
+                            crs_file = os.path.join(root, file)
+                    if inf_file or crs_file: break
+
+                if inf_file:
+                    print(f"Found INF file: {os.path.basename(inf_file)}. Extracting creator map...")
+                    try:
+                        from wininfparser import WinINF
+                        inf = WinINF()
+                        inf.ParseFile(inf_file)
+                        inf_dir = os.path.dirname(inf_file)
+
+                        strings_dict = {}
+                        if inf['Strings'] is not None:
+                            for k, v, c in inf['Strings']:
+                                if k and v: strings_dict[k.lower()] = v.strip('"')
+
+                        valid_roles_lower = {r.lower(): r for r in valid_roles}
+                        
+                        scheme_order = [
+                            'Arrow', 'Help', 'AppStarting', 'Wait', 'Crosshair', 'IBeam', 
+                            'NWPen', 'No', 'SizeNS', 'SizeWE', 'SizeNWSE', 'SizeNESW', 
+                            'SizeAll', 'UpArrow', 'Hand', 'Pin', 'Person'
+                        ]
+
+                        for wreg_sec in inf:
+                            for k, v, c in wreg_sec:
+                                line = k.strip()
+                                if 'CONTROL PANEL' not in line.upper() or 'CURSORS' not in line.upper(): 
+                                    continue
+
+                                if 'SCHEMES' in line.upper():
+                                    vars_found = re.findall(r'%([^%]+)%', line)
+                                    cursor_vars = [var.lower() for var in vars_found if var.lower() not in ['cur_dir', 'scheme_name', '24', '10', 'systemroot']]
+                                    
+                                    for i, var_name in enumerate(cursor_vars):
+                                        if i < len(scheme_order):
+                                            role_canonical = scheme_order[i]
+                                            filename = strings_dict.get(var_name)
+                                            if filename:
+                                                abs_filepath = os.path.abspath(os.path.join(inf_dir, filename))
+                                                if os.path.exists(abs_filepath):
+                                                    final_mapping[role_canonical] = abs_filepath
+                                    continue 
+
+                                parts = line.split(',')
+                                if len(parts) < 5: continue
+
+                                role_canonical = valid_roles_lower.get(parts[2].strip().replace('"', '').lower())
+                                if not role_canonical: continue
+
+                                value_raw = parts[-1].strip().replace('"', '')
+                                var_match = re.search(r'%([^%]+)%$', value_raw)
+                                
+                                if var_match:
+                                    filename = strings_dict.get(var_match.group(1).lower())
+                                else:
+                                    filename = value_raw.split('\\')[-1] 
+
+                                if filename:
+                                    abs_filepath = os.path.abspath(os.path.join(inf_dir, filename))
+                                    if os.path.exists(abs_filepath):
+                                        final_mapping[role_canonical] = abs_filepath
+
+                        print(f"  INF Parser mapped {len(final_mapping)}/{len(valid_roles)} roles perfectly.")
+                    except Exception as e:
+                        print(f"  Error parsing INF: {e}. Falling back to fuzzy engine.")
+                elif crs_file:
+                    print(f"Found CRS file: {os.path.basename(crs_file)}. Extracting map...")
+                    try:
+                        import configparser
+                        config = configparser.ConfigParser()
+                        config.optionxform = str 
+                        
+                        try:
+                            config.read(crs_file, encoding='utf-8-sig')
+                        except UnicodeDecodeError:
+                            config.read(crs_file, encoding='utf-16')
+                        
+                        for role in config.sections():
+                            if 'Path' in config[role]:
+                                filename = config[role]['Path']
+                                abs_filepath = os.path.abspath(os.path.join(os.path.dirname(crs_file), filename))
+                                if os.path.exists(abs_filepath) and role in valid_roles:
+                                    final_mapping[role] = abs_filepath
+                        print(f"  CRS Parser mapped {len(final_mapping)}/{len(valid_roles)} roles perfectly.")
+                    except Exception as e:
+                        print(f"  Error parsing CRS file: {e}. Falling back to fuzzy engine.")
+
+                missing_roles = [r for r in valid_roles if r not in final_mapping]
+                if missing_roles:
+                    print(f"  Running Fuzzy Fallback for {len(missing_roles)} missing roles...")
+
+                    role_keywords = {
+                        'Arrow': ['arrow', 'pointer', 'normal', 'default'],
+                        'Help': ['help', 'select'],
+                        'AppStarting': ['working', 'busy', 'background', 'start'],
+                        'Wait': ['wait', 'load'],
+                        'Crosshair': ['precision', 'cross', 'crosshair'],
+                        'IBeam': ['beam', 'text', 'ibeam'],
+                        'NWPen': ['pen', 'handwriting', 'write'],
+                        'No': ['unavailable', 'no', 'stop', 'ban'],
+                        'SizeNS': ['vert', 'ns', 'size1', 'updown'],
+                        'SizeWE': ['horz', 'we', 'size2', 'leftright'],
+                        'SizeNWSE': ['dgnl', 'nwse', 'dgn1', 'size3', 'diagonal1'],
+                        'SizeNESW': ['dgnr', 'nesw', 'dgn2', 'size4', 'diagonal2'],
+                        'SizeAll': ['move', 'all'],
+                        'UpArrow': ['alternate', 'up', 'alt'],
+                        'Hand': ['link', 'hand', 'hover'],
+                        'Person': ['person', 'user'],
+                        'Pin': ['pin', 'location']
+                    }
+
+                    for role in missing_roles:
+                        keywords = role_keywords.get(role, [])
+                        best_match_path = None
+                        best_score = 0.0
+
+                        for clean_name, filepath in cursor_files.items():
+                            for kw in keywords:
+                                if kw in clean_name:
+                                    if best_score == 1.0:
+                                        if len(clean_name) < len(os.path.basename(best_match_path)):
+                                            best_match_path = filepath
+                                    else:
+                                        best_score = 1.0
+                                        best_match_path = filepath
+                                    continue
+
+                                if best_score < 1.0:
+                                    parts = clean_name.replace('-', '_').split('_')
+                                    for part in parts:
+                                        ratio = difflib.SequenceMatcher(None, kw, part).ratio()
+                                        if ratio > 0.75 and ratio > best_score:
+                                            best_score = ratio
+                                            best_match_path = filepath
+
+                        if best_match_path:
+                            final_mapping[role] = best_match_path
+                            print(f"    Fuzzy mapped {role} -> {os.path.basename(best_match_path)} (score: {best_score:.2f})")
+
+                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Control Panel\Cursors', 0, winreg.KEY_SET_VALUE)
+
+                for role, filepath in final_mapping.items():
+                    winreg.SetValueEx(key, role, 0, winreg.REG_SZ, filepath)
+                    print(f"  Applied {role} -> {os.path.basename(filepath)}")
+
+                winreg.SetValueEx(key, '', 0, winreg.REG_SZ, f'Cyberwall_{cursor_id}')
+                winreg.CloseKey(key)
+                print(f"Total: {len(final_mapping)}/{len(valid_roles)} cursor roles applied.")
+
+                SPI_SETCURSORS = 0x0057
+                SPIF_UPDATEINIFILE = 0x01
+                SPIF_SENDCHANGE = 0x02
+                ctypes.windll.user32.SystemParametersInfoW(SPI_SETCURSORS, 0, None, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE)
+                
+                with open(config_path, 'w') as f:
+                    json.dump({"active_id": cursor_id}, f)
+                    
+                self.send_json_response(200, {'status': 'success', 'message': f'Cursor {cursor_id} applied silently. Matched {len(final_mapping)} roles.'})
+            except Exception as e:
+                print(f"Error installing cursor: {e}")
                 self.send_json_response(500, {'error': str(e)})
             return
 

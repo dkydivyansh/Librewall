@@ -83,6 +83,11 @@ class NativeVideoWidget(QWidget):
         menu.addAction(action_open)
         menu.addSeparator()
         
+        action_reload = QAction("Reload Wallpaper", self)
+        action_reload.triggered.connect(self.reload_wallpaper)
+        menu.addAction(action_reload)
+        menu.addSeparator()
+        
         if self.is_paused:
             action_pause = QAction("Resume Wallpaper", self)
             action_pause.triggered.connect(lambda: self.set_paused(False))
@@ -105,6 +110,15 @@ class NativeVideoWidget(QWidget):
                 subprocess.Popen([sys.executable, launcher_py], cwd=ROOT_DIR, creationflags=detach_flags, close_fds=True)
         except Exception as e:
             print(f"Error launching GUI: {e}")
+
+    def reload_wallpaper(self):
+        parent = self.parent()
+        if parent and hasattr(parent, 'app'):
+            print("Context menu reload: Triggering app restart.")
+            parent.app.is_restarting = True
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(0, parent.app.quit)
+
     def set_paused(self, paused: bool):
         if hasattr(self, 'player'):
             self.player.pause = paused

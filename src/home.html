@@ -1329,11 +1329,11 @@
     </div>
 
     <header class="header">
-        <button class="header-btn" id="refresh-btn">Refresh</button>
-        <a href="discover.html" class="header-btn" id="discover-btn">Discover</a>
         <button class="header-btn" id="manage-widgets-btn">Manage Widgets</button>
-        <button class="header-btn" id="import-btn" style="background-color: var(--primary-color);">Import</button>
+        <a href="discover.html" class="header-btn" id="discover-btn" style="background-color: var(--primary-color); color: white;">Marketplace</a>
+        <a href="cursors.html" class="header-btn" id="cursors-btn" style="background-color: var(--primary-color); color: white;">Cursors</a>
         <a href="settings.html" class="header-btn" id="settings-btn">Settings</a>
+        <button class="header-btn" id="refresh-btn">Refresh</button>
         <button class="header-btn btn-engine-toggle" id="engine-toggle-btn" disabled>Checking...</button>
     </header>
 
@@ -1369,7 +1369,6 @@
         </div>
     </div>
 
-    <input type="file" id="import-file-input" accept=".zip" style="display: none;">
     <div id="engine-off-warning" class="engine-warning">The active wallpaper is not running because the Engine is
         stopped.</div>
     <div id="marketplace-update-warning" class="marketplace-update-warning">
@@ -1536,34 +1535,6 @@
             <div class="confirm-actions">
                 <button class="btn btn-secondary" id="unsaved-cancel">Cancel</button>
                 <button class="btn btn-primary" id="unsaved-confirm">Yes, Close</button>
-            </div>
-        </div>
-    </div>
-    <div id="import-warning-overlay" class="lightbox-overlay">
-        <div class="confirm-box" style="max-width: 450px; border-color: var(--danger-color);">
-            <span class="close-icon" id="import-warning-close">&times;</span>
-            <h3 style="color: var(--danger-color);">Security Warning</h3>
-            <p>Import external files at your own risk. They may contain malware and can harm your system.</p>
-            <div class="confirm-actions">
-                <button class="btn btn-secondary" id="import-warning-cancel">Cancel</button>
-                <button class="btn btn-danger" id="import-warning-continue">Continue</button>
-            </div>
-        </div>
-    </div>
-    
-    <div id="import-preview-overlay" class="lightbox-overlay">
-        <div class="confirm-box" style="max-width: 450px;">
-            <span class="close-icon" id="import-preview-close">&times;</span>
-            <h3>Confirm Installation</h3>
-            <div style="margin: 15px 0; background: var(--bg-color); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
-                <p style="margin: 0 0 10px 0;"><strong>Type:</strong> <span id="preview-type" style="text-transform: capitalize; color: var(--primary-color);"></span></p>
-                <p style="margin: 0 0 10px 0;"><strong>Name:</strong> <span id="preview-name"></span></p>
-                <p style="margin: 0 0 10px 0;"><strong>Author:</strong> <span id="preview-author" style="color: var(--author-color);"></span></p>
-                <p style="margin: 0; font-size: 0.85em; color: var(--secondary-color);"><strong>ID:</strong> <span id="preview-id"></span></p>
-            </div>
-            <div class="confirm-actions">
-                <button class="btn btn-secondary" id="import-preview-cancel">Cancel</button>
-                <button class="btn btn-primary" id="import-preview-confirm">Install</button>
             </div>
         </div>
     </div>
@@ -1849,7 +1820,7 @@
 
             const authEl = document.getElementById('lightbox-author');
             if (wp.authorUrl) {
-                authEl.innerHTML = `by <a href="#" class="author-external-link">${wp.author}</a>`;
+                authEl.innerHTML = `by <a href="#" class="author-external-link">${wp.author || 'Unknown'}</a> <span style="opacity:0.6; font-size:0.9em; margin-left:4px;">(ID: ${wp.themeId})</span>`;
                 const authorLink = authEl.querySelector('a');
                 if (authorLink) {
                     authorLink.addEventListener('click', function (e) {
@@ -1859,7 +1830,7 @@
                     });
                 }
             }
-            else authEl.textContent = `by ${wp.author}`;
+            else authEl.innerHTML = `by ${wp.author || 'Unknown'} <span style="opacity:0.6; font-size:0.9em; margin-left:4px;">(ID: ${wp.themeId})</span>`;
 
             const descEl = document.getElementById('lightbox-description');
             const actBtn = document.getElementById('lightbox-activate');
@@ -1970,77 +1941,6 @@
             const l = document.getElementById('loader');
             l.style.display = 'flex'; requestAnimationFrame(() => l.style.opacity = '1');
             loadWallpapers().finally(() => { l.style.opacity = '0'; setTimeout(() => l.style.display = 'none', 500); });
-        };
-
-        const importOverlay = document.getElementById('import-warning-overlay');
-
-        document.getElementById('import-btn').onclick = () => {
-            importOverlay.style.display = 'flex';
-        };
-
-        document.getElementById('import-warning-close').onclick = () => importOverlay.style.display = 'none';
-        document.getElementById('import-warning-cancel').onclick = () => importOverlay.style.display = 'none';
-
-        document.getElementById('import-warning-continue').onclick = () => {
-            importOverlay.style.display = 'none';
-            document.getElementById('import-file-input').click();
-
-        };
-        let pendingImportFormData = null;
-
-        document.getElementById('import-file-input').onchange = async (e) => {
-            if (!e.target.files[0]) return;
-            const btn = document.getElementById('import-btn');
-            const file = e.target.files[0];
-            const txt = btn.textContent; 
-            btn.disabled = true; 
-            btn.textContent = "Scanning...";
-            
-            const fd = new FormData(); 
-            fd.append('themeFile', file);
-            
-            try {
-                const r = await fetch('/preview_import', { method: 'POST', body: fd });
-                if (!r.ok) throw new Error((await r.json()).error);
-                const data = await r.json();
-                
-                document.getElementById('preview-type').textContent = data.type;
-                document.getElementById('preview-name').textContent = data.name;
-                document.getElementById('preview-author').textContent = data.author;
-                document.getElementById('preview-id').textContent = data.id;
-                
-                pendingImportFormData = fd;
-                document.getElementById('import-preview-overlay').style.display = 'flex';
-                
-            } catch (err) { showAlert('Error Reading Zip', err.message); }
-            finally { btn.disabled = false; btn.textContent = txt; e.target.value = null; }
-        };
-
-        document.getElementById('import-preview-close').onclick = () => document.getElementById('import-preview-overlay').style.display = 'none';
-        document.getElementById('import-preview-cancel').onclick = () => document.getElementById('import-preview-overlay').style.display = 'none';
-        
-        document.getElementById('import-preview-confirm').onclick = async () => {
-            if (!pendingImportFormData) return;
-            document.getElementById('import-preview-overlay').style.display = 'none';
-            const btn = document.getElementById('import-btn');
-            const txt = btn.textContent; 
-            btn.disabled = true; 
-            btn.textContent = "Installing...";
-            
-            try {
-                const r = await fetch('/import_theme', { method: 'POST', body: pendingImportFormData });
-                if (!r.ok) throw new Error((await r.json()).error);
-                const data = await r.json();
-                
-                if (data.type === 'widget') {
-                    showAlert('Success', 'Widget Installed Successfully!');
-                    setTimeout(() => openManageWidgets(), 500);
-                } else {
-                    showAlert('Success', 'Theme Installed Successfully'); 
-                    loadWallpapers();
-                }
-            } catch (err) { showAlert('Installation Error', err.message); }
-            finally { btn.disabled = false; btn.textContent = txt; pendingImportFormData = null; }
         };
 
         document.getElementById('lightbox-close').onclick = () => hideLightbox(false);
@@ -2217,7 +2117,6 @@
                     { element: '#refresh-btn', popover: { title: 'Refresh Library', description: 'Reload your list to see changes.' } },
                     { element: '#discover-btn', popover: { title: 'Discover Online', description: 'Browse community themes.' } },
                     { element: '#manage-widgets-btn', popover: { title: 'Manage Widgets', description: 'View and manage your installed widgets here.' } },
-                    { element: '#import-btn', popover: { title: 'Import Theme', description: 'Load .zip files manually.' } },
                     { element: '#settings-btn', popover: { title: 'Global Settings', description: 'Configure app preferences.' } },
                     { element: '#engine-toggle-btn', popover: { title: 'Engine Status', description: 'Start/Stop the engine.' } },
                     {
