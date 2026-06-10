@@ -690,8 +690,8 @@
 
         .lightbox-box {
             display: flex;
-            width: 100%;
-            max-width: 900px;
+            width: 90vw;
+            max-width: 1200px;
             max-height: 90vh;
         }
 
@@ -753,6 +753,22 @@
             display: flex;
             flex-direction: column;
         }
+        
+        @media (max-width: 900px) {
+            .lightbox-box {
+                flex-direction: column;
+                overflow-y: auto;
+            }
+            .lightbox-image {
+                flex-basis: auto;
+                height: 300px;
+                border-radius: 8px 8px 0 0;
+            }
+            .lightbox-content {
+                flex-basis: auto;
+                overflow-y: visible;
+            }
+        }
 
         .lightbox-content h2 {
             font-size: 1.8rem;
@@ -783,8 +799,6 @@
         }
 
         .lightbox-settings {
-            border-top: 1px solid var(--border-color);
-            padding-top: 1.5rem;
             margin-bottom: 1.5rem;
         }
 
@@ -1435,9 +1449,7 @@
             <span class="close-icon" id="lightbox-close">&times;</span>
             <div class="lightbox-image"><img id="lightbox-img" src="" alt="Thumbnail"></div>
             <div class="lightbox-content">
-                <h2 id="lightbox-title"></h2>
-                <p class="author" id="lightbox-author"></p>
-                <p class="description" id="lightbox-description"></p>
+                <h2 id="lightbox-title" style="margin-bottom: 1.5rem;"></h2>
 
                 <div class="lightbox-settings">
                     <h3>Settings</h3>
@@ -1489,6 +1501,32 @@
                                 <option value="30">30 FPS</option>
                             </select>
                         </div>
+                        <div class="setting-row">
+                            <label for="3d-model-scale">Model Scale</label>
+                            <input type="number" id="3d-model-scale" step="0.1" value="1" style="width: 120px; background: #555; color: #fff; border: 1px solid #444; padding: 0.4rem; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                        <div class="setting-row">
+                            <label for="3d-enable-idle-rotation">Idle Rotation</label>
+                            <select id="3d-enable-idle-rotation">
+                                <option value="false">Disabled</option>
+                                <option value="true">Enabled</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <label for="3d-enable-mouse-attraction">Mouse Attraction</label>
+                            <select id="3d-enable-mouse-attraction">
+                                <option value="false">Disabled</option>
+                                <option value="true">Enabled</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <label>Position (X, Y, Z)</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="number" id="3d-model-pos-x" step="0.5" value="0" style="width: 55px; background: #555; color: #fff; border: 1px solid #444; padding: 0.4rem 0.2rem; border-radius: 4px; text-align: center; box-sizing: border-box;">
+                                <input type="number" id="3d-model-pos-y" step="0.5" value="0" style="width: 55px; background: #555; color: #fff; border: 1px solid #444; padding: 0.4rem 0.2rem; border-radius: 4px; text-align: center; box-sizing: border-box;">
+                                <input type="number" id="3d-model-pos-z" step="0.5" value="0" style="width: 55px; background: #555; color: #fff; border: 1px solid #444; padding: 0.4rem 0.2rem; border-radius: 4px; text-align: center; box-sizing: border-box;">
+                            </div>
+                        </div>
                     </div>
 
                     <div style="display:flex; justify-content:flex-end;">
@@ -1497,10 +1535,14 @@
                     </div>
                 </div>
 
-                <div class="lightbox-actions">
+                <div class="lightbox-actions" id="lightbox-actions-container" style="margin-bottom: 2rem;">
                     <button class="btn btn-success" id="lightbox-activate" style="display: none;">Activate
                         Theme</button>
                     <button class="btn btn-danger" id="lightbox-delete">Delete</button>
+                </div>
+                <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                    <p class="author" id="lightbox-author"></p>
+                    <p class="description" id="lightbox-description" style="margin-bottom: 0;"></p>
                 </div>
             </div>
         </div>
@@ -1869,6 +1911,13 @@
 
                     const fps3d = config.fpsLimit !== undefined ? config.fpsLimit : 0;
                     document.getElementById('3d-fps-limit').value = fps3d;
+                    
+                    document.getElementById('3d-model-scale').value = config.modelScale !== undefined ? config.modelScale : 1;
+                    document.getElementById('3d-enable-idle-rotation').value = config.enableIdleRotation ? "true" : "false";
+                    document.getElementById('3d-enable-mouse-attraction').value = config.enableMouseAttraction ? "true" : "false";
+                    document.getElementById('3d-model-pos-x').value = config.modelPositionX !== undefined ? config.modelPositionX : 0;
+                    document.getElementById('3d-model-pos-y').value = config.modelPositionY !== undefined ? config.modelPositionY : 0;
+                    document.getElementById('3d-model-pos-z').value = config.modelPositionZ !== undefined ? config.modelPositionZ : 0;
                 }
 
                 globalWidgetsRow.style.display = 'flex';
@@ -1883,6 +1932,12 @@
                 document.getElementById('video-volume').removeEventListener('input', currentSettingListener);
                 document.getElementById('3d-quality-preset').removeEventListener('change', currentSettingListener);
                 document.getElementById('3d-fps-limit').removeEventListener('change', currentSettingListener);
+                document.getElementById('3d-model-scale').removeEventListener('input', currentSettingListener);
+                document.getElementById('3d-enable-idle-rotation').removeEventListener('change', currentSettingListener);
+                document.getElementById('3d-enable-mouse-attraction').removeEventListener('change', currentSettingListener);
+                document.getElementById('3d-model-pos-x').removeEventListener('input', currentSettingListener);
+                document.getElementById('3d-model-pos-y').removeEventListener('input', currentSettingListener);
+                document.getElementById('3d-model-pos-z').removeEventListener('input', currentSettingListener);
             }
 
             const volDisplay = document.getElementById('video-volume-display');
@@ -1901,16 +1956,25 @@
             document.getElementById('video-volume').addEventListener('input', currentSettingListener);
             document.getElementById('3d-quality-preset').addEventListener('change', currentSettingListener);
             document.getElementById('3d-fps-limit').addEventListener('change', currentSettingListener);
+            document.getElementById('3d-model-scale').addEventListener('input', currentSettingListener);
+            document.getElementById('3d-enable-idle-rotation').addEventListener('change', currentSettingListener);
+            document.getElementById('3d-enable-mouse-attraction').addEventListener('change', currentSettingListener);
+            document.getElementById('3d-model-pos-x').addEventListener('input', currentSettingListener);
+            document.getElementById('3d-model-pos-y').addEventListener('input', currentSettingListener);
+            document.getElementById('3d-model-pos-z').addEventListener('input', currentSettingListener);
 
             actBtn.disabled = false;
             if (!isInvalid) {
                 descEl.innerHTML = wp.description || "No description.";
                 settingsDiv.style.display = (settingsDiv.style.display === 'none') ? 'none' : 'block';
 
+                const actionsContainer = document.getElementById('lightbox-actions-container');
                 if (wp.themeId === activeThemeId) {
                     actBtn.style.display = 'none';
                     delBtn.style.display = 'none';
+                    actionsContainer.style.display = 'none';
                 } else {
+                    actionsContainer.style.display = 'flex';
                     actBtn.style.display = 'block';
 
                     if (wp.themeName === "Default Theme") {
@@ -1924,6 +1988,7 @@
             } else {
                 descEl.innerHTML = `<span style="color:#ff9a9a">Invalid Theme: Missing Assets.</span>`;
                 settingsDiv.style.display = 'none'; actBtn.style.display = 'none'; delBtn.style.display = 'block';
+                document.getElementById('lightbox-actions-container').style.display = 'flex';
             }
             updateSaveButtonState();
             lightboxOverlay.style.display = 'flex';
@@ -1995,6 +2060,12 @@
                     if (currentWallpaper.type === '3d' || (currentWallpaper.config && currentWallpaper.config.enable3DModel !== false)) {
                         payload.qualityPreset = document.getElementById('3d-quality-preset').value;
                         payload.fpsLimit = parseInt(document.getElementById('3d-fps-limit').value);
+                        payload.modelScale = parseFloat(document.getElementById('3d-model-scale').value);
+                        payload.enableIdleRotation = document.getElementById('3d-enable-idle-rotation').value === "true";
+                        payload.enableMouseAttraction = document.getElementById('3d-enable-mouse-attraction').value === "true";
+                        payload.modelPositionX = parseFloat(document.getElementById('3d-model-pos-x').value);
+                        payload.modelPositionY = parseFloat(document.getElementById('3d-model-pos-y').value);
+                        payload.modelPositionZ = parseFloat(document.getElementById('3d-model-pos-z').value);
                     }
                     payload.enableGlobal = globalWidgetsSelect.value === "true";
                 }
@@ -2012,6 +2083,12 @@
                     currentWallpaper.config.Enable_Global_Widget = payload.enableGlobal;
                     if (payload.qualityPreset) currentWallpaper.config.qualityPreset = payload.qualityPreset;
                     if (payload.fpsLimit !== undefined) currentWallpaper.config.fpsLimit = payload.fpsLimit;
+                    if (payload.modelScale !== undefined) currentWallpaper.config.modelScale = payload.modelScale;
+                    if (payload.enableIdleRotation !== undefined) currentWallpaper.config.enableIdleRotation = payload.enableIdleRotation;
+                    if (payload.enableMouseAttraction !== undefined) currentWallpaper.config.enableMouseAttraction = payload.enableMouseAttraction;
+                    if (payload.modelPositionX !== undefined) currentWallpaper.config.modelPositionX = payload.modelPositionX;
+                    if (payload.modelPositionY !== undefined) currentWallpaper.config.modelPositionY = payload.modelPositionY;
+                    if (payload.modelPositionZ !== undefined) currentWallpaper.config.modelPositionZ = payload.modelPositionZ;
                 }
 
                 if (currentWallpaper.themeId === activeThemeId && isEngineRunning) {

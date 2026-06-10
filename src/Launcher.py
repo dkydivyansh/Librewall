@@ -1539,6 +1539,36 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 if 'qualityPreset' in data:
                     config_data['qualityPreset'] = str(data.get('qualityPreset'))
 
+                if 'modelScale' in data:
+                    try:
+                        config_data['modelScale'] = float(data.get('modelScale'))
+                    except (ValueError, TypeError):
+                        config_data['modelScale'] = 1.0
+
+                if 'enableIdleRotation' in data:
+                    config_data['enableIdleRotation'] = bool(data.get('enableIdleRotation'))
+
+                if 'enableMouseAttraction' in data:
+                    config_data['enableMouseAttraction'] = bool(data.get('enableMouseAttraction'))
+
+                if 'modelPositionX' in data:
+                    try:
+                        config_data['modelPositionX'] = float(data.get('modelPositionX'))
+                    except (ValueError, TypeError):
+                        config_data['modelPositionX'] = 0.0
+                
+                if 'modelPositionY' in data:
+                    try:
+                        config_data['modelPositionY'] = float(data.get('modelPositionY'))
+                    except (ValueError, TypeError):
+                        config_data['modelPositionY'] = 0.0
+                
+                if 'modelPositionZ' in data:
+                    try:
+                        config_data['modelPositionZ'] = float(data.get('modelPositionZ'))
+                    except (ValueError, TypeError):
+                        config_data['modelPositionZ'] = 0.0
+
                 if 'muteAudio' in data:
 
                     val = data.get('muteAudio')
@@ -1976,8 +2006,7 @@ def start_editor_server(port):
     Handler = EditorHTTPHandler
     httpd = ThreadingHTTPServer(("", port), Handler)
 
-    print(f"Editor server (Multi-threaded) started at http://localhost:{port}")
-    print(f"Serving files from: {SERVER_ROOT}")
+
 
     httpd.serve_forever()
 
