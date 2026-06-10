@@ -170,6 +170,57 @@ def get_reliable_windows_id():
         print(f"[ERROR] Unable to get reliable ID: {e}")
         return "error-generating-id"
 
+def get_os_version_string():
+    import platform
+    try:
+        if platform.system() == 'Windows':
+            release = platform.release()
+            version = platform.version()
+            if release == '10':
+                try:
+                    build = int(version.split('.')[2])
+                    if build >= 22000:
+                        return "Windows 11"
+                except: pass
+            return f"Windows {release}"
+        return platform.system()
+    except:
+        return "Unknown OS"
+
+def track_user_device_loop():
+    import time
+    while True:
+        try:
+            device_id = get_reliable_windows_id()
+            app_ver = CURRENT_APP_VERSION
+            os_ver = get_os_version_string()
+            
+            country = "Unknown"
+            try:
+                req_ip = urllib.request.Request("http://ip-api.com/json/", headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req_ip, timeout=5) as response:
+                    ip_data = json.loads(response.read().decode('utf-8'))
+                    country = ip_data.get('countryCode', 'Unknown')
+            except: pass
+            
+            url = api_config.TRACKER_URL
+            data = urllib.parse.urlencode({
+                'device_id': device_id,
+                'app_version': app_ver,
+                'os': os_ver,
+                'country': country
+            }).encode('utf-8')
+            
+            req = urllib.request.Request(url, data=data, method='POST', headers={'User-Agent': f'Mozilla/5.0 ({os_ver}; Win64; x64) Librewall/{CURRENT_APP_VERSION}'})
+            try:
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    pass
+            except Exception as e:
+                pass
+        except Exception as e:
+            pass
+        time.sleep(1200)
+
 current_scale = get_real_screen_scale()
 
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
@@ -1353,6 +1404,8 @@ if __name__ == "__main__":
         threading.Thread(target=network_stats_updater, daemon=True).start()
         threading.Thread(target=live_traffic_updater, args=(current_proc_name,), daemon=True).start()
         threading.Thread(target=start_websocket_thread, args=(current_proc_name,), daemon=True).start()
+
+    threading.Thread(target=track_user_device_loop, daemon=True).start()
 
     tray_icon = QSystemTrayIcon(app)
     tray_icon.setIcon(app.windowIcon())

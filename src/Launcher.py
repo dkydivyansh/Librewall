@@ -131,6 +131,116 @@ kernel32 = ctypes.windll.kernel32
 SW_RESTORE    = 9
 SW_SHOWNORMAL = 1
 
+def get_reliable_windows_id():
+    try:
+        app_data = os.getenv('LOCALAPPDATA')
+        if not app_data:
+            app_data = os.path.join(os.path.expanduser("~"), "AppData", "Local")
+
+        storage_dir = os.path.join(app_data, "Librewall")
+        if not os.path.exists(storage_dir):
+            try:
+                os.makedirs(storage_dir)
+            except: pass
+
+        cache_path = os.path.join(storage_dir, '.device_id')
+
+        if os.path.exists(cache_path):
+            try:
+                with open(cache_path, 'r') as f:
+                    cached_id = f.read().strip()
+                if cached_id:
+                    return cached_id
+            except Exception: pass
+
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = subprocess.SW_HIDE
+
+        uuid_cmd = [
+            'powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-Command',
+            "(Get-CimInstance -Class Win32_ComputerSystemProduct).UUID"
+        ]
+        
+        try:
+            uuid = subprocess.run(
+                uuid_cmd, 
+                capture_output=True, 
+                text=True, 
+                startupinfo=startupinfo,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                timeout=3
+            ).stdout.strip()
+        except subprocess.TimeoutExpired:
+            print("Warning: WMI UUID lookup timed out, returning fallback ID.")
+            return "unknown-device-id"
+
+        if not uuid:
+            print("Warning: UUID empty, returning fallback ID.")
+            return "unknown-device-id"
+
+        try:
+            with open(cache_path, 'w') as f:
+                f.write(uuid)
+            ctypes.windll.kernel32.SetFileAttributesW(cache_path, 2)
+        except: pass
+
+        return uuid
+
+    except Exception as e:
+        print(f"[ERROR] Unable to get reliable ID: {e}")
+        return "error-generating-id"
+
+def get_os_version_string():
+    import platform
+    try:
+        if platform.system() == 'Windows':
+            release = platform.release()
+            version = platform.version()
+            if release == '10':
+                try:
+                    build = int(version.split('.')[2])
+                    if build >= 22000:
+                        return "Windows 11"
+                except: pass
+            return f"Windows {release}"
+        return platform.system()
+    except:
+        return "Unknown OS"
+
+def track_user_device():
+    try:
+        device_id = get_reliable_windows_id()
+        app_ver = CURRENT_APP_VERSION
+        os_ver = get_os_version_string()
+        
+        country = "Unknown"
+        try:
+            req_ip = urllib.request.Request("http://ip-api.com/json/", headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req_ip, timeout=5) as response:
+                ip_data = json.loads(response.read().decode('utf-8'))
+                country = ip_data.get('countryCode', 'Unknown')
+        except: pass
+        
+        url = api_config.TRACKER_URL
+        data = urllib.parse.urlencode({
+            'device_id': device_id,
+            'app_version': app_ver,
+            'os': os_ver,
+            'country': country
+        }).encode('utf-8')
+        
+        req = urllib.request.Request(url, data=data, method='POST', headers={'User-Agent': f'Mozilla/5.0 ({os_ver}; Win64; x64) Librewall/{CURRENT_APP_VERSION}'})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as response:
+                print("User tracking success:", response.read().decode('utf-8'))
+        except Exception as e:
+            print(f"User tracking failed: {e}")
+    except Exception as e:
+        print(f"Error in tracking thread: {e}")
+
+threading.Thread(target=track_user_device, daemon=True).start()
+
 EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
 
 def _get_hwnd_by_title_substring(substring: str) -> int:
@@ -2015,7 +2125,7 @@ class EditorWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(f"librewall {api_config.CURRENT_APP_VERSION_NAME}")
         self.resize(1400, 900)
-        self.setMinimumSize(900, 700)
+        self.setMinimumSize(1000, 700)
         self.webEngineView = QWebEngineView(self)
         self.webEngineView.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.dev_tools_view = None
@@ -2188,6 +2298,8 @@ if __name__ == "__main__":
 
     if not updater_module.run_update_check(CURRENT_APP_VERSION, CURRENT_APP_VERSION_NAME, API_BASE_URL):
         sys.exit(0) 
+
+    threading.Thread(target=track_user_device, daemon=True).start()
 
     print("DevTools (Inspect) available at http://localhost:9222") 
     print(f"Loading editor UI from: {EDITOR_SERVER_URL}")

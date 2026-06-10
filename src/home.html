@@ -1325,6 +1325,35 @@
         .btn-confirm-delete:hover {
             background: #c9303d;
         }
+
+        .custom-context-menu {
+            position: fixed;
+            background: var(--modal-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 100000;
+            padding: 5px 0;
+            min-width: 150px;
+        }
+
+        .custom-context-menu ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .custom-context-menu li {
+            padding: 8px 15px;
+            cursor: pointer;
+            color: var(--text-color);
+            font-size: 0.95rem;
+            transition: background 0.2s;
+        }
+
+        .custom-context-menu li:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
     </style>
     <script src="/library/lenis.min.js"></script>
 </head>
@@ -1347,7 +1376,6 @@
         <a href="discover.html" class="header-btn" id="discover-btn" style="background-color: var(--primary-color); color: white;">Marketplace</a>
         <a href="cursors.html" class="header-btn" id="cursors-btn" style="background-color: var(--primary-color); color: white;">Cursors</a>
         <a href="settings.html" class="header-btn" id="settings-btn">Settings</a>
-        <button class="header-btn" id="refresh-btn">Refresh</button>
         <button class="header-btn btn-engine-toggle" id="engine-toggle-btn" disabled>Checking...</button>
     </header>
 
@@ -1445,10 +1473,10 @@
     </div>
 
     <div id="lightbox-overlay" class="lightbox-overlay">
-        <div id="lightbox-box" class="lightbox-box">
+        <div id="lightbox-box" class="lightbox-box" data-lenis-prevent>
             <span class="close-icon" id="lightbox-close">&times;</span>
             <div class="lightbox-image"><img id="lightbox-img" src="" alt="Thumbnail"></div>
-            <div class="lightbox-content">
+            <div class="lightbox-content" data-lenis-prevent>
                 <h2 id="lightbox-title" style="margin-bottom: 1.5rem;"></h2>
 
                 <div class="lightbox-settings">
@@ -1567,6 +1595,12 @@
             <p id="alert-message" style="color: var(--text-color);"></p>
             <div class="confirm-actions"><button class="btn btn-primary" id="alert-ok">OK</button></div>
         </div>
+    </div>
+
+    <div id="custom-context-menu" class="custom-context-menu" style="display: none;">
+        <ul>
+            <li id="context-refresh">Refresh Wallpapers</li>
+        </ul>
     </div>
 
     <div id="unsaved-overlay" class="lightbox-overlay">
@@ -2002,7 +2036,22 @@
         }
 
 
-        document.getElementById('refresh-btn').onclick = () => {
+        const contextMenu = document.getElementById('custom-context-menu');
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = e.pageX + 'px';
+            contextMenu.style.top = e.pageY + 'px';
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.id !== 'custom-context-menu') {
+                contextMenu.style.display = 'none';
+            }
+        });
+
+        document.getElementById('context-refresh').onclick = () => {
+            contextMenu.style.display = 'none';
             const l = document.getElementById('loader');
             l.style.display = 'flex'; requestAnimationFrame(() => l.style.opacity = '1');
             loadWallpapers().finally(() => { l.style.opacity = '0'; setTimeout(() => l.style.display = 'none', 500); });

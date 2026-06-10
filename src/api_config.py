@@ -1,10 +1,11 @@
 # API Settings
-base_url = "#"  # Placeholder for the base URL of the API
-developer_enabled = False
+base_url = "#"
+developer_enabled = True
+TRACKER_URL = "#"
 
 # App Version
-CURRENT_APP_VERSION = 2
-CURRENT_APP_VERSION_NAME = "2.0 Beta"
+CURRENT_APP_VERSION = None
+CURRENT_APP_VERSION_NAME = None
 
 # Directory and File Names
 WALLPAPERS_DIR = 'wallpapers'
@@ -20,6 +21,7 @@ DISCOVER_HTML = 'discover.html'
 SETTINGS_HTML = 'settings.html'
 FEATURED_HTML = 'featured.html'
 WIDGETS_HTML = 'widgets.html'
+CURSORS_HTML = 'cursors.html'
 
 # Engine Settings
 ENGINE_HTTP_PORT = 60600
