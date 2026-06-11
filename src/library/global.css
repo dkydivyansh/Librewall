@@ -307,6 +307,7 @@ body.is-dragging .resize-handle {
     opacity: 0;
     scale: 0.95;
   }
+
   to {
     opacity: 1;
     scale: 1;
@@ -665,6 +666,7 @@ input[type="checkbox"].settings-input:checked::after {
     scale: 0.5;
     opacity: 0;
   }
+
   to {
     scale: 1;
     opacity: 1;
@@ -1073,22 +1075,27 @@ input[type="checkbox"].settings-input:focus {
   width: 78px;
   color: #999;
 }
+
 .net-type {
   width: 82px;
   font-weight: bold;
 }
+
 .net-ip {
   width: 220px;
   color: #f0e68c;
 }
+
 .net-port {
   width: 220px;
   color: #f0e68c;
 }
+
 .net-protocol {
   width: 75px;
   color: #aaa;
 }
+
 .net-process {
   color: #f1f1f1;
   flex-grow: 1;
@@ -1098,15 +1105,22 @@ input[type="checkbox"].settings-input:focus {
 .ESTABLISHED {
   color: cornflowerblue;
 }
+
 .INCOMING,
 .CLOSE_WAIT {
   color: #e94c4c;
 }
+
 .AT-OUT,
 .SYN_SENT {
   color: mediumpurple;
 }
+
 .AT-IN,
 .LISTEN {
   color: #50e3c2;
+}
+
+body.light-theme .widget-container {
+  background-color: rgb(0 0 0 / 25%);
 }

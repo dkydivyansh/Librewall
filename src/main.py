@@ -336,6 +336,16 @@ PROCESS_HIDE_LIST = [
 ]
 APP_CONFIG_LOCK = threading.Lock()
 
+MEDIA_LOCK = threading.Lock()
+CURRENT_MEDIA_INFO = {
+    "title": "", "artist": "", "album": "", "state": "",
+    "position": 0, "end_time": 0, "has_thumbnail": False
+}
+CURRENT_MEDIA_THUMBNAIL = b""
+
+AUDIO_LOCK = threading.Lock()
+CURRENT_AUDIO_FFT = []
+
 class MyHandler(http.server.SimpleHTTPRequestHandler):
 
     def get_current_wallpaper_path(self):
@@ -645,6 +655,19 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
             else:
                 if not self.check_auth(): return
                 
+                if clean_path == '/media/thumbnail':
+                    with MEDIA_LOCK:
+                        thumb = CURRENT_MEDIA_THUMBNAIL
+                    if thumb:
+                        self.send_response(200)
+                        self.send_header('Content-type', 'image/jpeg')
+                        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                        self.end_headers()
+                        self.wfile.write(thumb)
+                    else:
+                        self.send_error(404, "No thumbnail available")
+                    return
+
                 if self.path == '/list_templates':
                     try:
                         templates_file = handler.get_data_path(api_config.WIDGETS_DIR, 'templates.json')
@@ -1160,6 +1183,10 @@ def network_stats_updater():
     while True:
         try:
             time.sleep(1)
+            if not WEBSOCKET_CLIENTS:
+                last_io = psutil.net_io_counters()
+                continue
+                
             new_io = psutil.net_io_counters()
             upload_speed_bits = (new_io.bytes_sent - last_io.bytes_sent) * 8
             download_speed_bits = (new_io.bytes_recv - last_io.bytes_recv) * 8
@@ -1172,6 +1199,99 @@ def network_stats_updater():
         except Exception as e:
             print(f"Error in stats updater thread: {e}", file=sys.stderr)
             time.sleep(5)
+
+def media_info_updater():
+    print("Media Monitor: Starting media updater thread...")
+    try:
+        import asyncio
+        from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessionManager
+        
+        async def poll_media():
+            global CURRENT_MEDIA_THUMBNAIL
+            manager = await GlobalSystemMediaTransportControlsSessionManager.request_async()
+            while True:
+                try:
+                    await asyncio.sleep(1)
+                    if not WEBSOCKET_CLIENTS: continue
+                    session = manager.get_current_session()
+                    if not session:
+                        with MEDIA_LOCK:
+                            CURRENT_MEDIA_INFO.update({"title": "", "artist": "", "album": "", "state": "", "position": 0, "end_time": 0, "has_thumbnail": False})
+                        continue
+
+                    media_props = await session.try_get_media_properties_async()
+                    timeline = session.get_timeline_properties()
+                    info = session.get_playback_info()
+                    state_map = {0: "Closed", 1: "Opened", 2: "Changing", 3: "Stopped", 4: "Playing", 5: "Paused"}
+                    
+                    with MEDIA_LOCK:
+                        CURRENT_MEDIA_INFO["title"] = media_props.title if media_props else ""
+                        CURRENT_MEDIA_INFO["artist"] = media_props.artist if media_props else ""
+                        CURRENT_MEDIA_INFO["album"] = media_props.album_title if media_props else ""
+                        CURRENT_MEDIA_INFO["state"] = state_map.get(info.playback_status, "Unknown") if info else "Unknown"
+                        CURRENT_MEDIA_INFO["position"] = timeline.position.total_seconds() if timeline else 0
+                        CURRENT_MEDIA_INFO["end_time"] = timeline.end_time.total_seconds() if timeline else 0
+                        
+                        if media_props and media_props.thumbnail:
+                            try:
+                                stream = await media_props.thumbnail.open_read_async()
+                                buffer = bytes(stream.size)
+                                await stream.read_async(buffer, stream.size, 0)
+                                CURRENT_MEDIA_THUMBNAIL = buffer
+                                CURRENT_MEDIA_INFO["has_thumbnail"] = True
+                            except: pass
+                        else:
+                            CURRENT_MEDIA_INFO["has_thumbnail"] = False
+
+                except Exception as e:
+                    print(f"Error in media loop: {e}", file=sys.stderr)
+        asyncio.run(poll_media())
+    except Exception as e:
+        print(f"Media Monitor failed to start: {e}", file=sys.stderr)
+
+def audio_visualizer_thread():
+    print("Audio Monitor: Starting live audio FFT thread...")
+    try:
+        import soundcard as sc
+        import numpy as np
+        import time
+        
+        while True:
+            try:
+                speaker = sc.default_speaker()
+                mics = sc.all_microphones(include_loopback=True)
+                loopback = next((m for m in mics if m.name == speaker.name), None)
+                if not loopback:
+                    time.sleep(5)
+                    continue
+
+                with loopback.recorder(samplerate=44100, channels=1) as mic:
+                    while True:
+                        if not WEBSOCKET_CLIENTS:
+                            time.sleep(1)
+                            continue
+                        
+                        current_speaker = sc.default_speaker()
+                        if current_speaker.name != speaker.name:
+                            print("Audio Monitor: Default audio device changed, switching...")
+                            break 
+                            
+                        data = mic.record(numframes=1024)
+                        fft_data = np.abs(np.fft.rfft(data[:, 0]))
+                        
+                        bins = np.array_split(fft_data, 64)
+                        compressed = [float(np.mean(b)) for b in bins]
+                        
+                        with AUDIO_LOCK:
+                            global CURRENT_AUDIO_FFT
+                            CURRENT_AUDIO_FFT = compressed
+                            
+            except Exception as e:
+                print(f"Error in audio visualizer loop: {e}", file=sys.stderr)
+                time.sleep(2)
+                
+    except Exception as e:
+        print(f"Audio Monitor failed to start: {e}", file=sys.stderr)
 
 def get_process_name(pid):
     import psutil
@@ -1187,6 +1307,10 @@ def live_traffic_updater(current_process_name):
     loopback_ips = ('127.0.0.1', '::1')
     while True:
         try:
+            if not WEBSOCKET_CLIENTS:
+                time.sleep(1)
+                continue
+
             connections = psutil.net_connections(kind='inet')
             listening_ports = {c.laddr.port for c in connections if c.status == 'LISTEN'}
             new_log_entries = []
@@ -1238,6 +1362,8 @@ def live_traffic_updater(current_process_name):
 def get_network_data(current_process_name):
     with STATS_LOCK: stats = CURRENT_STATS.copy()
     with TRAFFIC_LOCK: live_traffic = list(LIVE_TRAFFIC_LOG)
+    with MEDIA_LOCK: media_info = CURRENT_MEDIA_INFO.copy()
+    with AUDIO_LOCK: audio_fft = list(CURRENT_AUDIO_FFT)
 
     active_connections_raw, listening_ports_raw = [], []
     loopback_ips = ('127.0.0.1', '::1')
@@ -1276,7 +1402,9 @@ def get_network_data(current_process_name):
         "listening_ports": listening_ports_raw,
         "live_traffic_log": live_traffic,
         "active_count": len(active_connections_raw),   
-        "listening_count": len(listening_ports_raw) 
+        "listening_count": len(listening_ports_raw),
+        "media": media_info,
+        "audio_fft": audio_fft
     })
     return stats
 
@@ -1403,6 +1531,8 @@ if __name__ == "__main__":
         print("Starting Global Widget Threads...")
         threading.Thread(target=network_stats_updater, daemon=True).start()
         threading.Thread(target=live_traffic_updater, args=(current_proc_name,), daemon=True).start()
+        threading.Thread(target=media_info_updater, daemon=True).start()
+        threading.Thread(target=audio_visualizer_thread, daemon=True).start()
         threading.Thread(target=start_websocket_thread, args=(current_proc_name,), daemon=True).start()
 
     threading.Thread(target=track_user_device_loop, daemon=True).start()

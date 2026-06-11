@@ -238,7 +238,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const checkEditorIds = urlParams.get('id');
         const isEditorMode = !!checkEditorIds;
-        
+
         function getPath(path) {
             if (!isEditorMode) return path;
             if (path === '/config') return `/wallpapers/${checkEditorIds}/config.json`;
@@ -580,7 +580,7 @@
                 function (texture) {
                     const envMap = pmremGenerator.fromEquirectangular(texture).texture;
                     scene.environment = envMap;
-                    
+
                     // Intensity for environment reflections (affects metals pop!)
                     if (scene.hasOwnProperty('environmentIntensity')) {
                         scene.environmentIntensity = config.environmentIntensity ?? 1.0;
@@ -711,8 +711,8 @@
                         );
                         gizmoGroup.add(sphere);
                         const rayLen = 0.35;
-                        [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]].forEach(d => {
-                            const pts = [new THREE.Vector3(d[0]*0.22,d[1]*0.22,d[2]*0.22), new THREE.Vector3(d[0]*rayLen,d[1]*rayLen,d[2]*rayLen)];
+                        [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]].forEach(d => {
+                            const pts = [new THREE.Vector3(d[0] * 0.22, d[1] * 0.22, d[2] * 0.22), new THREE.Vector3(d[0] * rayLen, d[1] * rayLen, d[2] * rayLen)];
                             const ray = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
                                 new THREE.LineBasicMaterial({ color: lc, depthTest: false, transparent: true, opacity: 0.85 }));
                             gizmoGroup.add(ray);
@@ -724,7 +724,7 @@
                             new THREE.MeshBasicMaterial({ color: lc, wireframe: true, depthTest: false, transparent: true, opacity: 0.7 })
                         );
                         // Point cone toward the model center (origin)
-                        const dirToOrigin = new THREE.Vector3().subVectors(new THREE.Vector3(0,0,0), lPos).normalize();
+                        const dirToOrigin = new THREE.Vector3().subVectors(new THREE.Vector3(0, 0, 0), lPos).normalize();
                         // Default cone tip points along +Y, we need to rotate it to face dirToOrigin
                         const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, -1, 0), dirToOrigin);
                         cone.quaternion.copy(quat);
@@ -740,15 +740,15 @@
                         const circPts = [];
                         for (let i = 0; i <= 24; i++) {
                             const a = (i / 24) * Math.PI * 2;
-                            circPts.push(new THREE.Vector3(Math.cos(a)*0.25, Math.sin(a)*0.25, 0));
+                            circPts.push(new THREE.Vector3(Math.cos(a) * 0.25, Math.sin(a) * 0.25, 0));
                         }
                         const circle = new THREE.Line(new THREE.BufferGeometry().setFromPoints(circPts),
                             new THREE.LineBasicMaterial({ color: lc, depthTest: false, transparent: true, opacity: 0.85 }));
                         gizmoGroup.add(circle);
                         // Arrow
-                        const arDir = new THREE.Vector3().subVectors(new THREE.Vector3(0,0,0), lPos).normalize();
-                        const arrow = new THREE.ArrowHelper(arDir, new THREE.Vector3(0,0,0), lPos.length()*0.4, lc.getHex(), 0.15, 0.08);
-                        arrow.traverse(c => { if(c.material) { c.material.depthTest = false; }});
+                        const arDir = new THREE.Vector3().subVectors(new THREE.Vector3(0, 0, 0), lPos).normalize();
+                        const arrow = new THREE.ArrowHelper(arDir, new THREE.Vector3(0, 0, 0), lPos.length() * 0.4, lc.getHex(), 0.15, 0.08);
+                        arrow.traverse(c => { if (c.material) { c.material.depthTest = false; } });
                         gizmoGroup.add(arrow);
                         // Dot
                         const dDot = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6),
@@ -760,16 +760,16 @@
                     const cs = 0.2;
                     const cross = new THREE.LineSegments(
                         new THREE.BufferGeometry().setFromPoints([
-                            new THREE.Vector3(-cs,0,0), new THREE.Vector3(cs,0,0),
-                            new THREE.Vector3(0,-cs,0), new THREE.Vector3(0,cs,0),
-                            new THREE.Vector3(0,0,-cs), new THREE.Vector3(0,0,cs)
+                            new THREE.Vector3(-cs, 0, 0), new THREE.Vector3(cs, 0, 0),
+                            new THREE.Vector3(0, -cs, 0), new THREE.Vector3(0, cs, 0),
+                            new THREE.Vector3(0, 0, -cs), new THREE.Vector3(0, 0, cs)
                         ]), new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false })
                     );
                     gizmoGroup.add(cross);
 
                     // Direction line to origin
                     const dirLine = new THREE.Line(
-                        new THREE.BufferGeometry().setFromPoints([lPos, new THREE.Vector3(0,0,0)]),
+                        new THREE.BufferGeometry().setFromPoints([lPos, new THREE.Vector3(0, 0, 0)]),
                         new THREE.LineBasicMaterial({ color: lc, transparent: true, opacity: 0.3, depthTest: false })
                     );
                     dirLine.renderOrder = 998;
@@ -818,9 +818,9 @@
 
                 const borderPts = [
                     new THREE.Vector3(-hw, -hh, -screenDist),
-                    new THREE.Vector3( hw, -hh, -screenDist),
-                    new THREE.Vector3( hw,  hh, -screenDist),
-                    new THREE.Vector3(-hw,  hh, -screenDist),
+                    new THREE.Vector3(hw, -hh, -screenDist),
+                    new THREE.Vector3(hw, hh, -screenDist),
+                    new THREE.Vector3(-hw, hh, -screenDist),
                     new THREE.Vector3(-hw, -hh, -screenDist)
                 ];
                 const border = new THREE.Line(
@@ -833,14 +833,14 @@
                 // Corner brackets
                 const bLen = Math.min(hw, hh) * 0.15;
                 const cPts = [
-                    new THREE.Vector3(-hw, hh-bLen, -screenDist), new THREE.Vector3(-hw, hh, -screenDist),
-                    new THREE.Vector3(-hw, hh, -screenDist), new THREE.Vector3(-hw+bLen, hh, -screenDist),
-                    new THREE.Vector3(hw-bLen, hh, -screenDist), new THREE.Vector3(hw, hh, -screenDist),
-                    new THREE.Vector3(hw, hh, -screenDist), new THREE.Vector3(hw, hh-bLen, -screenDist),
-                    new THREE.Vector3(hw, -hh+bLen, -screenDist), new THREE.Vector3(hw, -hh, -screenDist),
-                    new THREE.Vector3(hw, -hh, -screenDist), new THREE.Vector3(hw-bLen, -hh, -screenDist),
-                    new THREE.Vector3(-hw+bLen, -hh, -screenDist), new THREE.Vector3(-hw, -hh, -screenDist),
-                    new THREE.Vector3(-hw, -hh, -screenDist), new THREE.Vector3(-hw, -hh+bLen, -screenDist),
+                    new THREE.Vector3(-hw, hh - bLen, -screenDist), new THREE.Vector3(-hw, hh, -screenDist),
+                    new THREE.Vector3(-hw, hh, -screenDist), new THREE.Vector3(-hw + bLen, hh, -screenDist),
+                    new THREE.Vector3(hw - bLen, hh, -screenDist), new THREE.Vector3(hw, hh, -screenDist),
+                    new THREE.Vector3(hw, hh, -screenDist), new THREE.Vector3(hw, hh - bLen, -screenDist),
+                    new THREE.Vector3(hw, -hh + bLen, -screenDist), new THREE.Vector3(hw, -hh, -screenDist),
+                    new THREE.Vector3(hw, -hh, -screenDist), new THREE.Vector3(hw - bLen, -hh, -screenDist),
+                    new THREE.Vector3(-hw + bLen, -hh, -screenDist), new THREE.Vector3(-hw, -hh, -screenDist),
+                    new THREE.Vector3(-hw, -hh, -screenDist), new THREE.Vector3(-hw, -hh + bLen, -screenDist),
                 ];
                 const corners = new THREE.LineSegments(
                     new THREE.BufferGeometry().setFromPoints(cPts),
