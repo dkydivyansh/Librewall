@@ -1,5 +1,10 @@
 import os
 import sys
+import api_config
+import faulthandler
+if api_config.developer_enabled:
+    crash_log = open("engine_crash_dump.txt", "a")
+    faulthandler.enable(crash_log)
 import ctypes
 import gpu_utils
 try:
@@ -242,7 +247,7 @@ os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
 os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
 os.environ["QT_SCALE_FACTOR"] = "1"
 
-from PyQt6.QtCore import QUrl, Qt, QTimer
+from PyQt6.QtCore import QUrl, Qt, QTimer, QMetaObject
 try:
     from PyQt6.QtQuick import QQuickWindow, QSGRendererInterface
     QQuickWindow.setGraphicsApi(QSGRendererInterface.GraphicsApi.OpenGL)
@@ -339,6 +344,8 @@ APP_CONFIG_LOCK = threading.Lock()
 
 MODULES_LOCK = threading.Lock()
 ACTIVE_MODULES = {}
+PSUTIL_NET_LOCK = threading.Lock()
+MEDIA_LOOP = None
 
 MEDIA_LOCK = threading.Lock()
 CURRENT_MEDIA_INFO = {
@@ -348,6 +355,11 @@ CURRENT_MEDIA_INFO = {
 CURRENT_MEDIA_THUMBNAIL = b""
 
 class MyHandler(http.server.SimpleHTTPRequestHandler):
+    protocol_version = "HTTP/1.0"
+    timeout = 30
+
+    def log_message(self, format, *args):
+        pass
 
     def get_current_wallpaper_path(self):
         default_theme = 'defolt'
@@ -638,11 +650,11 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
             if self.path in public_paths:
                 if self.path == '/reload':
                     self.app.is_restarting = True
-                    QTimer.singleShot(0, self.app.quit)
+                    QMetaObject.invokeMethod(self.app, "quit", Qt.ConnectionType.QueuedConnection)
                     self.send_response(200); self.end_headers(); self.wfile.write(b'Restarting application...')
                     return
                 elif self.path == '/quit':
-                    QTimer.singleShot(0, self.app.quit)
+                    QMetaObject.invokeMethod(self.app, "quit", Qt.ConnectionType.QueuedConnection)
                     self.send_response(200); self.end_headers(); self.wfile.write(b'Quitting...')
                     return
                 elif self.path == '/port':
@@ -674,8 +686,11 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
                     query_components = parse_qs(urlparse(self.path).query)
                     action = query_components.get("action", [""])[0]
                     if action in ["play", "pause", "next", "prev"]:
-                        if 'send_media_control_func' in globals():
-                            asyncio.run(send_media_control_func(action))
+                        if 'send_media_control_func' in globals() and MEDIA_LOOP is not None:
+                            asyncio.run_coroutine_threadsafe(
+                                send_media_control_func(action),
+                                MEDIA_LOOP
+                            )
                         self.send_response(200)
                         self.send_header('Content-type', 'application/json')
                         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
@@ -887,8 +902,21 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
             self.send_error(404, "Not Found")
     return CustomHandler
 
+class MainThreadingTCPServer(socketserver.ThreadingTCPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+    request_queue_size = 64
+
+    def get_request(self):
+        conn, addr = super().get_request()
+        conn.settimeout(30)
+        return conn, addr
+
+    def handle_error(self, request, client_address):
+        pass
+
 def start_server(port, handler_class):
-    server = socketserver.ThreadingTCPServer(("localhost", port), handler_class)
+    server = MainThreadingTCPServer(("localhost", port), handler_class)
     server_thread = threading.Thread(target=server.serve_forever)
     server_thread.daemon = True
     server_thread.start()
@@ -1246,7 +1274,13 @@ def media_info_updater():
             while True:
                 try:
                     await asyncio.sleep(1)
-                    if not WEBSOCKET_CLIENTS: continue
+                    
+                    with MODULES_LOCK:
+                        is_media_active = ACTIVE_MODULES.get('media', 0) > 0
+                        
+                    if not WEBSOCKET_CLIENTS or not is_media_active: 
+                        continue
+                        
                     session = manager.get_current_session()
                     if not session:
                         with MEDIA_LOCK:
@@ -1276,21 +1310,39 @@ def media_info_updater():
                             CURRENT_MEDIA_INFO["position"] = pos
                             CURRENT_MEDIA_INFO["end_time"] = timeline.end_time.total_seconds()
                             
-                        if media_props and media_props.thumbnail:
-                            try:
-                                from winsdk.windows.storage.streams import DataReader
-                                stream = await media_props.thumbnail.open_read_async()
-                                reader = DataReader(stream)
-                                await reader.load_async(stream.size)
-                                CURRENT_MEDIA_THUMBNAIL = bytes(reader.read_buffer(stream.size))
+                    if media_props and media_props.thumbnail:
+                        stream = None
+                        reader = None
+                        try:
+                            from winsdk.windows.storage.streams import DataReader
+                            stream = await media_props.thumbnail.open_read_async()
+                            reader = DataReader(stream)
+                            await reader.load_async(stream.size)
+                            buffer_data = bytes(reader.read_buffer(stream.size))
+                            with MEDIA_LOCK:
+                                CURRENT_MEDIA_THUMBNAIL = buffer_data
                                 CURRENT_MEDIA_INFO["has_thumbnail"] = True
-                            except Exception as e: pass
-                        else:
+                        except Exception as e: pass
+                        finally:
+                            if reader is not None:
+                                try: reader.close()
+                                except: pass
+                            if stream is not None:
+                                try: stream.close()
+                                except: pass
+                    else:
+                        with MEDIA_LOCK:
                             CURRENT_MEDIA_INFO["has_thumbnail"] = False
 
                 except Exception as e:
                     print(f"Error in media loop: {e}", file=sys.stderr)
-        asyncio.run(poll_media())
+
+        async def main_media_task():
+            global MEDIA_LOOP
+            MEDIA_LOOP = asyncio.get_running_loop()
+            await poll_media()
+
+        asyncio.run(main_media_task())
     except Exception as e:
         print(f"Media Monitor failed to start: {e}", file=sys.stderr)
 
@@ -1315,7 +1367,8 @@ def live_traffic_updater(current_process_name):
                 time.sleep(1)
                 continue
 
-            connections = psutil.net_connections(kind='inet')
+            with PSUTIL_NET_LOCK:
+                connections = psutil.net_connections(kind='inet')
             listening_ports = {c.laddr.port for c in connections if c.status == 'LISTEN'}
             new_log_entries = []
             for conn in connections:
@@ -1354,7 +1407,8 @@ def live_traffic_updater(current_process_name):
 
             if len(SEEN_CONNECTIONS) > 2000:
                 SEEN_CONNECTIONS.clear()
-                current_conns = psutil.net_connections(kind='inet')
+                with PSUTIL_NET_LOCK:
+                    current_conns = psutil.net_connections(kind='inet')
                 for c in current_conns:
                      if c.raddr and c.status in ('ESTABLISHED', 'SYN_SENT'):
                           SEEN_CONNECTIONS.add((c.laddr, c.raddr, c.pid, c.status))
@@ -1377,7 +1431,8 @@ def get_network_data(current_process_name):
 
     if needs_connections or needs_listening:
         try:
-            connections = psutil.net_connections(kind='inet')
+            with PSUTIL_NET_LOCK:
+                connections = psutil.net_connections(kind='inet')
             for conn in connections:
                 process_name = get_process_name(conn.pid)
 
@@ -1418,17 +1473,21 @@ def get_network_data(current_process_name):
 
 WEBSOCKET_CLIENTS = set()
 async def ws_register(websocket): WEBSOCKET_CLIENTS.add(websocket)
-async def ws_unregister(websocket): WEBSOCKET_CLIENTS.remove(websocket)
+async def ws_unregister(websocket): WEBSOCKET_CLIENTS.discard(websocket)
 
 async def ws_data_push_loop(current_process_name):
     import asyncio
+    loop = asyncio.get_event_loop()
     while True:
-        if WEBSOCKET_CLIENTS:
-            data = get_network_data(current_process_name) 
+        clients = set(WEBSOCKET_CLIENTS)
+        if clients:
+            data = await loop.run_in_executor(None, get_network_data, current_process_name)
             data_json = json.dumps(data)
-            await asyncio.gather(
-                *[client.send(data_json) for client in WEBSOCKET_CLIENTS], return_exceptions=True
-            )
+            clients = set(WEBSOCKET_CLIENTS)
+            if clients:
+                await asyncio.gather(
+                    *[client.send(data_json) for client in clients], return_exceptions=True
+                )
         await asyncio.sleep(0.2)
 
 async def ws_handler(websocket):

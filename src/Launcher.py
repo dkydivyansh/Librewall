@@ -7,7 +7,10 @@ if sys.stdout is None or sys.stderr is None:
         def isatty(self): return False
     sys.stdout = NullWriter()
     sys.stderr = NullWriter()
-
+import faulthandler
+if api_config.developer_enabled:
+    crash_log = open("engine_crash_dump.txt", "a")
+    faulthandler.enable(crash_log)
 import api_config
 import handler
 import builtins
