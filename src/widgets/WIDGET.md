@@ -91,7 +91,35 @@ Add your widget to `widgets/index.json`. Note that the registry is an object con
 }
 ```
 
+### 5. Backend Module Subscriptions (Optional)
 
+If your widget requires heavy background processing from the Python backend (like network packet sniffing, active connections, or media telemetry), you can explicitly "subscribe" to those modules within your widget class.
+
+The `global.js` WidgetLoader will automatically wake up the corresponding Python threads when your widget is toggled **on**, and safely put them back to sleep to save CPU when toggled **off**.
+
+Simply add a `this.modules` array to your widget's constructor in `main.js`:
+
+```javascript
+export default class MyWidget {
+    constructor(id) {
+        this.id = id;
+        this.html = `...`;
+        this.settings = {};
+        
+        // Define backend dependencies
+        this.modules = ["live_traffic_log", "active_connections"];
+    }
+}
+```
+
+**Available Core Modules:**
+- `active_connections`: Scans the system for all active ESTABLISHED connections.
+- `listening_count`: Scans the system for all open LISTEN ports.
+- `live_traffic_log`: Logs all outbound/inbound traffic events continuously.
+- `traffic_stats`: Calculates active upload/download bytes per second.
+- `media`: Hooks into the Windows SMTC to provide playback status, duration, and thumbnail APIs.
+
+---
 
 ## Settings Reference
 
@@ -344,3 +372,64 @@ When the user enters Edit Mode (`WidgetLoader.isDraggable = true`), clicks are i
 
 - **Opening Menu**: Left-clicking empty space on any widget opens the Context Menu ("Edit Settings" / "Hide Widget").
 - **Exemptions**: Clicking elements that naturally require interaction (`button`, `input`, `a`, `canvas`, or the `.resize-handle`) will **not** trigger the Context Menu. Design your UI so that interactable buttons don't accidentally block users from configuring the widget!
+
+---
+
+## Media API Integration
+
+Cyberwall provides a built-in media integration API that hooks directly into the host OS's native media transport controls (Windows SMTC). This allows widgets to act as fully-featured media players with live metadata, playback controls, and cover art.
+
+### 1. Live Metadata (`librewall-data` Event)
+
+The engine broadcasts live system telemetry over a local WebSocket. Every second, widgets receive a `librewall-data` CustomEvent on the `window` object containing a `media` dictionary.
+
+```javascript
+window.addEventListener('librewall-data', (e) => {
+    const data = e.detail;
+    if (!data.media) return;
+    
+    console.log(data.media);
+    /* Example Output:
+    {
+        "title": "Song Name",
+        "artist": "Artist Name",
+        "album": "Album Name",
+        "state": "Playing", // "Playing", "Paused", "Stopped"
+        "position": 14.5, // Current time in seconds
+        "end_time": 180.0, // Total duration in seconds
+        "has_thumbnail": true
+    }
+    */
+});
+```
+
+### 2. Media Controls API
+
+You can control the system media transport using HTTP GET requests to the `/media/control` endpoint.
+
+```javascript
+// Play or Pause
+fetch('/media/control?action=play');
+fetch('/media/control?action=pause');
+
+// Skip Tracks
+fetch('/media/control?action=next');
+fetch('/media/control?action=prev');
+```
+
+*Note: Because these are HTTP requests to the local engine, they execute instantly. You can combine these with optimistic UI updates for maximum responsiveness.*
+
+### 3. Live Cover Art (Thumbnail API)
+
+If `has_thumbnail` is `true`, you can fetch the raw image blob directly from the `/media/thumbnail` endpoint. 
+
+To prevent flickering when polling, use the song title and artist as a cache key and only reload the image `src` when the track changes!
+
+```javascript
+// Append a timestamp to bypass browser image caching
+const newSrc = \`/media/thumbnail?t=\${Date.now()}\`;
+
+const img = new Image();
+img.onload = () => { document.getElementById('cover-art').src = newSrc; };
+img.src = newSrc;
+```

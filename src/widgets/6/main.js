@@ -2,7 +2,7 @@
 @name: Live Traffic Log
 @author: Dkydivyansh
 @description: Shows a live log of outgoing and incoming network connections.
-@min_version: 3
+@min_version: 10
 */
 
 export default class LiveTrafficLogWidget {
@@ -15,8 +15,9 @@ export default class LiveTrafficLogWidget {
     this.settings = {
       minWidth: "650px",
     };
+    this.modules = ["live_traffic_log"];
   }
 
-  init() {}
-  destroy() {}
+  init() { }
+  destroy() { }
 }

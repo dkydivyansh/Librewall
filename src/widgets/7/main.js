@@ -2,7 +2,7 @@
 @name: Active Connections
 @author: Dkydivyansh
 @description: Provides a comprehensive view of all active network connections.
-@min_version: 1
+@min_version: 10
 */
 
 export default class ActiveConnectionsWidget {
@@ -13,6 +13,7 @@ export default class ActiveConnectionsWidget {
             <div id="active-list" class="net-list">Loading...</div>
         `;
         this.settings = {};
+        this.modules = ["active_connections"];
     }
 
     init() { }

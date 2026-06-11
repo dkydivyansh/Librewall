@@ -2,13 +2,13 @@
 @name: Live Clock
 @author: Dkydivyansh
 @description: A minimal and customizable live clock for your desktop.
-@min_version: 3
+@min_version: 10
 */
 
 export default class ClockWidget {
   constructor(WIDGET_ID) {
     this.id = WIDGET_ID;
-    
+
     // Config properties
     this.align = "right";
     this.timeColor = "#ffffff";
@@ -28,39 +28,39 @@ export default class ClockWidget {
     `;
 
     this.settings = {
-        transparent: this.transparent
+      transparent: this.transparent
     };
 
     this.editableSettings = [
-        {
-          key: "transparent",
-          label: "Transparent Background",
-          type: "boolean",
-          value: this.transparent,
-        },
-        {
-          key: "align",
-          label: "Alignment",
-          type: "select",
-          value: this.align,
-          options: [
-            { value: "left", label: "Left" },
-            { value: "center", label: "Center" },
-            { value: "right", label: "Right" },
-          ],
-        },
-        {
-          key: "timeColor",
-          label: "Time Color",
-          type: "color",
-          value: this.timeColor,
-        },
-        {
-          key: "dayColor",
-          label: "Day Color",
-          type: "color",
-          value: this.dayColor,
-        },
+      {
+        key: "transparent",
+        label: "Transparent Background",
+        type: "boolean",
+        value: this.transparent,
+      },
+      {
+        key: "align",
+        label: "Alignment",
+        type: "select",
+        value: this.align,
+        options: [
+          { value: "left", label: "Left" },
+          { value: "center", label: "Center" },
+          { value: "right", label: "Right" },
+        ],
+      },
+      {
+        key: "timeColor",
+        label: "Time Color",
+        type: "color",
+        value: this.timeColor,
+      },
+      {
+        key: "dayColor",
+        label: "Day Color",
+        type: "color",
+        value: this.dayColor,
+      },
     ];
 
     this.clockInterval = null;

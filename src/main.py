@@ -41,6 +41,7 @@ import socket
 import json
 import time
 import collections
+import asyncio
 import datetime
 from port_map import PORT_PROTOCOL_MAP
 import subprocess
@@ -336,15 +337,15 @@ PROCESS_HIDE_LIST = [
 ]
 APP_CONFIG_LOCK = threading.Lock()
 
+MODULES_LOCK = threading.Lock()
+ACTIVE_MODULES = {}
+
 MEDIA_LOCK = threading.Lock()
 CURRENT_MEDIA_INFO = {
     "title": "", "artist": "", "album": "", "state": "",
     "position": 0, "end_time": 0, "has_thumbnail": False
 }
 CURRENT_MEDIA_THUMBNAIL = b""
-
-AUDIO_LOCK = threading.Lock()
-CURRENT_AUDIO_FFT = []
 
 class MyHandler(http.server.SimpleHTTPRequestHandler):
 
@@ -667,6 +668,24 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
                     else:
                         self.send_error(404, "No thumbnail available")
                     return
+                    
+                if clean_path == '/media/control':
+                    from urllib.parse import parse_qs, urlparse
+                    query_components = parse_qs(urlparse(self.path).query)
+                    action = query_components.get("action", [""])[0]
+                    if action in ["play", "pause", "next", "prev"]:
+                        if 'send_media_control_func' in globals():
+                            asyncio.run(send_media_control_func(action))
+                        self.send_response(200)
+                        self.send_header('Content-type', 'application/json')
+                        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                        self.end_headers()
+                        self.wfile.write(b'{"status":"ok"}')
+                    else:
+                        self.send_error(400, "Invalid action")
+                    return
+                
+
 
                 if self.path == '/list_templates':
                     try:
@@ -1201,13 +1220,28 @@ def network_stats_updater():
             time.sleep(5)
 
 def media_info_updater():
-    print("Media Monitor: Starting media updater thread...")
+    print("Media Monitor: Starting live media status thread...")
     try:
+        import winsdk.windows.media.control as wmc
         import asyncio
-        from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessionManager
-        
+        import time
+
+        async def send_media_control(action):
+            manager = await wmc.GlobalSystemMediaTransportControlsSessionManager.request_async()
+            session = manager.get_current_session()
+            if session:
+                if action == "play": await session.try_play_async()
+                elif action == "pause": await session.try_pause_async()
+                elif action == "next": await session.try_skip_next_async()
+                elif action == "prev": await session.try_skip_previous_async()
+
+        # Export to module scope for the HTTP handler to use
+        global send_media_control_func
+        send_media_control_func = send_media_control
+
         async def poll_media():
             global CURRENT_MEDIA_THUMBNAIL
+            from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessionManager
             manager = await GlobalSystemMediaTransportControlsSessionManager.request_async()
             while True:
                 try:
@@ -1229,17 +1263,28 @@ def media_info_updater():
                         CURRENT_MEDIA_INFO["artist"] = media_props.artist if media_props else ""
                         CURRENT_MEDIA_INFO["album"] = media_props.album_title if media_props else ""
                         CURRENT_MEDIA_INFO["state"] = state_map.get(info.playback_status, "Unknown") if info else "Unknown"
-                        CURRENT_MEDIA_INFO["position"] = timeline.position.total_seconds() if timeline else 0
-                        CURRENT_MEDIA_INFO["end_time"] = timeline.end_time.total_seconds() if timeline else 0
-                        
+                        if timeline:
+                            pos = timeline.position.total_seconds()
+                            from datetime import datetime, timezone
+                            if info and info.playback_status == 4 and timeline.last_updated_time:
+                                now = datetime.now(timezone.utc)
+                                delta = (now - timeline.last_updated_time).total_seconds()
+                                pos += delta
+                            if pos > timeline.end_time.total_seconds():
+                                pos = timeline.end_time.total_seconds()
+                                
+                            CURRENT_MEDIA_INFO["position"] = pos
+                            CURRENT_MEDIA_INFO["end_time"] = timeline.end_time.total_seconds()
+                            
                         if media_props and media_props.thumbnail:
                             try:
+                                from winsdk.windows.storage.streams import DataReader
                                 stream = await media_props.thumbnail.open_read_async()
-                                buffer = bytes(stream.size)
-                                await stream.read_async(buffer, stream.size, 0)
-                                CURRENT_MEDIA_THUMBNAIL = buffer
+                                reader = DataReader(stream)
+                                await reader.load_async(stream.size)
+                                CURRENT_MEDIA_THUMBNAIL = bytes(reader.read_buffer(stream.size))
                                 CURRENT_MEDIA_INFO["has_thumbnail"] = True
-                            except: pass
+                            except Exception as e: pass
                         else:
                             CURRENT_MEDIA_INFO["has_thumbnail"] = False
 
@@ -1248,50 +1293,6 @@ def media_info_updater():
         asyncio.run(poll_media())
     except Exception as e:
         print(f"Media Monitor failed to start: {e}", file=sys.stderr)
-
-def audio_visualizer_thread():
-    print("Audio Monitor: Starting live audio FFT thread...")
-    try:
-        import soundcard as sc
-        import numpy as np
-        import time
-        
-        while True:
-            try:
-                speaker = sc.default_speaker()
-                mics = sc.all_microphones(include_loopback=True)
-                loopback = next((m for m in mics if m.name == speaker.name), None)
-                if not loopback:
-                    time.sleep(5)
-                    continue
-
-                with loopback.recorder(samplerate=44100, channels=1) as mic:
-                    while True:
-                        if not WEBSOCKET_CLIENTS:
-                            time.sleep(1)
-                            continue
-                        
-                        current_speaker = sc.default_speaker()
-                        if current_speaker.name != speaker.name:
-                            print("Audio Monitor: Default audio device changed, switching...")
-                            break 
-                            
-                        data = mic.record(numframes=1024)
-                        fft_data = np.abs(np.fft.rfft(data[:, 0]))
-                        
-                        bins = np.array_split(fft_data, 64)
-                        compressed = [float(np.mean(b)) for b in bins]
-                        
-                        with AUDIO_LOCK:
-                            global CURRENT_AUDIO_FFT
-                            CURRENT_AUDIO_FFT = compressed
-                            
-            except Exception as e:
-                print(f"Error in audio visualizer loop: {e}", file=sys.stderr)
-                time.sleep(2)
-                
-    except Exception as e:
-        print(f"Audio Monitor failed to start: {e}", file=sys.stderr)
 
 def get_process_name(pid):
     import psutil
@@ -1307,7 +1308,10 @@ def live_traffic_updater(current_process_name):
     loopback_ips = ('127.0.0.1', '::1')
     while True:
         try:
-            if not WEBSOCKET_CLIENTS:
+            with MODULES_LOCK:
+                is_active = ACTIVE_MODULES.get('live_traffic_log', 0) > 0
+                
+            if not WEBSOCKET_CLIENTS or not is_active:
                 time.sleep(1)
                 continue
 
@@ -1363,39 +1367,44 @@ def get_network_data(current_process_name):
     with STATS_LOCK: stats = CURRENT_STATS.copy()
     with TRAFFIC_LOCK: live_traffic = list(LIVE_TRAFFIC_LOG)
     with MEDIA_LOCK: media_info = CURRENT_MEDIA_INFO.copy()
-    with AUDIO_LOCK: audio_fft = list(CURRENT_AUDIO_FFT)
 
     active_connections_raw, listening_ports_raw = [], []
     loopback_ips = ('127.0.0.1', '::1')
-    try:
-        connections = psutil.net_connections(kind='inet')
-        for conn in connections:
-            process_name = get_process_name(conn.pid)
+    
+    with MODULES_LOCK:
+        needs_connections = ACTIVE_MODULES.get('active_connections', 0) > 0
+        needs_listening = ACTIVE_MODULES.get('listening_count', 0) > 0 or ACTIVE_MODULES.get('listening_ports', 0) > 0
 
-            if process_name == current_process_name:
-                is_loopback = False
-                if conn.laddr: is_loopback = is_loopback or conn.laddr.ip in loopback_ips
-                if conn.raddr: is_loopback = is_loopback or conn.raddr.ip in loopback_ips
-                if is_loopback:
-                    continue 
+    if needs_connections or needs_listening:
+        try:
+            connections = psutil.net_connections(kind='inet')
+            for conn in connections:
+                process_name = get_process_name(conn.pid)
 
-            if conn.status == 'ESTABLISHED' and conn.raddr:
-                remote_protocol = PORT_PROTOCOL_MAP.get(conn.raddr.port, "Unknown")
-                proc_lower = process_name.lower()
-                if any(hn in proc_lower for hn in PROCESS_HIDE_LIST) and remote_protocol == "HTTPS":
-                    continue
-                active_connections_raw.append({
-                    "ip": conn.raddr.ip, "port": conn.raddr.port,
-                    "protocol": remote_protocol, "process": process_name
-                })
-            elif conn.status == 'LISTEN':
-                protocol = PORT_PROTOCOL_MAP.get(conn.laddr.port, str(conn.laddr.port))
-                listening_ports_raw.append({
-                    "port": conn.laddr.port,
-                    "protocol": protocol, "process": process_name
-                })
-    except (psutil.AccessDenied, psutil.ZombieProcess, psutil.NoSuchProcess): pass
-    except Exception as e: print(f"Error getting connections: {e}", file=sys.stderr)
+                if process_name == current_process_name:
+                    is_loopback = False
+                    if conn.laddr: is_loopback = is_loopback or conn.laddr.ip in loopback_ips
+                    if conn.raddr: is_loopback = is_loopback or conn.raddr.ip in loopback_ips
+                    if is_loopback:
+                        continue 
+
+                if needs_connections and conn.status == 'ESTABLISHED' and conn.raddr:
+                    remote_protocol = PORT_PROTOCOL_MAP.get(conn.raddr.port, "Unknown")
+                    proc_lower = process_name.lower()
+                    if any(hn in proc_lower for hn in PROCESS_HIDE_LIST) and remote_protocol == "HTTPS":
+                        continue
+                    active_connections_raw.append({
+                        "ip": conn.raddr.ip, "port": conn.raddr.port,
+                        "protocol": remote_protocol, "process": process_name
+                    })
+                elif needs_listening and conn.status == 'LISTEN':
+                    protocol = PORT_PROTOCOL_MAP.get(conn.laddr.port, str(conn.laddr.port))
+                    listening_ports_raw.append({
+                        "port": conn.laddr.port,
+                        "protocol": protocol, "process": process_name
+                    })
+        except (psutil.AccessDenied, psutil.ZombieProcess, psutil.NoSuchProcess): pass
+        except Exception as e: print(f"Error getting connections: {e}", file=sys.stderr)
 
     stats.update({
         "active_connections": active_connections_raw,
@@ -1403,8 +1412,7 @@ def get_network_data(current_process_name):
         "live_traffic_log": live_traffic,
         "active_count": len(active_connections_raw),   
         "listening_count": len(listening_ports_raw),
-        "media": media_info,
-        "audio_fft": audio_fft
+        "media": media_info
     })
     return stats
 
@@ -1437,8 +1445,35 @@ async def ws_handler(websocket):
         return
 
     await ws_register(websocket)
-    try: await websocket.wait_closed()
-    finally: await ws_unregister(websocket)
+    websocket.subscriptions = set()
+    try:
+        async for message in websocket:
+            try:
+                data = json.loads(message)
+                if data.get('type') == 'module_subscription':
+                    action = data.get('action')
+                    module_name = data.get('module')
+                    
+                    with MODULES_LOCK:
+                        if action == 'active':
+                            if module_name not in websocket.subscriptions:
+                                websocket.subscriptions.add(module_name)
+                                ACTIVE_MODULES[module_name] = ACTIVE_MODULES.get(module_name, 0) + 1
+                                print(f"[WebSocket] Activated module: {module_name} (Count: {ACTIVE_MODULES[module_name]})")
+                        elif action == 'deactive':
+                            if module_name in websocket.subscriptions:
+                                websocket.subscriptions.remove(module_name)
+                                ACTIVE_MODULES[module_name] = max(0, ACTIVE_MODULES.get(module_name, 0) - 1)
+                                print(f"[WebSocket] Deactivated module: {module_name} (Count: {ACTIVE_MODULES[module_name]})")
+            except Exception as e:
+                print(f"Error processing WS message: {e}")
+    finally:
+        with MODULES_LOCK:
+            for module_name in websocket.subscriptions:
+                ACTIVE_MODULES[module_name] = max(0, ACTIVE_MODULES.get(module_name, 0) - 1)
+            if websocket.subscriptions:
+                print(f"[WebSocket] Client disconnected, cleaned up {len(websocket.subscriptions)} subscriptions")
+        await ws_unregister(websocket)
 
 async def main_websocket_server(current_process_name):
     import asyncio
@@ -1532,7 +1567,6 @@ if __name__ == "__main__":
         threading.Thread(target=network_stats_updater, daemon=True).start()
         threading.Thread(target=live_traffic_updater, args=(current_proc_name,), daemon=True).start()
         threading.Thread(target=media_info_updater, daemon=True).start()
-        threading.Thread(target=audio_visualizer_thread, daemon=True).start()
         threading.Thread(target=start_websocket_thread, args=(current_proc_name,), daemon=True).start()
 
     threading.Thread(target=track_user_device_loop, daemon=True).start()

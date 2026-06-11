@@ -64,6 +64,25 @@ const WidgetLoader = {
     }
   },
 
+  async toggleModules(widgetId, action) {
+    const instance = this.loadedWidgets[widgetId];
+    if (!instance || !instance.modules) return;
+
+    for (const moduleName of instance.modules) {
+      const payload = JSON.stringify({ type: 'module_subscription', action: action, module: moduleName });
+
+      const sendPayload = () => {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          this.ws.send(payload);
+          console.log(`[WidgetLoader] WS: Module ${moduleName} -> ${action}`);
+        } else {
+          setTimeout(sendPayload, 500);
+        }
+      };
+      sendPayload();
+    }
+  },
+
   applyPosition(containerId, container) {
     try {
       if (this.positionCache && this.positionCache[containerId]) {
@@ -148,6 +167,8 @@ const WidgetLoader = {
       instance.init();
     }
 
+    this.toggleModules(id, 'active');
+
     return container;
   },
 
@@ -165,6 +186,8 @@ const WidgetLoader = {
 
     const cssLink = document.getElementById(`widget-css-${id}`);
     if (cssLink) cssLink.remove();
+
+    this.toggleModules(id, 'deactive');
 
     delete this.loadedWidgets[id];
   },
@@ -488,13 +511,24 @@ const WidgetLoader = {
 
   connectWebSocket(port) {
     const socket = new WebSocket(`ws://localhost:${port}`);
+    this.ws = socket;
 
     socket.onopen = () => {
       console.log("WebSocket connected");
+
+      Object.values(this.loadedWidgets).forEach(widget => {
+        if (widget.modules) {
+          widget.modules.forEach(moduleName => {
+            socket.send(JSON.stringify({ type: 'module_subscription', action: 'active', module: moduleName }));
+          });
+        }
+      });
     };
 
     socket.onmessage = (event) => {
-      this.updateNetworkUI(JSON.parse(event.data));
+      const data = JSON.parse(event.data);
+      window.dispatchEvent(new CustomEvent('librewall-data', { detail: data }));
+      this.updateNetworkUI(data);
     };
 
     socket.onclose = () => {
@@ -713,14 +747,14 @@ const WidgetLoader = {
       if (globalStyles.snapToGrid !== undefined) {
         this.snapToGrid = globalStyles.snapToGrid;
       }
-    } catch (e) {}
+    } catch (e) { }
 
     if (!document.getElementById("smart-guide-v")) {
       const vGuide = document.createElement("div");
       vGuide.id = "smart-guide-v";
       vGuide.style.cssText = "position:fixed; top:0; bottom:0; width:1px; border-left:1px dashed rgba(255,255,255,0.7); z-index:9999; display:none; pointer-events:none; mix-blend-mode: difference;";
       document.body.appendChild(vGuide);
-      
+
       const hGuide = document.createElement("div");
       hGuide.id = "smart-guide-h";
       hGuide.style.cssText = "position:fixed; left:0; right:0; height:1px; border-top:1px dashed rgba(255,255,255,0.7); z-index:9999; display:none; pointer-events:none; mix-blend-mode: difference;";
@@ -771,56 +805,56 @@ const WidgetLoader = {
       const ww = window.innerWidth;
       const wh = window.innerHeight;
       const snapThreshold = 10;
-      
+
       const targetsX = [0, ww / 2, ww];
       const targetsY = [0, wh / 2, wh];
-      
+
       const otherContainers = Array.from(document.querySelectorAll(".widget-container")).filter(c => c !== this.activeContainer && c.style.display !== "none");
       for (let c of otherContainers) {
-          const cRect = c.getBoundingClientRect();
-          targetsX.push(cRect.left, cRect.left + cRect.width / 2, cRect.right);
-          targetsY.push(cRect.top, cRect.top + cRect.height / 2, cRect.bottom);
+        const cRect = c.getBoundingClientRect();
+        targetsX.push(cRect.left, cRect.left + cRect.width / 2, cRect.right);
+        targetsY.push(cRect.top, cRect.top + cRect.height / 2, cRect.bottom);
       }
 
       let snappedX = null;
       let bestDistX = snapThreshold;
       for (let tx of targetsX) {
-          for (let wx of [{ v: newX, o: 0 }, { v: newX + w / 2, o: w / 2 }, { v: newX + w, o: w }]) {
-              const dist = Math.abs(wx.v - tx);
-              if (dist < bestDistX) {
-                  bestDistX = dist;
-                  newX = tx - wx.o;
-                  snappedX = tx;
-              }
+        for (let wx of [{ v: newX, o: 0 }, { v: newX + w / 2, o: w / 2 }, { v: newX + w, o: w }]) {
+          const dist = Math.abs(wx.v - tx);
+          if (dist < bestDistX) {
+            bestDistX = dist;
+            newX = tx - wx.o;
+            snappedX = tx;
           }
+        }
       }
 
       let snappedY = null;
       let bestDistY = snapThreshold;
       for (let ty of targetsY) {
-          for (let wy of [{ v: newY, o: 0 }, { v: newY + h / 2, o: h / 2 }, { v: newY + h, o: h }]) {
-              const dist = Math.abs(wy.v - ty);
-              if (dist < bestDistY) {
-                  bestDistY = dist;
-                  newY = ty - wy.o;
-                  snappedY = ty;
-              }
+        for (let wy of [{ v: newY, o: 0 }, { v: newY + h / 2, o: h / 2 }, { v: newY + h, o: h }]) {
+          const dist = Math.abs(wy.v - ty);
+          if (dist < bestDistY) {
+            bestDistY = dist;
+            newY = ty - wy.o;
+            snappedY = ty;
           }
+        }
       }
 
       const vGuide = document.getElementById("smart-guide-v");
       const hGuide = document.getElementById("smart-guide-h");
       if (vGuide) {
-          if (snappedX !== null) {
-              vGuide.style.display = "block";
-              vGuide.style.left = `${snappedX}px`;
-          } else vGuide.style.display = "none";
+        if (snappedX !== null) {
+          vGuide.style.display = "block";
+          vGuide.style.left = `${snappedX}px`;
+        } else vGuide.style.display = "none";
       }
       if (hGuide) {
-          if (snappedY !== null) {
-              hGuide.style.display = "block";
-              hGuide.style.top = `${snappedY}px`;
-          } else hGuide.style.display = "none";
+        if (snappedY !== null) {
+          hGuide.style.display = "block";
+          hGuide.style.top = `${snappedY}px`;
+        } else hGuide.style.display = "none";
       }
 
       this.activeContainer.style.left = `${newX}px`;
@@ -872,52 +906,52 @@ const WidgetLoader = {
       const ww = window.innerWidth;
       const wh = window.innerHeight;
       const snapThreshold = 10;
-      
+
       const targetsX = [0, ww / 2, ww];
       const targetsY = [0, wh / 2, wh];
-      
+
       const otherContainers = Array.from(document.querySelectorAll(".widget-container")).filter(c => c !== this.activeContainer && c.style.display !== "none");
       for (let c of otherContainers) {
-          const cRect = c.getBoundingClientRect();
-          targetsX.push(cRect.left, cRect.left + cRect.width / 2, cRect.right);
-          targetsY.push(cRect.top, cRect.top + cRect.height / 2, cRect.bottom);
+        const cRect = c.getBoundingClientRect();
+        targetsX.push(cRect.left, cRect.left + cRect.width / 2, cRect.right);
+        targetsY.push(cRect.top, cRect.top + cRect.height / 2, cRect.bottom);
       }
 
       let snappedX = null;
       let bestDistX = snapThreshold;
       for (let tx of targetsX) {
-          const dist = Math.abs((rect.left + newW) - tx);
-          if (dist < bestDistX) {
-              bestDistX = dist;
-              newW = tx - rect.left;
-              snappedX = tx;
-          }
+        const dist = Math.abs((rect.left + newW) - tx);
+        if (dist < bestDistX) {
+          bestDistX = dist;
+          newW = tx - rect.left;
+          snappedX = tx;
+        }
       }
 
       let snappedY = null;
       let bestDistY = snapThreshold;
       for (let ty of targetsY) {
-          const dist = Math.abs((rect.top + newH) - ty);
-          if (dist < bestDistY) {
-              bestDistY = dist;
-              newH = ty - rect.top;
-              snappedY = ty;
-          }
+        const dist = Math.abs((rect.top + newH) - ty);
+        if (dist < bestDistY) {
+          bestDistY = dist;
+          newH = ty - rect.top;
+          snappedY = ty;
+        }
       }
 
       const vGuide = document.getElementById("smart-guide-v");
       const hGuide = document.getElementById("smart-guide-h");
       if (vGuide) {
-          if (snappedX !== null) {
-              vGuide.style.display = "block";
-              vGuide.style.left = `${snappedX}px`;
-          } else vGuide.style.display = "none";
+        if (snappedX !== null) {
+          vGuide.style.display = "block";
+          vGuide.style.left = `${snappedX}px`;
+        } else vGuide.style.display = "none";
       }
       if (hGuide) {
-          if (snappedY !== null) {
-              hGuide.style.display = "block";
-              hGuide.style.top = `${snappedY}px`;
-          } else hGuide.style.display = "none";
+        if (snappedY !== null) {
+          hGuide.style.display = "block";
+          hGuide.style.top = `${snappedY}px`;
+        } else hGuide.style.display = "none";
       }
 
       this.activeContainer.style.width = `${Math.max(50, newW)}px`;
