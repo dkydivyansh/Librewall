@@ -23,19 +23,11 @@
 
 ## Showcase
 
-**3D Model Rendering**
-
-![3D Model Wallpaper](./asset/3Dmodel_preview.gif)
-
-
-**Interactive Web/App Integration**
-
-![Web App Preview](./asset/web_app_preview.gif)
-
-
-**Customization**
-
-![Wallpaper Customization](./asset/customization.gif)
+| | |
+| :---: | :---: |
+| **3D Wallpapers**<br><br><img src="./asset/3d-wallpapers.gif" alt="3D Model Wallpaper" width="350"> | **Live Wallpapers**<br><br><img src="./asset/video-wallpapers.gif" alt="Wallpaper Customization" width="350"> |
+| **Interactive Web/App Integration**<br><br><img src="./asset/Interactive.gif" alt="Web App Preview" width="350"> | **Widgets**<br><br><img src="./asset/widgets.gif" alt="Widgets" width="350"> |
+| **Custom Cursors**<br><br><img src="./asset/cursor.png" alt="Custom Cursors" width="350"> | |
 
 ## Features
 
