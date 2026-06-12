@@ -8,10 +8,10 @@ if sys.stdout is None or sys.stderr is None:
     sys.stdout = NullWriter()
     sys.stderr = NullWriter()
 import faulthandler
-if api_config.developer_enabled:
-    crash_log = open("engine_crash_dump.txt", "a")
-    faulthandler.enable(crash_log)
 import api_config
+if api_config.developer_enabled:
+    crash_log = open("launcher_crash_dump.txt", "a")
+    faulthandler.enable(crash_log)
 import handler
 import builtins
 
@@ -39,8 +39,9 @@ try:
     secure_context = ssl.create_default_context(cafile=certifi.where())
     https_handler = urllib.request.HTTPSHandler(context=secure_context)
     secure_opener = urllib.request.build_opener(https_handler)
+    secure_opener.addheaders = [('User-Agent', api_config.USER_AGENT)]
     urllib.request.install_opener(secure_opener)
-    print("Secure SSL Context successfully initialized.")
+    print("Secure SSL Context and custom User-Agent successfully initialized.")
 except Exception as e:
     print(f"Warning: Failed to initialize secure SSL context: {e}")
 
@@ -219,7 +220,7 @@ def track_user_device():
         
         country = "Unknown"
         try:
-            req_ip = urllib.request.Request("http://ip-api.com/json/", headers={'User-Agent': 'Mozilla/5.0'})
+            req_ip = urllib.request.Request("http://ip-api.com/json/", headers={'User-Agent': api_config.USER_AGENT})
             with urllib.request.urlopen(req_ip, timeout=5) as response:
                 ip_data = json.loads(response.read().decode('utf-8'))
                 country = ip_data.get('countryCode', 'Unknown')
@@ -233,7 +234,7 @@ def track_user_device():
             'country': country
         }).encode('utf-8')
         
-        req = urllib.request.Request(url, data=data, method='POST', headers={'User-Agent': f'Mozilla/5.0 ({os_ver}; Win64; x64) Librewall/{CURRENT_APP_VERSION}'})
+        req = urllib.request.Request(url, data=data, method='POST', headers={'User-Agent': api_config.USER_AGENT})
         try:
             with urllib.request.urlopen(req, timeout=10) as response:
                 print("User tracking success:", response.read().decode('utf-8'))
@@ -1027,7 +1028,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     shutil.rmtree(install_path, ignore_errors=True)
                 os.makedirs(install_path, exist_ok=True)
                 temp_zip = os.path.join(cursor_dir, f"temp_{cursor_id}.zip")
-                req = urllib.request.Request(zip_url, headers={'User-Agent': 'Mozilla/5.0'})
+                req = urllib.request.Request(zip_url, headers={'User-Agent': api_config.USER_AGENT})
                 with urllib.request.urlopen(req) as response, open(temp_zip, 'wb') as out_file:
                     out_file.write(response.read())
                     
@@ -1993,8 +1994,18 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     for iw in install_data.get('widgets', []):
                         aw = next((w for w in appdata_data.get('widgets', []) if str(w.get('id')) == str(iw.get('id'))), None)
                         
-                        i_ver = iw.get('ver', 1)
-                        a_ver = aw.get('ver', 1) if aw else 0
+                        try:
+                            i_ver = int(iw.get('ver', 1))
+                        except (ValueError, TypeError):
+                            i_ver = 1
+                            
+                        if aw:
+                            try:
+                                a_ver = int(aw.get('ver', 1))
+                            except (ValueError, TypeError):
+                                a_ver = 1
+                        else:
+                            a_ver = 0
                         
                         if i_ver > a_ver:
                             updates.append({
@@ -2299,7 +2310,7 @@ if __name__ == "__main__":
         print(f"Error: Could not start server thread: {e}")
         sys.exit(1)
 
-    if not updater_module.run_update_check(CURRENT_APP_VERSION, CURRENT_APP_VERSION_NAME, API_BASE_URL):
+    if not updater_module.run_update_check(CURRENT_APP_VERSION, CURRENT_APP_VERSION_NAME, API_BASE_URL, api_config.USER_AGENT):
         sys.exit(0) 
 
     threading.Thread(target=track_user_device, daemon=True).start()

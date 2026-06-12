@@ -5,8 +5,8 @@
             "name": "Live Clock",
             "author": "Dkydivyansh",
             "description": "A minimal and customizable live clock for your desktop.",
-            "min_version": 3,
-            "ver": 10,
+            "min_version": 340,
+            "ver": "10",
             "authorUrl": "https://dkydivyansh.com"
         },
         {
@@ -14,8 +14,8 @@
             "name": "Traffic Data",
             "author": "Dkydivyansh",
             "description": "Displays real-time network traffic data and usage statistics.",
-            "min_version": 3,
-            "ver": 10,
+            "min_version": 340,
+            "ver": "10",
             "authorUrl": "https://dkydivyansh.com"
         },
         {
@@ -23,8 +23,8 @@
             "name": "Listening Ports",
             "author": "Dkydivyansh",
             "description": "Monitors and displays active listening ports on your system.",
-            "min_version": 3,
-            "ver": 10,
+            "min_version": 340,
+            "ver": "10",
             "authorUrl": "https://dkydivyansh.com"
         },
         {
@@ -32,8 +32,8 @@
             "name": "Live Traffic Log",
             "author": "Dkydivyansh",
             "description": "Shows a live log of outgoing and incoming network connections.",
-            "min_version": 3,
-            "ver": 10,
+            "min_version": 340,
+            "ver": "10",
             "authorUrl": "https://dkydivyansh.com"
         },
         {
@@ -41,8 +41,8 @@
             "name": "Active Connections",
             "author": "Dkydivyansh",
             "description": "Provides a comprehensive view of all active network connections.",
-            "min_version": 3,
-            "ver": 10,
+            "min_version": 340,
+            "ver": "10",
             "authorUrl": "https://dkydivyansh.com"
         }
     ]

@@ -6,7 +6,7 @@ TRACKER_URL = "#"
 # App Version
 CURRENT_APP_VERSION = None
 CURRENT_APP_VERSION_NAME = None
-
+USER_AGENT = f"librewall-launcher/V{CURRENT_APP_VERSION}"
 # Directory and File Names
 WALLPAPERS_DIR = 'wallpapers'
 WIDGETS_DIR = 'widgets'

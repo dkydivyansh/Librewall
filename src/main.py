@@ -100,7 +100,9 @@ def get_real_screen_scale():
         shcore = ctypes.windll.shcore
         user32 = ctypes.windll.user32
 
-        h_monitor = user32.MonitorFromPoint(0, 0, 2) 
+        from ctypes import wintypes
+        pt = wintypes.POINT(0, 0)
+        h_monitor = user32.MonitorFromPoint(pt, 2) 
 
         dpi_x = ctypes.c_uint()
         dpi_y = ctypes.c_uint()
@@ -198,12 +200,12 @@ def track_user_device_loop():
     while True:
         try:
             device_id = get_reliable_windows_id()
-            app_ver = CURRENT_APP_VERSION
+            app_ver = api_config.CURRENT_APP_VERSION
             os_ver = get_os_version_string()
             
             country = "Unknown"
             try:
-                req_ip = urllib.request.Request("http://ip-api.com/json/", headers={'User-Agent': 'Mozilla/5.0'})
+                req_ip = urllib.request.Request("http://ip-api.com/json/", headers={'User-Agent': api_config.USER_AGENT})
                 with urllib.request.urlopen(req_ip, timeout=5) as response:
                     ip_data = json.loads(response.read().decode('utf-8'))
                     country = ip_data.get('countryCode', 'Unknown')
@@ -217,7 +219,7 @@ def track_user_device_loop():
                 'country': country
             }).encode('utf-8')
             
-            req = urllib.request.Request(url, data=data, method='POST', headers={'User-Agent': f'Mozilla/5.0 ({os_ver}; Win64; x64) Librewall/{CURRENT_APP_VERSION}'})
+            req = urllib.request.Request(url, data=data, method='POST', headers={'User-Agent': api_config.USER_AGENT})
             try:
                 with urllib.request.urlopen(req, timeout=10) as response:
                     pass
@@ -732,7 +734,7 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
                         p_origin = self.headers.get('x-proxy-origin')
 
                         req = urllib.request.Request(target_url)
-                        req.add_header('User-Agent', self.headers.get('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'))
+                        req.add_header('User-Agent', self.headers.get('User-Agent', api_config.USER_AGENT))
                         req.add_header('Referer', p_ref or 'https://www.dkydivyansh.com/')
                         req.add_header('Origin', p_origin or 'https://www.dkydivyansh.com/')
                         with urllib.request.urlopen(req) as response:
@@ -1271,6 +1273,7 @@ def media_info_updater():
             global CURRENT_MEDIA_THUMBNAIL
             from winsdk.windows.media.control import GlobalSystemMediaTransportControlsSessionManager
             manager = await GlobalSystemMediaTransportControlsSessionManager.request_async()
+            last_thumb_key = None
             while True:
                 try:
                     await asyncio.sleep(1)
@@ -1285,6 +1288,7 @@ def media_info_updater():
                     if not session:
                         with MEDIA_LOCK:
                             CURRENT_MEDIA_INFO.update({"title": "", "artist": "", "album": "", "state": "", "position": 0, "end_time": 0, "has_thumbnail": False})
+                        last_thumb_key = None
                         continue
 
                     media_props = await session.try_get_media_properties_async()
@@ -1292,9 +1296,13 @@ def media_info_updater():
                     info = session.get_playback_info()
                     state_map = {0: "Closed", 1: "Opened", 2: "Changing", 3: "Stopped", 4: "Playing", 5: "Paused"}
                     
+                    current_title = media_props.title if media_props else ""
+                    current_artist = media_props.artist if media_props else ""
+                    current_thumb_key = f"{current_title}-{current_artist}"
+
                     with MEDIA_LOCK:
-                        CURRENT_MEDIA_INFO["title"] = media_props.title if media_props else ""
-                        CURRENT_MEDIA_INFO["artist"] = media_props.artist if media_props else ""
+                        CURRENT_MEDIA_INFO["title"] = current_title
+                        CURRENT_MEDIA_INFO["artist"] = current_artist
                         CURRENT_MEDIA_INFO["album"] = media_props.album_title if media_props else ""
                         CURRENT_MEDIA_INFO["state"] = state_map.get(info.playback_status, "Unknown") if info else "Unknown"
                         if timeline:
@@ -1310,29 +1318,32 @@ def media_info_updater():
                             CURRENT_MEDIA_INFO["position"] = pos
                             CURRENT_MEDIA_INFO["end_time"] = timeline.end_time.total_seconds()
                             
-                    if media_props and media_props.thumbnail:
-                        stream = None
-                        reader = None
-                        try:
-                            from winsdk.windows.storage.streams import DataReader
-                            stream = await media_props.thumbnail.open_read_async()
-                            reader = DataReader(stream)
-                            await reader.load_async(stream.size)
-                            buffer_data = bytes(reader.read_buffer(stream.size))
+                    if current_thumb_key != last_thumb_key:
+                        last_thumb_key = current_thumb_key
+                        if media_props and media_props.thumbnail:
+                            stream = None
+                            reader = None
+                            try:
+                                from winsdk.windows.storage.streams import DataReader
+                                stream = await media_props.thumbnail.open_read_async()
+                                reader = DataReader(stream)
+                                await reader.load_async(stream.size)
+                                buffer_data = bytes(reader.read_buffer(stream.size))
+                                with MEDIA_LOCK:
+                                    CURRENT_MEDIA_THUMBNAIL = buffer_data
+                                    CURRENT_MEDIA_INFO["has_thumbnail"] = True
+                            except Exception as e: pass
+                            finally:
+                                if reader is not None:
+                                    try: reader.close()
+                                    except: pass
+                                if stream is not None:
+                                    try: stream.close()
+                                    except: pass
+                        else:
                             with MEDIA_LOCK:
-                                CURRENT_MEDIA_THUMBNAIL = buffer_data
-                                CURRENT_MEDIA_INFO["has_thumbnail"] = True
-                        except Exception as e: pass
-                        finally:
-                            if reader is not None:
-                                try: reader.close()
-                                except: pass
-                            if stream is not None:
-                                try: stream.close()
-                                except: pass
-                    else:
-                        with MEDIA_LOCK:
-                            CURRENT_MEDIA_INFO["has_thumbnail"] = False
+                                CURRENT_MEDIA_THUMBNAIL = b""
+                                CURRENT_MEDIA_INFO["has_thumbnail"] = False
 
                 except Exception as e:
                     print(f"Error in media loop: {e}", file=sys.stderr)

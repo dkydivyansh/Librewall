@@ -103,14 +103,15 @@ class MandatoryUpdateWindow(QWidget):
         
         QApplication.quit()
 
-def run_update_check(current_version_code, current_version_name, api_base_url):
+def run_update_check(current_version_code, current_version_name, api_base_url, user_agent="Mozilla/5.0"):
     """
     Returns True if the main app should continue, False if it should exit.
     Checks server version and ONLY enforces mandatory updates.
     """
     try:
         url = f"{api_base_url}?action=get_latest_update"
-        with urllib.request.urlopen(url, timeout=5) as response:
+        req = urllib.request.Request(url, headers={'User-Agent': user_agent})
+        with urllib.request.urlopen(req, timeout=5) as response:
             data = json.load(response)
 
         update_info = data.get('data')

@@ -2711,8 +2711,8 @@
                             
                             const mData = await mResp.json();
                             if (mData && mData.data) {
-                                const rv = parseFloat(mData.data.ver || 1);
-                                const lv = parseFloat(w.ver || 1);
+                                const rv = parseInt(mData.data.ver || 1, 10);
+                                const lv = parseInt(w.ver || 1, 10);
                                 
                                 if (rv > lv) {
                                     foundUpdates.push({
