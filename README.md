@@ -1,14 +1,25 @@
-![Librewall Banner](./asset/banner.png)
+<div align="center">
+
+<img src="https://librewall.dkydivyansh.com/launcher.png" width="90" alt="Librewall Logo">
+
 # Librewall
+
+**The open-source, high-performance alternative to proprietary wallpaper engines.**
+
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)](https://github.com/dkydivyansh/Librewall)
 [![Status](https://img.shields.io/badge/status-Active_Development-green)]()
+<br>
 
-<a href="https://apps.microsoft.com/detail/9mvprwrk1cs6?referrer=appbadge&mode=full" target="_blank"  rel="noopener noreferrer">
-	<img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200"/>
+<a href="https://apps.microsoft.com/detail/9mvprwrk1cs6?referrer=appbadge&mode=full" target="_blank" rel="noopener noreferrer">
+  <img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200" alt="Get it from Microsoft Store"/>
 </a>
 
-**The open-source, high-performance alternative to proprietary wallpaper engines.**
+<a href="https://librewall.dkydivyansh.com" target="_blank" rel="noopener noreferrer">
+  <img src="https://github.com/dkydivyansh/Librewall/blob/5b307220b390c686c1c29037e0f87b3c541e40d4/asset/button_download-direct.png" width="200" alt="Download Direct"/>
+</a>
+
+</div>
 
 ## Showcase
 
