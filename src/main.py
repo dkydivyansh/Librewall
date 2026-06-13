@@ -205,7 +205,7 @@ def track_user_device_loop():
             
             country = "Unknown"
             try:
-                req_ip = urllib.request.Request("http://ip-api.com/json/", headers={'User-Agent': api_config.USER_AGENT})
+                req_ip = urllib.request.Request("https://freeipapi.com/api/json", headers={'User-Agent': api_config.USER_AGENT})
                 with urllib.request.urlopen(req_ip, timeout=5) as response:
                     ip_data = json.loads(response.read().decode('utf-8'))
                     country = ip_data.get('countryCode', 'Unknown')
