@@ -243,7 +243,8 @@ os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
     "--enable-gpu-rasterization "        
     "--disable-gpu-driver-bug-workarounds "
     "--use-angle=d3d11 "
-    "--gpu-preference=high-performance"
+    "--gpu-preference=high-performance "
+    "--disable-direct-composition"
 )
 
 os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
