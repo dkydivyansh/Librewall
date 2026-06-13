@@ -1034,7 +1034,13 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     out_file.write(response.read())
                     
                 with zipfile.ZipFile(temp_zip, 'r') as zip_ref:
-                    zip_ref.extractall(install_path)
+                    for file_info in zip_ref.infolist():
+                        if file_info.is_dir(): continue
+                        target_path = os.path.abspath(os.path.join(install_path, file_info.filename))
+                        if not target_path.startswith(os.path.abspath(install_path) + os.sep): continue
+                        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                        with zip_ref.open(file_info) as source, open(target_path, 'wb') as target:
+                            target.write(source.read())
                     
                 try:
                     os.remove(temp_zip)
@@ -1285,7 +1291,9 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                         if not relative_path:
                             continue
 
-                        target_path = os.path.join(theme_path, relative_path)
+                        target_path = os.path.abspath(os.path.join(theme_path, relative_path))
+                        if not target_path.startswith(os.path.abspath(theme_path) + os.sep):
+                            continue
                         os.makedirs(os.path.dirname(target_path), exist_ok=True)
 
                         with zf.open(file_info) as source, open(target_path, 'wb') as target:
@@ -1491,7 +1499,8 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                                  relative_path = relative_path[len(root_folder):]
                             if not relative_path: continue
                             
-                            target_path = os.path.join(widgets_dir, relative_path)
+                            target_path = os.path.abspath(os.path.join(widgets_dir, relative_path))
+                            if not target_path.startswith(os.path.abspath(widgets_dir) + os.sep): continue
                             os.makedirs(os.path.dirname(target_path), exist_ok=True)
                             with zf.open(file_info) as source, open(target_path, 'wb') as target:
                                 target.write(source.read())
@@ -1578,7 +1587,9 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
 
                             if not relative_path: continue
 
-                            target_path = os.path.join(theme_path, relative_path)
+                            target_path = os.path.abspath(os.path.join(theme_path, relative_path))
+                            if not target_path.startswith(os.path.abspath(theme_path) + os.sep):
+                                continue
                             os.makedirs(os.path.dirname(target_path), exist_ok=True)
 
                             with zf.open(file_info) as source, open(target_path, 'wb') as target:
@@ -1765,7 +1776,8 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                         
                         if not relative_path: continue
                         
-                        target_path = os.path.join(widgets_dir, relative_path)
+                        target_path = os.path.abspath(os.path.join(widgets_dir, relative_path))
+                        if not target_path.startswith(os.path.abspath(widgets_dir) + os.sep): continue
                         os.makedirs(os.path.dirname(target_path), exist_ok=True)
                         with zf.open(file_info) as source, open(target_path, 'wb') as target:
                             target.write(source.read())
