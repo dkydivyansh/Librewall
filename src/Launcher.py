@@ -55,6 +55,7 @@ import urllib.parse
 import email
 import random
 import string
+import secrets
 import re
 import winreg
 import difflib
@@ -121,7 +122,7 @@ FEATURED_HTML = api_config.FEATURED_HTML
 WIDGETS_HTML = api_config.WIDGETS_HTML
 CURSORS_HTML = api_config.CURSORS_HTML
 
-APP_SECURITY_TOKEN = ''.join(random.choices(string.digits, k=12))
+APP_SECURITY_TOKEN = ''.join(secrets.choice(string.digits) for i in range(12))
 print(f"Authentication Token (User-Agent): {APP_SECURITY_TOKEN}")
 if getattr(sys, 'frozen', False):
     SERVER_ROOT = os.path.dirname(sys.executable)
