@@ -1,5 +1,9 @@
 import sys
 import os
+
+def is_safe_path(basedir, path):
+    target_path = os.path.abspath(os.path.join(basedir, path))
+    return target_path.startswith(os.path.abspath(basedir) + os.sep)
 if sys.stdout is None or sys.stderr is None:
     class NullWriter:
         def write(self, text): pass
@@ -1285,6 +1289,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                         if not relative_path:
                             continue
 
+                        if not is_safe_path(theme_path, relative_path): continue
                         target_path = os.path.join(theme_path, relative_path)
                         os.makedirs(os.path.dirname(target_path), exist_ok=True)
 
@@ -1491,6 +1496,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                                  relative_path = relative_path[len(root_folder):]
                             if not relative_path: continue
                             
+                            if not is_safe_path(widgets_dir, relative_path): continue
                             target_path = os.path.join(widgets_dir, relative_path)
                             os.makedirs(os.path.dirname(target_path), exist_ok=True)
                             with zf.open(file_info) as source, open(target_path, 'wb') as target:
@@ -1578,6 +1584,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
 
                             if not relative_path: continue
 
+                            if not is_safe_path(theme_path, relative_path): continue
                             target_path = os.path.join(theme_path, relative_path)
                             os.makedirs(os.path.dirname(target_path), exist_ok=True)
 
@@ -1765,6 +1772,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                         
                         if not relative_path: continue
                         
+                        if not is_safe_path(widgets_dir, relative_path): continue
                         target_path = os.path.join(widgets_dir, relative_path)
                         os.makedirs(os.path.dirname(target_path), exist_ok=True)
                         with zf.open(file_info) as source, open(target_path, 'wb') as target:
