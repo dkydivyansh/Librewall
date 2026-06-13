@@ -55,6 +55,7 @@ import urllib.parse
 import email
 import random
 import string
+import secrets
 import re
 import winreg
 import difflib
@@ -121,7 +122,7 @@ FEATURED_HTML = api_config.FEATURED_HTML
 WIDGETS_HTML = api_config.WIDGETS_HTML
 CURSORS_HTML = api_config.CURSORS_HTML
 
-APP_SECURITY_TOKEN = ''.join(random.choices(string.digits, k=12))
+APP_SECURITY_TOKEN = ''.join(secrets.choice(string.digits) for i in range(12))
 print(f"Authentication Token (User-Agent): {APP_SECURITY_TOKEN}")
 if getattr(sys, 'frozen', False):
     SERVER_ROOT = os.path.dirname(sys.executable)
@@ -221,7 +222,7 @@ def track_user_device():
         
         country = "Unknown"
         try:
-            req_ip = urllib.request.Request("http://ip-api.com/json/", headers={'User-Agent': api_config.USER_AGENT})
+            req_ip = urllib.request.Request("https://freeipapi.com/api/json", headers={'User-Agent': api_config.USER_AGENT})
             with urllib.request.urlopen(req_ip, timeout=5) as response:
                 ip_data = json.loads(response.read().decode('utf-8'))
                 country = ip_data.get('countryCode', 'Unknown')
@@ -1041,6 +1042,13 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                             zip_ref.extract(member, install_path)
                         else:
                             print(f"Skipping unsafe file in zip: {member}")
+                    for file_info in zip_ref.infolist():
+                        if file_info.is_dir(): continue
+                        target_path = os.path.abspath(os.path.join(install_path, file_info.filename))
+                        if not target_path.startswith(os.path.abspath(install_path) + os.sep): continue
+                        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                        with zip_ref.open(file_info) as source, open(target_path, 'wb') as target:
+                            target.write(source.read())
                     
                 try:
                     os.remove(temp_zip)
@@ -1291,7 +1299,9 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                         if not relative_path:
                             continue
 
-                        target_path = os.path.join(theme_path, relative_path)
+                        target_path = os.path.abspath(os.path.join(theme_path, relative_path))
+                        if not target_path.startswith(os.path.abspath(theme_path) + os.sep):
+                            continue
                         os.makedirs(os.path.dirname(target_path), exist_ok=True)
 
                         with zf.open(file_info) as source, open(target_path, 'wb') as target:
@@ -1497,7 +1507,8 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                                  relative_path = relative_path[len(root_folder):]
                             if not relative_path: continue
                             
-                            target_path = os.path.join(widgets_dir, relative_path)
+                            target_path = os.path.abspath(os.path.join(widgets_dir, relative_path))
+                            if not target_path.startswith(os.path.abspath(widgets_dir) + os.sep): continue
                             os.makedirs(os.path.dirname(target_path), exist_ok=True)
                             with zf.open(file_info) as source, open(target_path, 'wb') as target:
                                 target.write(source.read())
@@ -1584,7 +1595,9 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
 
                             if not relative_path: continue
 
-                            target_path = os.path.join(theme_path, relative_path)
+                            target_path = os.path.abspath(os.path.join(theme_path, relative_path))
+                            if not target_path.startswith(os.path.abspath(theme_path) + os.sep):
+                                continue
                             os.makedirs(os.path.dirname(target_path), exist_ok=True)
 
                             with zf.open(file_info) as source, open(target_path, 'wb') as target:
@@ -1771,7 +1784,8 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                         
                         if not relative_path: continue
                         
-                        target_path = os.path.join(widgets_dir, relative_path)
+                        target_path = os.path.abspath(os.path.join(widgets_dir, relative_path))
+                        if not target_path.startswith(os.path.abspath(widgets_dir) + os.sep): continue
                         os.makedirs(os.path.dirname(target_path), exist_ok=True)
                         with zf.open(file_info) as source, open(target_path, 'wb') as target:
                             target.write(source.read())
