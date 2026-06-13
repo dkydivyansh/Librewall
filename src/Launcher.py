@@ -1034,7 +1034,13 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     out_file.write(response.read())
                     
                 with zipfile.ZipFile(temp_zip, 'r') as zip_ref:
-                    zip_ref.extractall(install_path)
+                    install_path_abs = os.path.abspath(install_path)
+                    for member in zip_ref.namelist():
+                        member_path = os.path.abspath(os.path.join(install_path, member))
+                        if os.path.commonpath([install_path_abs, member_path]) == install_path_abs:
+                            zip_ref.extract(member, install_path)
+                        else:
+                            print(f"Skipping unsafe file in zip: {member}")
                     
                 try:
                     os.remove(temp_zip)
