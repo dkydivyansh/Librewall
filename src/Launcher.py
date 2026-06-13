@@ -83,7 +83,8 @@ os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
     "--disable-gpu-driver-bug-workarounds "
     "--use-angle=default "
     "--disable-renderer-backgrounding "
-    "--enable-accelerated-video-decode"
+    "--enable-accelerated-video-decode "
+    "--disable-direct-composition"
 )
 try:
     import win32com.client
