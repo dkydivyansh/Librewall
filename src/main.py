@@ -12,24 +12,20 @@ try:
 except AttributeError:
     pass
 
-if sys.stdout is None or sys.stderr is None:
-    class NullWriter:
-        def write(self, text): pass
-        def flush(self): pass
-        def isatty(self): return False
+class NullWriter:
+    def write(self, text): pass
+    def flush(self): pass
+    def isatty(self): return False
 
+if sys.stdout is None or sys.stderr is None:
     sys.stdout = NullWriter()
     sys.stderr = NullWriter()
+
 import api_config
 import handler
 import builtins
 
 if not api_config.developer_enabled:
-   class NullWriter:
-       def write(self, text): pass
-       def flush(self): pass
-       def isatty(self): return False
-   
    def print(*args, **kwargs): pass
    builtins.print = print
    sys.stdout = NullWriter()
@@ -364,7 +360,8 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
-    def get_current_wallpaper_path(self):
+    @staticmethod
+    def get_current_wallpaper_path():
         default_theme = 'defolt'
         try:
             with APP_CONFIG_LOCK:
@@ -378,7 +375,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         clean_path = self.path.split('?')[0] 
-        current_wallpaper_path = self.get_current_wallpaper_path()
+        current_wallpaper_path = MyHandler.get_current_wallpaper_path()
         file_path = ""
         mime_type = ""
 
@@ -774,7 +771,7 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
                 try:
                     content_length = int(self.headers['Content-Length'])
                     post_data = self.rfile.read(content_length)
-                    current_wallpaper_path = self.get_current_wallpaper_path()
+                    current_wallpaper_path = MyHandler.get_current_wallpaper_path()
                     widget_config_path = os.path.join(current_wallpaper_path, 'widget.json')
                     with open(widget_config_path, 'wb') as f: f.write(post_data)
                     self.send_response(200); self.send_header('Content-type', 'application/json'); self.end_headers()
@@ -786,7 +783,7 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
                 try:
                     content_length = int(self.headers['Content-Length'])
                     post_data = self.rfile.read(content_length)
-                    current_wallpaper_path = self.get_current_wallpaper_path()
+                    current_wallpaper_path = MyHandler.get_current_wallpaper_path()
                     visibility_config_path = os.path.join(current_wallpaper_path, 'widget_visibility.json')
                     with open(visibility_config_path, 'wb') as f: f.write(post_data)
                     self.send_response(200); self.send_header('Content-type', 'application/json'); self.end_headers()
@@ -798,7 +795,7 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
                 try:
                     content_length = int(self.headers['Content-Length'])
                     post_data = self.rfile.read(content_length)
-                    current_wallpaper_path = self.get_current_wallpaper_path()
+                    current_wallpaper_path = MyHandler.get_current_wallpaper_path()
                     styles_config_path = os.path.join(current_wallpaper_path, 'widget_styles.json')
                     with open(styles_config_path, 'wb') as f: f.write(post_data)
                     self.send_response(200); self.send_header('Content-type', 'application/json'); self.end_headers()
@@ -825,7 +822,7 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
                                 templates_store = json.load(f)
                         except: pass
 
-                    current_wallpaper_path = self.get_current_wallpaper_path()
+                    current_wallpaper_path = MyHandler.get_current_wallpaper_path()
                     template_data = {}
                     for filename in ['widget.json', 'widget_visibility.json', 'widget_styles.json']:
                         path = os.path.join(current_wallpaper_path, filename)
@@ -867,7 +864,7 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
                         return
 
                     template_data = templates_store[template_name]
-                    current_wallpaper_path = self.get_current_wallpaper_path()
+                    current_wallpaper_path = MyHandler.get_current_wallpaper_path()
                     for filename, content in template_data.items():
                         path = os.path.join(current_wallpaper_path, filename)
                         with open(path, 'w') as f:
@@ -999,13 +996,14 @@ class WallpaperWindow(QMainWindow):
 
         self.device_id = None
 
-        active_theme_path = MyHandler.get_current_wallpaper_path(None)
+        active_theme_path = MyHandler.get_current_wallpaper_path()
         theme_config_path = os.path.join(active_theme_path, 'config.json')
 
         use_video = False
         video_file = None
         fps_limit = 60
         mute_audio = True
+        volume = 70
 
         if os.path.exists(theme_config_path):
             try:
@@ -1600,7 +1598,7 @@ if __name__ == "__main__":
         current_proc_name = psutil.Process(os.getpid()).name()
     except: sys.exit(1)
 
-    current_wallpaper_path = MyHandler.get_current_wallpaper_path(None)
+    current_wallpaper_path = MyHandler.get_current_wallpaper_path()
     config_path = os.path.join(current_wallpaper_path, 'config.json')
 
     enable_global_widget = False

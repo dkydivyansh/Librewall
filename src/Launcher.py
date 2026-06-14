@@ -4,13 +4,15 @@ import os
 def is_safe_path(basedir, path):
     target_path = os.path.abspath(os.path.join(basedir, path))
     return target_path.startswith(os.path.abspath(basedir) + os.sep)
+class NullWriter:
+    def write(self, text): pass
+    def flush(self): pass
+    def isatty(self): return False
+
 if sys.stdout is None or sys.stderr is None:
-    class NullWriter:
-        def write(self, text): pass
-        def flush(self): pass
-        def isatty(self): return False
     sys.stdout = NullWriter()
     sys.stderr = NullWriter()
+
 import faulthandler
 import api_config
 if api_config.developer_enabled:
@@ -20,10 +22,6 @@ import handler
 import builtins
 
 if not api_config.developer_enabled:
-   class NullWriter:
-       def write(self, text): pass
-       def flush(self): pass
-       def isatty(self): return False
    def print(*args, **kwargs): pass
    builtins.print = print
    sys.stdout = NullWriter()
