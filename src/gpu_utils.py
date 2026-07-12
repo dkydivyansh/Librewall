@@ -2,7 +2,6 @@ import os
 import sys
 import winreg
 import subprocess
-import time
 import ctypes
 
 kernel32 = ctypes.windll.kernel32

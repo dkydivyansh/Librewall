@@ -90,9 +90,9 @@ def get_real_screen_scale():
     try:
         try:
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
-        except: 
+        except Exception:
             try: ctypes.windll.user32.SetProcessDPIAware()
-            except: pass
+            except Exception: pass
         shcore = ctypes.windll.shcore
         user32 = ctypes.windll.user32
 
@@ -124,7 +124,7 @@ def get_reliable_windows_id():
         if not os.path.exists(storage_dir):
             try:
                 os.makedirs(storage_dir)
-            except: pass
+            except Exception: pass
 
         cache_path = os.path.join(storage_dir, '.device_id')
 
@@ -166,7 +166,7 @@ def get_reliable_windows_id():
             with open(cache_path, 'w') as f:
                 f.write(uuid)
             ctypes.windll.kernel32.SetFileAttributesW(cache_path, 2)
-        except: pass
+        except Exception: pass
 
         return uuid
 
@@ -185,10 +185,10 @@ def get_os_version_string():
                     build = int(version.split('.')[2])
                     if build >= 22000:
                         return "Windows 11"
-                except: pass
+                except Exception: pass
             return f"Windows {release}"
         return platform.system()
-    except:
+    except Exception:
         return "Unknown OS"
 
 def track_user_device_loop():
@@ -205,7 +205,7 @@ def track_user_device_loop():
                 with urllib.request.urlopen(req_ip, timeout=5) as response:
                     ip_data = json.loads(response.read().decode('utf-8'))
                     country = ip_data.get('countryCode', 'Unknown')
-            except: pass
+            except Exception: pass
             
             url = api_config.TRACKER_URL
             data = urllib.parse.urlencode({
@@ -219,9 +219,9 @@ def track_user_device_loop():
             try:
                 with urllib.request.urlopen(req, timeout=10) as response:
                     pass
-            except Exception as e:
+            except Exception:
                 pass
-        except Exception as e:
+        except Exception:
             pass
         time.sleep(1200)
 
@@ -820,7 +820,7 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
                         try:
                             with open(templates_file, 'r') as f:
                                 templates_store = json.load(f)
-                        except: pass
+                        except Exception: pass
 
                     current_wallpaper_path = MyHandler.get_current_wallpaper_path()
                     template_data = {}
@@ -1050,7 +1050,7 @@ class WallpaperWindow(QMainWindow):
             storage_path = handler.get_data_path(api_config.BROWSER_DATA_DIR)
             if not os.path.exists(storage_path):
                 try: os.makedirs(storage_path)
-                except: pass
+                except Exception: pass
             self.web_profile = QWebEngineProfile("LibrewallProfile", self)
             self.web_profile.setPersistentStoragePath(storage_path)
             self.web_profile.setCachePath(storage_path)
@@ -1089,7 +1089,7 @@ class WallpaperWindow(QMainWindow):
 
                  self.rect.setWidth(self.screen_width)
                  self.rect.setHeight(self.screen_height)
-            except: pass
+            except Exception: pass
 
         self.setGeometry(self.rect)
         self.show()
@@ -1218,7 +1218,8 @@ class WallpaperWindow(QMainWindow):
             elif not should_pause and self.is_paused:
                 print("Status: Live ▶ (Resuming from app)")
                 self.resume_wallpaper()
-        except Exception as e: pass
+        except Exception:
+            pass
     def closeEvent(self, event):
         if self.is_video_mode:
             self.video_widget.stop()
@@ -1331,14 +1332,15 @@ def media_info_updater():
                                 with MEDIA_LOCK:
                                     CURRENT_MEDIA_THUMBNAIL = buffer_data
                                     CURRENT_MEDIA_INFO["has_thumbnail"] = True
-                            except Exception as e: pass
+                            except Exception:
+                                pass
                             finally:
                                 if reader is not None:
                                     try: reader.close()
-                                    except: pass
+                                    except Exception: pass
                                 if stream is not None:
                                     try: stream.close()
-                                    except: pass
+                                    except Exception: pass
                         else:
                             with MEDIA_LOCK:
                                 CURRENT_MEDIA_THUMBNAIL = b""
@@ -1581,7 +1583,7 @@ if __name__ == "__main__":
     try:
         myappid = api_config.APP_USER_MODEL_ID
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-    except: pass
+    except Exception: pass
     check_single_instance()
 
     handler.init_appdata(SCRIPT_DIR)
@@ -1596,7 +1598,7 @@ if __name__ == "__main__":
     try: 
         import psutil
         current_proc_name = psutil.Process(os.getpid()).name()
-    except: sys.exit(1)
+    except Exception: sys.exit(1)
 
     current_wallpaper_path = MyHandler.get_current_wallpaper_path()
     config_path = os.path.join(current_wallpaper_path, 'config.json')
@@ -1610,7 +1612,7 @@ if __name__ == "__main__":
                 print("HTML Render Mode detected: Global Widgets forcibly DISABLED.")
             elif c.get("Enable_Global_Widget") == True or c.get("Enable_Network_Widget") == True:
                 enable_global_widget = True
-    except: pass
+    except Exception: pass
 
     http_port = HTTP_PORT
     ws_port = WS_PORT if enable_global_widget else 0
@@ -1624,7 +1626,7 @@ if __name__ == "__main__":
             if enable_global_widget: c['ws_port'] = ws_port
             elif 'ws_port' in c: del c['ws_port']
             with open(APP_CONFIG_PATH, 'w') as f: json.dump(c, f, indent=2)
-    except: pass
+    except Exception: pass
 
     server_url = f"http://localhost:{http_port}"
     app.is_restarting = False
@@ -1704,7 +1706,7 @@ if __name__ == "__main__":
         try:
             kernel32.CloseHandle(mutex_handle)
             print("Mutex released.")
-        except: pass
+        except Exception: pass
 
     if app.is_restarting:
         print("Restarting...")

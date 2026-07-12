@@ -32,7 +32,6 @@ import socketserver
 import threading
 import socket
 import json
-import mimetypes
 import urllib.request
 import ssl
 import certifi
@@ -55,26 +54,23 @@ import zipfile
 import io
 import urllib.parse
 import email
-import random
 import string
 import secrets
 import re
 import winreg
 import difflib
-from PyQt6.QtCore import QUrl, Qt, QTimer
+from PyQt6.QtCore import QUrl, Qt
 try:
     from PyQt6.QtQuick import QQuickWindow, QSGRendererInterface
     QQuickWindow.setGraphicsApi(QSGRendererInterface.GraphicsApi.OpenGL)
 except ImportError:
     print("Warning: PyQt6.QtQuick or QSGRendererInterface not found. Skipping graphics API switch.")
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QMenu
+from PyQt6.QtWidgets import QApplication, QMainWindow
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEngineProfile, QWebEngineScript
 import updater_module 
-import zlib  
-import base64 
 import ctypes
 from ctypes import wintypes
 import hashlib
@@ -149,7 +145,7 @@ def get_reliable_windows_id():
         if not os.path.exists(storage_dir):
             try:
                 os.makedirs(storage_dir)
-            except: pass
+            except Exception: pass
 
         cache_path = os.path.join(storage_dir, '.device_id')
 
@@ -191,7 +187,7 @@ def get_reliable_windows_id():
             with open(cache_path, 'w') as f:
                 f.write(uuid)
             ctypes.windll.kernel32.SetFileAttributesW(cache_path, 2)
-        except: pass
+        except Exception: pass
 
         return uuid
 
@@ -210,10 +206,10 @@ def get_os_version_string():
                     build = int(version.split('.')[2])
                     if build >= 22000:
                         return "Windows 11"
-                except: pass
+                except Exception: pass
             return f"Windows {release}"
         return platform.system()
-    except:
+    except Exception:
         return "Unknown OS"
 
 def track_user_device():
@@ -228,7 +224,7 @@ def track_user_device():
             with urllib.request.urlopen(req_ip, timeout=5) as response:
                 ip_data = json.loads(response.read().decode('utf-8'))
                 country = ip_data.get('countryCode', 'Unknown')
-        except: pass
+        except Exception: pass
         
         url = api_config.TRACKER_URL
         data = urllib.parse.urlencode({
@@ -595,7 +591,7 @@ def is_engine_running(port):
             s.settimeout(1) 
 
             return s.connect_ex(('localhost', int(port))) == 0
-    except:
+    except Exception:
         return False
 
 def start_engine_process():
@@ -695,7 +691,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                         with open(config_path, 'r') as f:
                             data = json.load(f)
                             active_id = str(data.get('active_id', 'default'))
-                    except: pass
+                    except Exception: pass
                 self.send_json_response(200, {'installedId': active_id})
             except Exception as e:
                 self.send_json_response(500, {'error': str(e)})
@@ -771,7 +767,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                      print(f"Failed to process image: {img_err}")
                      if os.path.exists(cached_file_path + ".tmp"):
                          try: os.remove(cached_file_path + ".tmp")
-                         except: pass
+                         except Exception: pass
                      self.send_json_response(500, {'error': 'Image processing failed'})
                      return
 
@@ -1058,7 +1054,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     pass
 
                 cursor_files = {}
-                for root, dirs, files in os.walk(install_path):
+                for root, _, files in os.walk(install_path):
                     for file in files:
                         if file.lower().endswith(('.cur', '.ani')):
                             clean_name = os.path.splitext(file.lower())[0]
@@ -1079,7 +1075,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 final_mapping = {}
                 inf_file = None
                 crs_file = None
-                for root, dirs, files in os.walk(install_path):
+                for root, _, files in os.walk(install_path):
                     for file in files:
                         if file.lower().endswith('.inf'):
                             inf_file = os.path.join(root, file)
@@ -1539,8 +1535,8 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                                 if desc_match: widget_desc = desc_match.group(1).strip()
                                 if minv_match: 
                                     try: widget_min_version = int(minv_match.group(1).strip())
-                                    except: pass
-                        except: pass
+                                    except Exception: pass
+                        except Exception: pass
                         
                         try:
                             api_url = f"{api_config.API_BASE_URL}?action=get_widgets&query={theme_id}"
@@ -1563,7 +1559,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                             try:
                                 with open(index_path, 'r', encoding='utf-8') as f:
                                     registry_data = json.load(f)
-                            except: pass
+                            except Exception: pass
                         
                         existing_entry = next((w for w in registry_data.get('widgets', []) if str(w.get('id')) == str(theme_id)), None)
                         new_entry = { 
@@ -1807,7 +1803,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     try:
                         with open(index_path, 'r', encoding='utf-8') as f:
                             registry_data = json.load(f)
-                    except: pass
+                    except Exception: pass
                 
                 existing_entry = next((w for w in registry_data.get('widgets', []) if str(w.get('id')) == str(widget_id)), None)
                 
@@ -1881,7 +1877,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                     try:
                         with open(index_path, 'r', encoding='utf-8') as f:
                             registry_data = json.load(f)
-                    except: pass
+                    except Exception: pass
                 
                 original_count = len(registry_data.get('widgets', []))
                 registry_data['widgets'] = [w for w in registry_data.get('widgets', []) if str(w.get('id')) != widget_id]
@@ -2020,7 +2016,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                         try:
                             with open(appdata_index, 'r', encoding='utf-8') as f:
                                 appdata_data = json.load(f)
-                        except: pass
+                        except Exception: pass
                     
                     for iw in install_data.get('widgets', []):
                         aw = next((w for w in appdata_data.get('widgets', []) if str(w.get('id')) == str(iw.get('id'))), None)
@@ -2088,7 +2084,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                              try:
                                  with open(appdata_index, 'r', encoding='utf-8') as f:
                                      appdata_data = json.load(f)
-                             except: pass
+                             except Exception: pass
                         
                         if 'widgets' not in appdata_data: appdata_data['widgets'] = []
                         existing = next((w for w in appdata_data['widgets'] if str(w.get('id')) == str(widget_id)), None)
@@ -2112,7 +2108,7 @@ class EditorHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 try:
                     urllib.request.urlopen(f"http://localhost:{engine_port}/reload", timeout=2)
                     print(f"[Update] Sent reload command to engine on port {engine_port}")
-                except:
+                except Exception:
                     print(f"[Update] Engine not responding on port {engine_port}")
                 
                 self.send_json_response(200, {'status': 'success'})
@@ -2279,7 +2275,7 @@ if __name__ == "__main__":
     try:
         myappid = api_config.APP_USER_MODEL_ID
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-    except: pass
+    except Exception: pass
 
     if not check_single_instance():
         sys.exit(0)

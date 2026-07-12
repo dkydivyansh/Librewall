@@ -58,7 +58,7 @@ def write_library_assets(output_filename, source_dir, description):
     print(f" Building {description} into {output_path}...")
     
     files_to_pack = {}
-    for root, dirs, files in os.walk(source_dir):
+    for root, _, files in os.walk(source_dir):
         for file in files:
             full_path = os.path.join(root, file)
             relative_path = os.path.relpath(full_path, os.path.dirname(source_dir))
@@ -128,7 +128,7 @@ def write_library_assets_full(output_path, source_dir, description):
     
     files_to_pack = {}
     base_name = os.path.basename(source_dir)
-    for root, dirs, files in os.walk(source_dir):
+    for root, _, files in os.walk(source_dir):
         for file in files:
             if file.endswith('.py') or file == '__init__.py' or file.endswith('.pyc'):
                 continue
