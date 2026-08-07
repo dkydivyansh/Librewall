@@ -2,6 +2,8 @@ import os
 import sys
 import api_config
 import faulthandler
+import ipaddress
+import socket
 if api_config.developer_enabled:
     crash_log = open("engine_crash_dump.txt", "a")
     faulthandler.enable(crash_log)
@@ -644,6 +646,48 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
             if user_agent == self.auth_token: return True
             self.send_error(403, "Forbidden: Invalid Auth Token"); return False
 
+        def _is_public_hostname(self, hostname):
+            try:
+                addrinfo = socket.getaddrinfo(hostname, None)
+            except Exception:
+                return False
+
+            if not addrinfo:
+                return False
+
+            for entry in addrinfo:
+                ip_str = entry[4][0]
+                try:
+                    ip_obj = ipaddress.ip_address(ip_str)
+                except ValueError:
+                    return False
+
+                if (
+                    ip_obj.is_private
+                    or ip_obj.is_loopback
+                    or ip_obj.is_link_local
+                    or ip_obj.is_multicast
+                    or ip_obj.is_reserved
+                    or ip_obj.is_unspecified
+                ):
+                    return False
+
+            return True
+
+        def _validate_proxy_url(self, target_url):
+            try:
+                parsed = urllib.parse.urlparse(target_url)
+            except Exception:
+                return False
+
+            if parsed.scheme not in ("http", "https"):
+                return False
+
+            if not parsed.hostname:
+                return False
+
+            return self._is_public_hostname(parsed.hostname)
+
         def do_GET(self):
             clean_path = self.path.split('?')[0]
             public_paths = ['/', '/reload', '/quit', '/port']
@@ -725,6 +769,10 @@ def create_handler_class(window_ref, app_ref, port_num, token_from_main):
                     
                     if not target_url:
                         self.send_error(400, "Missing url parameter")
+                        return
+
+                    if not self._validate_proxy_url(target_url):
+                        self.send_error(400, "Invalid or disallowed target URL")
                         return
 
                     try:
