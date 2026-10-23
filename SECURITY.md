@@ -12,9 +12,8 @@ Only the versions listed below receive active security updates. We strongly reco
 
 | Version | Security Support   |
 | ------- | ------------------ |
-| 2.1     | ✅ Actively supported |
-| 2.0     | ✅ Actively supported |
-| < 2.0   | ❌ End of life — no security updates |
+| < 3.0   | ✅ Actively supported |
+|  2.0    | ❌ End of life — no security updates |
 
 ---
 
